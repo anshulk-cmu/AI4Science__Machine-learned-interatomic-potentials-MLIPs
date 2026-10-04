@@ -21,8 +21,8 @@ Early stage. The proposal is submitted. No training code yet.
 
 ## Team
 
-| Name | Email |
-|---|---|
-| Anshul Kumar | anshulk@andrew.cmu.edu |
-| Pragati Bhattad | pbhattad@andrew.cmu.edu |
-| Yiwei Xia | yiweixia@andrew.cmu.edu |
+| Name | Email | GitHub |
+|---|---|---|
+| Anshul Kumar | anshulk@andrew.cmu.edu | [anshulk-cmu](https://github.com/anshulk-cmu) |
+| Pragati Bhattad | pbhattad@andrew.cmu.edu | [aptenosys](https://github.com/aptenosys) |
+| Yiwei Xia | yiweixia@andrew.cmu.edu | [sdfIvy](https://github.com/sdfIvy) |
