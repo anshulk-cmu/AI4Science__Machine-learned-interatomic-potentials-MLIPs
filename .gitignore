@@ -2,3 +2,4 @@ runLog.md
 notes/
 __pycache__/
 *.pyc
+wandb/

@@ -18,9 +18,10 @@ def main():
     ap.add_argument("--task", default="notask")
     ap.add_argument("--dtype", default="float64")
     ap.add_argument("--model-version", type=float, default=None)   # router version override, UMA only
+    ap.add_argument("--label", default=None)                       # name for the output files, needed for checkpoint paths
     a = ap.parse_args()
     energy, _ = models.load(a.family, a.model, a.task, a.dtype, a.model_version)
-    label = a.model + (f"-v{a.model_version:g}" if a.model_version else "")
+    label = a.label or a.model + (f"-v{a.model_version:g}" if a.model_version else "")
     al, ni = g.ideal_slab("Al"), g.ideal_slab("Ni")
     rng = np.random.default_rng(7)
     rows = []

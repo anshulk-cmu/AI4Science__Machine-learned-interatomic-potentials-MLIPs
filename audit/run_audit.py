@@ -19,12 +19,13 @@ def main():
     ap.add_argument("--task", default="notask")
     ap.add_argument("--dtype", default="float64")
     ap.add_argument("--model-version", type=float, default=None)   # router version override, UMA only
+    ap.add_argument("--label", default=None)                       # name for the output files, needed for checkpoint paths
     ap.add_argument("--runs", type=int, default=20)       # rattled runs, plus run 0 (ideal)
     ap.add_argument("--wandb", action="store_true")
     a = ap.parse_args()
 
     energy, cutoff = models.load(a.family, a.model, a.task, a.dtype, a.model_version)
-    label = a.model + (f"-v{a.model_version:g}" if a.model_version else "")
+    label = a.label or a.model + (f"-v{a.model_version:g}" if a.model_version else "")
     ideal = {s: g.ideal_slab(s) for s in ("Al", "Ni")}
     out = ROOT / "results" / f"energies_{label}_{a.task}.csv"
     out.parent.mkdir(exist_ok=True)

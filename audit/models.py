@@ -1,4 +1,6 @@
 """One loader per model family. load() returns (energy function in eV, graph cutoff in angstrom)."""
+import os
+
 import torch
 
 SPIN = {"omat": 0, "omol": 1}            # the default of each task; charge is 0 for both
@@ -29,7 +31,10 @@ def _uma(model, task, dtype, version):
     settings = "default"
     if dtype == "float64":
         settings = InferenceSettings(base_precision_dtype=torch.float64)
-    unit = pretrained_mlip.get_predict_unit(model, inference_settings=settings, device="cuda")
+    if os.path.isfile(model):                # a checkpoint on disk, for example from our own training runs
+        unit = pretrained_mlip.load_predict_unit(model, inference_settings=settings, device="cuda")
+    else:
+        unit = pretrained_mlip.get_predict_unit(model, inference_settings=settings, device="cuda")
     if version:                              # test only: override the stored router version
         for m in unit.model.modules():
             if hasattr(m, "model_version"):
