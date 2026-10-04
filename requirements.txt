@@ -23,9 +23,12 @@
 #   MACE needs its own env (e3nn conflict): see requirements-mace.txt.
 #   macOS has no CUDA: drop "+cu128" and the extra-index line.
 #
-# Status
-#   Checked: package metadata, and a pip dry run on Python 3.12 (Windows) resolved.
-#   Not checked: a real install, a GPU run on torch 2.8, loading UMA or ORB-v3 weights.
+# Status (tested 2026-10-04, Windows 11, RTX 5070 Ti Laptop)
+#   Install succeeded, pip check clean, torch 2.8.0+cu128 runs on the GPU (sm_120).
+#   ORB-v3 and UMA-S-1.1 loaded and gave an energy and forces on a small Si cell.
+#   ORB-v3 on Windows needs compile=False, because Triton is not installed:
+#     orb_v3_conservative_inf_omat(device="cuda", precision="float32-high", compile=False)
+#   UMA weights are gated on Hugging Face and need your own login (step "Logins" above).
 
 --extra-index-url https://download.pytorch.org/whl/cu128
 

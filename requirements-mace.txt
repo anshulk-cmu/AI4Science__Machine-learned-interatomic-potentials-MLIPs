@@ -11,8 +11,9 @@
 # Verify
 #   python -c "import torch, mace; print(torch.__version__, torch.cuda.is_available())"
 #
-# Status
-#   Checked: package metadata only. Not checked: a real install or a dry run.
+# Status (tested 2026-10-04, Windows 11, RTX 5070 Ti Laptop)
+#   Install succeeded, pip check clean, torch 2.8.0+cu128 runs on the GPU (sm_120).
+#   MACE-MP small loaded and gave an energy and forces on a small Si cell.
 
 --extra-index-url https://download.pytorch.org/whl/cu128
 
