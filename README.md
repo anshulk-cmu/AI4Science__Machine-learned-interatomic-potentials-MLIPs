@@ -21,4 +21,8 @@ Early stage. The proposal is submitted. No training code yet.
 
 ## Team
 
-To be added.
+| Name | Email |
+|---|---|
+| Anshul Kumar | anshulk@andrew.cmu.edu |
+| Pragati Bhattad | pbhattad@andrew.cmu.edu |
+| Yiwei Xia | yiweixia@andrew.cmu.edu |
