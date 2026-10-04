@@ -1,0 +1,46 @@
+# Main environment: UMA, ORB-v3, fairchem training.
+# Env name IDLF26-mlip, Python 3.12, PyTorch 2.8.0 with CUDA 12.8.
+#
+# Setup
+#   conda create -n IDLF26-mlip python=3.12 -y
+#   conda activate IDLF26-mlip
+#   python -m pip install --upgrade pip
+#   python -m pip install -r requirements.txt
+#   python -m ipykernel install --user --name IDLF26-mlip --display-name "Python (IDLF26-mlip)"
+#
+# Logins (never commit tokens)
+#   Accept the licenses at huggingface.co/facebook/UMA and huggingface.co/facebook/OMol25
+#   hf auth login
+#   wandb login
+#
+# Verify
+#   python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+#   python -c "import fairchem.core, orb_models; print('ok')"
+#
+# Notes
+#   Separate from the course env: fairchem-core 2.21 needs torch 2.8, the course env has 2.11.
+#   Python 3.12: orb-models pins dm-tree 0.1.8, which has no Windows wheel for 3.13.
+#   MACE needs its own env (e3nn conflict): see requirements-mace.txt.
+#   macOS has no CUDA: drop "+cu128" and the extra-index line.
+#
+# Status
+#   Checked: package metadata, and a pip dry run on Python 3.12 (Windows) resolved.
+#   Not checked: a real install, a GPU run on torch 2.8, loading UMA or ORB-v3 weights.
+
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+torch==2.8.0+cu128
+fairchem-core==2.21.0
+orb-models==0.7.0
+
+numpy>=2.0,<2.5
+ase>=3.26.0
+hydra-core>=1.3
+scipy>=1.15
+pandas
+matplotlib
+tqdm
+pyyaml
+wandb
+huggingface_hub
+ipykernel

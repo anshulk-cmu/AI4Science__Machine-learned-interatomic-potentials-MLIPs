@@ -1,0 +1,26 @@
+# MACE environment, for the zero control in the audit only.
+# Env name IDLF26-mlip-mace, Python 3.12, PyTorch 2.8.0 with CUDA 12.8.
+# Separate because mace-torch pins e3nn 0.4.4 and fairchem-core needs e3nn 0.5 or newer.
+#
+# Setup
+#   conda create -n IDLF26-mlip-mace python=3.12 -y
+#   conda activate IDLF26-mlip-mace
+#   python -m pip install --upgrade pip
+#   python -m pip install -r requirements-mace.txt
+#
+# Verify
+#   python -c "import torch, mace; print(torch.__version__, torch.cuda.is_available())"
+#
+# Status
+#   Checked: package metadata only. Not checked: a real install or a dry run.
+
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+torch==2.8.0+cu128
+mace-torch==0.3.16
+ase>=3.26.0
+numpy
+scipy
+matplotlib
+tqdm
+ipykernel
