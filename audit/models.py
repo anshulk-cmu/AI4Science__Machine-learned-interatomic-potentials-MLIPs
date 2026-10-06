@@ -7,12 +7,18 @@ SPIN = {"omat": 0, "omol": 1}            # the default of each task; charge is 0
 
 
 def _energy(calc, info=None):
-    def energy(atoms):
+    """energy(atoms) in eV; energy.forces(atoms) in eV/angstrom."""
+    def prepared(atoms):
         atoms = atoms.copy()
         if info:
             atoms.info.update(info)
         atoms.calc = calc
-        return float(atoms.get_potential_energy())
+        return atoms
+
+    def energy(atoms):
+        return float(prepared(atoms).get_potential_energy())
+
+    energy.forces = lambda atoms: prepared(atoms).get_forces()
     return energy
 
 
@@ -41,7 +47,9 @@ def _uma(model, task, dtype, version):
                 m.model_version = version
     calc = FAIRChemCalculator(unit, task_name=task)
     info = {"charge": 0, "spin": SPIN[task]}
-    return _energy(calc, info), _find(unit.model, "cutoff")   # P1 confirms where the model lives
+    energy = _energy(calc, info)
+    energy.unit = unit                       # lets a test reach the router
+    return energy, _find(unit.model, "cutoff")   # P1 confirms where the model lives
 
 
 def _orb(dtype):
