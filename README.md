@@ -1,56 +1,129 @@
 # Local Composition Routing for Mixture-of-Experts Interatomic Potentials
 
-Local-composition routing for mixture-of-experts interatomic potentials, benchmarked against UMA on OMol25.
+CMU 11-785 Introduction to Deep Learning, Fall 2026. AI4Science track.
+Mentor: Ron Sarma.
 
-Course project for CMU 11-785 Introduction to Deep Learning, Fall 2026, AI4Science track (machine-learned interatomic potentials).
+## Project
 
-## Idea
+We study whether local composition routing can preserve the accuracy gain of
+mixture-of-experts interatomic potentials while restoring size consistency.
+For two non-interacting fragments, size consistency requires
+`E(A + B) = E(A) + E(B)`.
 
-UMA routes its Mixture of Linear Experts (MoLE) with an average element embedding taken over the whole structure, with no distance cutoff. For two fragments of different composition, this average differs from that of either fragment, so the energy is not additive when the fragments are far apart (size consistency). We propose restricting the routing average to a smooth, bounded neighborhood around each atom, and test whether this keeps the accuracy that routing adds.
+UMA selects its linear-expert weights from whole-structure information, including
+average composition. Adding a distant fragment can change that average and the
+energy assigned to the original fragment. Local routing replaces the composition
+average with a smooth average around each atom. The additivity test uses neutral,
+closed-shell fragment pairs because total charge and spin remain global inputs.
 
-## Plan
+The study has two parts: audit released UMA, ORB-v3, and MACE models, then train
+matched models on the official OMol25 4M split. The six configurations are Dense,
+Global, Element, Local-6, Local-12, and Local+Global. The shared backbone will use
+fairchem's UMA/eSEN implementation, with forces from the negative energy gradient.
 
-- Backbone: UMA's eSEN-based architecture, via the `fairchem` implementation. Only the router changes between configurations.
-- Data: OMol25, official splits.
-- Configurations: Dense (no experts), Global (UMA-style routing over the whole structure), Element (routing by the atom's own element), Local-6 and Local-12 (routing from the neighborhood within 6 or 12 angstrom), and Local+Global.
-- Measures: energy and force error, the additivity residual on neutral singlet fragment pairs, spurious host-atom forces, and dissociation curves.
+The main test asks whether Local-6 retains more than half of Global's force-error
+improvement over Dense. Element tests whether local neighbors justify their cost.
+We also measure energy error, additivity, energy drift, interaction energies,
+inference speed, and memory. The plan includes 24 training runs across seeds;
+these are planned experiments, not results from this branch.
 
-## Status (2026-10-04)
+## Current status
 
-Early stage. The proposal is submitted and the first baseline is done.
+Anshul completed the first released-model slab audit on 4 October. In that setup,
+MACE's additivity residual was at numerical noise, while ORB-v3 and the tested
+UMA checkpoints had errors that persisted with distance. The router-version test
+supports a global-routing explanation but does not establish it alone. These
+are slab results, including slabs evaluated with UMA's molecular task, not a
+molecular benchmark. See the [audit write-up](status-wip/README.md) for results
+and limits.
 
-- **Done: the audit of released models.** We tested whether MACE, ORB-v3, UMA-S-1.1, UMA-S-1.2 and UMA-M-1.1 give an
-  energy for two far-apart metal slabs that equals the sum of the parts. MACE does, exactly. ORB-v3 and all UMA
-  models do not, by 0.5 eV to hundreds of eV, and the error does not shrink with distance. A test on UMA's stored
-  router version number supports the whole-structure average as the cause. Read `status-wip/README.md`.
-- **Not done yet:** the training baselines (Dense, Global, Local-6). They wait on the shared training pipeline and the
-  router interface, which the team is agreeing on now. The midterm report is due 23 October.
+Dense, Global, and Local-6 training runs remain pending in this repository.
+The midterm report is due 23 October.
 
-## Repository layout
+## This branch
 
-| Folder or file | What it holds |
+**Standalone component with fairchem integration pending.**
+
+`research/local-composition-routing` provides the router interface, local
+composition calculation, receiver-based edge adapter, and ordinary linear-expert
+references. It does not yet provide a complete Local-6 model or OMol25 training
+results. The linear references do not replace fairchem's SO(2) layers.
+
+| Path | Contents |
 |---|---|
-| `status-wip/` | Reports only: the write-up, the final tables and the plots |
-| `audit/` | The audit code, with its own README and the exact commands |
-| `results/` | Raw per-run energies, null tests and cloud-run logs behind every number |
-| `requirements.txt` | Environment for UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8) |
-| `requirements-mace.txt` | Separate environment for MACE, which cannot share one with fairchem |
+| `audit/` | Released-model audit, checkpoint loaders, analysis, and W&B logging; see [commands](audit/README.md) |
+| `results/` | Raw energies, numerical controls, tables, plots, and cloud-run records |
+| `status-wip/` | Team-facing audit report and result snapshots |
+| `local_routing/router.py` | Input/result types, Global and Local routers, sparse composition sums, receiver adapter, and a small-system neighbor helper |
+| `local_routing/experts.py` | Expert-output mixing, structure merging, and atom merging for an ordinary linear layer |
+| `tests/test_local_routing.py` | 17 component tests, including derivatives and a toy force-loss training step |
+| `configs/config_draft.yaml` | Yiwei's draft, preserved unchanged; unresolved values remain `null` |
+| `docs/local-routing.md` | Tensor contract, assumptions, integration work, and agreed dates |
+| `requirements.txt`, `requirements-mace.txt` | Separate project environments for fairchem/ORB and MACE |
+
+Local routing includes the central atom with weight one and uses a smooth
+polynomial envelope. Each directed message edge uses the receiving atom's
+coefficients. Position gradients pass through distances, composition, and mixing.
+Local-12 requires a 12 angstrom routing neighborhood even when message edges use
+the shared 6 angstrom cutoff.
+
+The reference defaults are eight experts, radius 6 angstroms, and envelope power
+3. **Softmax, embedding size 16, and router hidden size 32 are provisional.**
+Shared coefficients across expert operations follow the draft and still need
+confirmation. Task, charge, and spin encodings must come from the shared model;
+unconditioned operation is an explicit component-test option.
+
+The YAML is a discussion draft, not an executable training configuration. This
+package does not load it. The neighbor helper uses an O(N^2), non-periodic search;
+training needs a scalable helper. The expert execution modes are correctness
+references, with no speed or memory claim.
 
 ## Setup
 
-Create the environments from the two requirements files. The steps are in the header of each file. The UMA weights are
-gated on Hugging Face, so log in and accept the license first. Never commit a token.
+Use the setup commands in the headers of `requirements.txt` and
+`requirements-mace.txt`. MACE uses a separate environment because of dependency
+conflicts with fairchem. Released UMA weights require Hugging Face access and
+license acceptance. Keep login tokens out of the repository.
 
-## Who does what
+## Checks
 
-- Anshul Kumar: the audit, the Global run, and the size-consistency benchmark.
-- Pragati Bhattad: the router interface and local routing (Local-6, Local-12).
-- Yiwei Xia: the OMol25 training pipeline, the Dense baseline, and the statistics.
+The component tests require Python 3.10 or later and PyTorch. From the repository
+root, in a PyTorch environment, run:
+
+```sh
+python -m unittest discover -s tests -v
+```
+
+The tests cover composition arithmetic, locality, batch isolation, receiver
+mapping, cutoff smoothness, first and second derivatives, conditioning, and
+agreement between expert execution modes. The training check uses a toy scalar,
+not molecular reference energies. Passing these checks does not establish
+full-model force accuracy, GPU performance, or molecular-dynamics stability.
+See the [implementation notes](docs/local-routing.md) for the tested runtime.
+
+## Next steps
+
+1. Confirm the shared backbone, coefficient normalization, router dimensions,
+   conditioning encoder, and geometry-helper contract with Yiwei.
+2. Connect the adapter and expert operations to fairchem's actual SO(2) layers.
+   Preserve position derivatives through conservative force evaluation.
+3. Run full-model force checks and a few OMol25 training batches, then review and
+   merge the integration. The agreed target is 15 October.
+4. Run a short Local-6 pilot on 16-18 October if integration and GPU access are
+   ready. Measure energy-plus-force inference, training time, and peak memory.
+
+The progress checkpoint is 11 October. If Local-6 is not running by 15 October,
+report the implemented components and remaining work. Dense and Global remain
+the midterm baseline. The shared training pipeline is an integration dependency.
 
 ## Team
 
-| Name | Email | GitHub |
+| Name | Responsibility | GitHub |
 |---|---|---|
-| Anshul Kumar | anshulk@andrew.cmu.edu | [anshulk-cmu](https://github.com/anshulk-cmu) |
-| Pragati Bhattad | pbhattad@andrew.cmu.edu | [aptenosys](https://github.com/aptenosys) |
-| Yiwei Xia | yiweixia@andrew.cmu.edu | [sdfIvy](https://github.com/sdfIvy) |
+| Anshul Kumar | Released-model audit; Global and Element | [anshulk-cmu](https://github.com/anshulk-cmu) |
+| Pragati Bhattad | Local routing; Local-6 and Local-12; speed and memory | [aptenosys](https://github.com/aptenosys) |
+| Yiwei Xia | Shared pipeline; Dense and Local+Global; statistical and physical evaluation | [sdfIvy](https://github.com/sdfIvy) |
+
+References: [UMA](https://arxiv.org/abs/2506.23971),
+[OMol25](https://huggingface.co/facebook/OMol25),
+[fairchem](https://github.com/facebookresearch/fairchem).
