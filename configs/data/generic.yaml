@@ -1,0 +1,89 @@
+# @package _global_
+# Full OMol-compatible ASE DB splits, using FairChem's native dataset stack.
+data:
+  train_src: ../omol25-data/train_4M  # Directory of train data
+  val_src: ../omol25-data/val  # Directory of val data
+
+train_dataset:
+  _target_: fairchem.core.datasets.mt_concat_dataset.create_concat_dataset
+  dataset_configs:
+    omol:
+      splits:
+        train:
+          src: ${data.train_src}
+          sample_n: 64  # Number of samples to include, null = use the full training split
+      format: ase_db
+      a2g_args:
+        molecule_cell_size: 120.0
+        r_energy: true
+        r_forces: true
+        r_stress: false
+        r_data_keys: [spin, charge]
+        r_edges: true
+        radius: ${training.cutoff}
+        max_neigh: ${training.max_atoms}
+      key_mapping:
+        energy: omol_energy
+        forces: omol_forces
+      transforms:
+        common_transform:
+          dataset_name: omol
+  combined_dataset_config:
+    sampling: {type: temperature, temperature: 1.0}
+
+val_dataset:
+  _target_: fairchem.core.datasets.mt_concat_dataset.create_concat_dataset
+  dataset_configs:
+    omol:
+      splits:
+        val:
+          src: ${data.val_src}
+          sample_n: 64  # Number of samples, null = use the full validation split
+      format: ase_db
+      a2g_args:
+        molecule_cell_size: 120.0
+        r_energy: true
+        r_forces: true
+        r_stress: false
+        r_data_keys: [spin, charge]
+        r_edges: true
+        radius: ${training.cutoff}
+        max_neigh: ${training.max_atoms}
+      key_mapping:
+        energy: omol_energy
+        forces: omol_forces
+      transforms:
+        common_transform:
+          dataset_name: omol
+  combined_dataset_config:
+    sampling: {type: temperature, temperature: 1.0}
+
+train_dataloader:
+  _target_: fairchem.core.components.common.dataloader_builder.get_dataloader
+  dataset: ${train_dataset}
+  batch_sampler_fn:
+    _target_: fairchem.core.datasets.samplers.max_atom_distributed_sampler.MaxAtomDistributedBatchSampler
+    _partial_: true
+    max_atoms: ${training.max_atoms}
+    seed: ${job.seed}
+    shuffle: true
+    drop_last: false
+  num_workers: ${training.workers}
+  collate_fn:
+    _target_: fairchem.core.units.mlip_unit.mlip_unit.mt_collater_adapter
+    tasks: ${tasks}
+
+eval_dataloader:
+  _target_: fairchem.core.components.common.dataloader_builder.get_dataloader
+  dataset: ${val_dataset}
+  batch_sampler_fn:
+    _target_: fairchem.core.datasets.samplers.max_atom_distributed_sampler.MaxAtomDistributedBatchSampler
+    _partial_: true
+    max_atoms: ${training.max_atoms}
+    seed: ${job.seed}
+    shuffle: false
+    drop_last: false
+  num_workers: ${training.workers}
+  collate_fn:
+    _target_: fairchem.core.units.mlip_unit.mlip_unit.mt_collater_adapter
+    tasks: ${tasks}

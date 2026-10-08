@@ -1,0 +1,1665 @@
+{
+  "status": "verified",
+  "created_utc": "2026-10-08T02:58:49.195367+00:00",
+  "source_repo": "https://huggingface.co/facebook/OMol25",
+  "source_version": "OMol-0",
+  "source_revision": "f3fdf382be3c22e8c67d1d76bacb1961627cf8d8",
+  "fairchem_core": "2.21.0",
+  "fairchem_checkout_commit": "db9b17fc6eff8bd167fc2174fddc8f43bab34629",
+  "seed": 11785,
+  "smoke_per_split": 64,
+  "units": {
+    "positions": "angstrom",
+    "energy": "eV",
+    "forces": "eV/angstrom"
+  },
+  "splits": [
+    {
+      "split": "train_4M",
+      "archive_url": "https://dl.fbaipublicfiles.com/opencatalystproject/data/omol/250514/train_4M.tar.gz",
+      "path": "D:\\11785 final project 2\\omol25-data\\train_4M",
+      "row_count": 3986754,
+      "files": [
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0000.aselmdb",
+          "size_bytes": 284090368,
+          "sha256": "617ccff34c3c5429bd07f8b52d15de4fc069e74d1966638195011096d14bc026"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0001.aselmdb",
+          "size_bytes": 284069888,
+          "sha256": "8f7ab7fb95ce1c8396ec7d938b508f0520fb124fb5d811f640c30c85183840b2"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0002.aselmdb",
+          "size_bytes": 285487104,
+          "sha256": "6994150c91cdc2566b3c88e9a20a6215e44c01e69427a9f6fefed6289ff761a4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0003.aselmdb",
+          "size_bytes": 283910144,
+          "sha256": "6d865abf97e08887fc6b709159c1692e43be8b2ca0579aa90e441a7dbf9a61b4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0004.aselmdb",
+          "size_bytes": 283693056,
+          "sha256": "b4e3b3d06f0ccf0a13dc80a3e14468f31c0e3561e4ecc27ccd168e1c625e965f"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0005.aselmdb",
+          "size_bytes": 284524544,
+          "sha256": "460a450e702cb5a8a21274dfaf807f774d481822543886a33925a30b30028abb"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0006.aselmdb",
+          "size_bytes": 285245440,
+          "sha256": "23f26a7887298799b293d848bea4cb56dfeec1f39478c0e580bd5781240af97f"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0007.aselmdb",
+          "size_bytes": 284835840,
+          "sha256": "78be0c3a66aff682211a2a4225d2bab7686ef5ce288b9beeccf482e66b6dd0c6"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0008.aselmdb",
+          "size_bytes": 284585984,
+          "sha256": "5c4dc573596ac8950a46532ec5db79fbb7a9749b0a813a615f6ecc1922848d71"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0009.aselmdb",
+          "size_bytes": 285036544,
+          "sha256": "95fd3efd85268d397e3a436ebe265ff7a6206b28f914ded85fb838bc10fe71ea"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0010.aselmdb",
+          "size_bytes": 284852224,
+          "sha256": "7120eb8b2e1b7c0f9d8c1c19d4e7dde705aef624267c6c674b746755f7367dec"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0011.aselmdb",
+          "size_bytes": 284827648,
+          "sha256": "fea6d39b0bfc5bd5a36c7faf77be54bcf97b7a7bdaa3ec283280646a28b8a664"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0012.aselmdb",
+          "size_bytes": 285876224,
+          "sha256": "5a60aecfb0a49a113310ed097d3a5757deaf1a585f1c0ff33002a46671df5aa7"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0013.aselmdb",
+          "size_bytes": 283508736,
+          "sha256": "663e00fc6203ce46bc8b9f0caa83a6e56fad86b73dc6af1621af0ed885eef555"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0014.aselmdb",
+          "size_bytes": 283664384,
+          "sha256": "c8ba9e4369e5336512a77d24ff01748bf93e292f0bfa5ed303394baf2a6efc9d"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0015.aselmdb",
+          "size_bytes": 285315072,
+          "sha256": "e203092f0a4946a8297fce31053e5c266129a06d56c0f679eacad46be98491e1"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0016.aselmdb",
+          "size_bytes": 284807168,
+          "sha256": "3192afaa55beba7df9a153ef83ef66a1bd1514195cf07a637f40a363bae3f911"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0017.aselmdb",
+          "size_bytes": 285097984,
+          "sha256": "5c905d758097539a3221dce7a0fe92fd1a80da79855c68b29aca34763def9737"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0018.aselmdb",
+          "size_bytes": 283865088,
+          "sha256": "2954bc6762fdc907ea8502b5fe6c8c4926a5ee1d66f73195cf39be8825d61f8d"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0019.aselmdb",
+          "size_bytes": 284090368,
+          "sha256": "67d424fd24c0760e00d2a4dcbf71a4f0b949e48bd8716e0ad95d6d1150ce6f28"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0020.aselmdb",
+          "size_bytes": 285241344,
+          "sha256": "c2a0fe3ce4249abac54d92e2a4e635ff4802ac1e0fbd017d48fddb455d4a53bd"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0021.aselmdb",
+          "size_bytes": 285368320,
+          "sha256": "77891f9c74dd5751a4ab883d7868996f39ce02fa6b22f7ed5bd3c8980af80dbe"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0022.aselmdb",
+          "size_bytes": 285286400,
+          "sha256": "57e30c07132ad3a305dec8bb51948e5e3f795fd995102c22c7278814e1745ead"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0023.aselmdb",
+          "size_bytes": 283717632,
+          "sha256": "abf89e0523d449fa18de5361f06bdd1f53a50894c7c348db696cddec0e2928d9"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0024.aselmdb",
+          "size_bytes": 284160000,
+          "sha256": "28b94f57c03087f71e4721b1d0b4d2d76f5f5e885b91122026f89c50f0945831"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0025.aselmdb",
+          "size_bytes": 284364800,
+          "sha256": "337682fd53cee603b76679eb56d03b0319a193a63d92fef954ba7b9eb0e0d72f"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0026.aselmdb",
+          "size_bytes": 284225536,
+          "sha256": "9dab12443c08c67c1f1270d0d3ea7429fa6124ae4b1fc1f5f4b75316e5f69280"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0027.aselmdb",
+          "size_bytes": 284811264,
+          "sha256": "467647628157403d71c3ae2f2d9bf4aab5f44a7c0570fd208cd1dfa31c69c1c5"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0028.aselmdb",
+          "size_bytes": 284495872,
+          "sha256": "534e20b57409b0feb0a2e51d7d3a5f0863dcd568571ea510f98608a0c80c60c1"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0029.aselmdb",
+          "size_bytes": 285028352,
+          "sha256": "10d6646bd9761eab41d8770756d7cb6f85e992e40e0faf726f5f4186620f45f7"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0030.aselmdb",
+          "size_bytes": 285032448,
+          "sha256": "88d0118b13b8ee3a748b0f6db8605f72929b57eabfe80174e319f62443b75d48"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0031.aselmdb",
+          "size_bytes": 285585408,
+          "sha256": "4bc11d6922f8d61465d02df236e2a8560d4d90f04da10b9c3312d72baedc34e4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0032.aselmdb",
+          "size_bytes": 285622272,
+          "sha256": "ece93c2de4f117e5e2c41bf65b6447e8a8bc3acee5d0a20d8b5394dd1b960414"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0033.aselmdb",
+          "size_bytes": 284254208,
+          "sha256": "cbb4b7362f2f498cb79d82348cf95395cd8678e2d1017d03130fc48a24974c7c"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0034.aselmdb",
+          "size_bytes": 283717632,
+          "sha256": "bc90442bfdda3fba5e45cc993e676565c9cd5c13f1315e45dcb3b10271f13029"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0035.aselmdb",
+          "size_bytes": 284250112,
+          "sha256": "521368acf9ea5e0552f27818796337b65e2fe7b784d1b7a2d6056272aca275aa"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0036.aselmdb",
+          "size_bytes": 284123136,
+          "sha256": "1d2b705fbddef5131de5ad2fd5b3e795625aacd0aba42cb8c2811f077793eca1"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0037.aselmdb",
+          "size_bytes": 285290496,
+          "sha256": "c569e30c4a50f6ea0fe747e844fbb9792d193fbbfb1aa9dbebe06d6aa4724104"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0038.aselmdb",
+          "size_bytes": 284258304,
+          "sha256": "20728f74a8d6141ff5684a1063ba7afb561cf36d10c8be267fb92b70d8b02626"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0039.aselmdb",
+          "size_bytes": 284921856,
+          "sha256": "b0b828f22aaf80f9ac5d0d679ae30e9193f58e044af2882924e3cea4e041a768"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0040.aselmdb",
+          "size_bytes": 284434432,
+          "sha256": "66ef314d7983a4491c36d6cc10db057e44d44b43fceef4b414e8a53d6d15133e"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0041.aselmdb",
+          "size_bytes": 284045312,
+          "sha256": "b0abe000692ef767eee37f4b348e17ea3134a617e218a4641ec0fee5f9929b4a"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0042.aselmdb",
+          "size_bytes": 283955200,
+          "sha256": "44123689e3b04550ed108dc9e5c01bbddbdba540184160f640a60463424cb619"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0043.aselmdb",
+          "size_bytes": 285675520,
+          "sha256": "343554bff2d2ecb83a60c4aae648c2ccca77845ea9a8765f30d7590ea92638e4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0044.aselmdb",
+          "size_bytes": 285147136,
+          "sha256": "09c4e798b258a2c3154cc373ed7cbace73bb3ae6bc901d0f2ea8d58a1c9421b9"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0045.aselmdb",
+          "size_bytes": 284864512,
+          "sha256": "209d5e39bc94716dafec39cea87885686dc2e08c4f25acee495ae6897f4ab2da"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0046.aselmdb",
+          "size_bytes": 284753920,
+          "sha256": "0e237c22619309d98ad5904e2ad71587a1f7a9ea9a3a616a47b1f9fd1535eb46"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0047.aselmdb",
+          "size_bytes": 285544448,
+          "sha256": "30869726b033192c6b5c2c6a1faeb2a2e04948b9be557c2c3743dc236a32b3c1"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0048.aselmdb",
+          "size_bytes": 285544448,
+          "sha256": "7d3cd8850aa0182f4de3f6f8a1b2521c3b7e8f32b5b6557487907b4289ece6bb"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0049.aselmdb",
+          "size_bytes": 284925952,
+          "sha256": "85cea02d6b9129a8dfad6c7711431136a73608746f86cbe3913f0f27e90391cd"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0050.aselmdb",
+          "size_bytes": 286380032,
+          "sha256": "cc2664334043e0646c279442d20a79025d6085fba6593c15824d71852cabd3f4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0051.aselmdb",
+          "size_bytes": 285429760,
+          "sha256": "cd53484a0bd77064d98119bf9d36419ef75f0195aaa57cca2761faf0d6d534d4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0052.aselmdb",
+          "size_bytes": 285741056,
+          "sha256": "cac03cf36719bb1ab94b94bfeafeb3771db612cf7cf5909add90a48c3cbc2ab3"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0053.aselmdb",
+          "size_bytes": 285290496,
+          "sha256": "b4333b2f9330f0ee71a21c56326eab06de6d19081d831d51f72cabedf76ab364"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0054.aselmdb",
+          "size_bytes": 285118464,
+          "sha256": "bdf3c50bff174853a474cfaf613998301792f517f169a62beaffa403c68c2225"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0055.aselmdb",
+          "size_bytes": 285454336,
+          "sha256": "1adbf6fc13ee5080076fb452e8f7aad86f3be6eb1f6c60994130c5c805188835"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0056.aselmdb",
+          "size_bytes": 284020736,
+          "sha256": "b89d2bfe4218131946829f6eddaffb04ba96f8c100aa28a4d95653cfa81102da"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0057.aselmdb",
+          "size_bytes": 284729344,
+          "sha256": "14fb741840c0d1c0cfe84c69fae67b9aa4eccf51e798772cfcda108aa2ad9659"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0058.aselmdb",
+          "size_bytes": 284753920,
+          "sha256": "f509be77f67ed95f20576ad85b4f1c55a5c756408d5d1336dfe495317a5803a9"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0059.aselmdb",
+          "size_bytes": 285302784,
+          "sha256": "c933116a25ea921bd1210e3d8176ade1d740c8163fa9e838b52ca2ddccd2faf7"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0060.aselmdb",
+          "size_bytes": 283918336,
+          "sha256": "273169241288dce5971aff26524686408802a8aad1e06c9934d41a4dd758240a"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0061.aselmdb",
+          "size_bytes": 285126656,
+          "sha256": "55bc06354403ff25d859461d42de8f268cc015a50e12600bdb08da3c706382f4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0062.aselmdb",
+          "size_bytes": 285417472,
+          "sha256": "f2b962ee6b912b0bd8c1349c663437499b13215fbcea4f44e6dbf06957b16203"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0063.aselmdb",
+          "size_bytes": 284487680,
+          "sha256": "5c1a21b0cd28a7b491c73376884695c2264be0d4e9b3f2a442c1c08aa1a34ddd"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0064.aselmdb",
+          "size_bytes": 285417472,
+          "sha256": "243a3f46864fc0f76f3c6f84589d7dd907400d4bf63b766f00e48ee50c2e7939"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0065.aselmdb",
+          "size_bytes": 284995584,
+          "sha256": "a6e2a0a42c120f40be8055ca70ab861b50403f6261bc2dd96ca9d275b5763505"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0066.aselmdb",
+          "size_bytes": 285294592,
+          "sha256": "30c993cad216776e314f51c0bf85173fc920efb310d7680bf8d5349452e639bd"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0067.aselmdb",
+          "size_bytes": 286433280,
+          "sha256": "659daba4e7107960f3576b4a6d25685ae8a9e14d2e7ca3432afcae771d756da2"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0068.aselmdb",
+          "size_bytes": 284405760,
+          "sha256": "3b7f90bc40100c02e320b092e34f4a4fa857608c8f8a6489cf63165458cca559"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0069.aselmdb",
+          "size_bytes": 283766784,
+          "sha256": "1d77b07d7d6272da33ef054a5c465023d187d5755a08b0d40055f875f7b18602"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0070.aselmdb",
+          "size_bytes": 284864512,
+          "sha256": "894e19276331eedce23db3ddf038d9755bdd79f4fd079ea813f81ca038902e6e"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0071.aselmdb",
+          "size_bytes": 283566080,
+          "sha256": "a0ed8fd784d17f5e20648461bce1491e0686d9900f010dc570e852e60c9b443c"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0072.aselmdb",
+          "size_bytes": 284512256,
+          "sha256": "f398b0ab4a605ad0016088cc9972a210d9d1d5ae085ff96b1585d30e04ae3571"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0073.aselmdb",
+          "size_bytes": 284942336,
+          "sha256": "9ae1e7c9d6a1b499190203505bf0284211ef5fba223485a49f823be89fa69edc"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0074.aselmdb",
+          "size_bytes": 284831744,
+          "sha256": "7086d52c12d90e8f4e3b36e0c6837825bcc12c8b6298140b68f4834f217575be"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0075.aselmdb",
+          "size_bytes": 286154752,
+          "sha256": "3597ff3ac67490a43f772015fd77cb32d9d4b7fe2ce2808673af6d58609f6102"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0076.aselmdb",
+          "size_bytes": 286380032,
+          "sha256": "bd36f796f6c028f893a19e2166c64cedb05f25c5cd312c9540cba17a12d205cc"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0077.aselmdb",
+          "size_bytes": 285134848,
+          "sha256": "65253b93bcab7c992c5c824be4b71970e47b3ce8e467cce4e39712fb4b14f311"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0078.aselmdb",
+          "size_bytes": 285024256,
+          "sha256": "c785d1443dc06caedd40bca04e6092221d65ed4489f16068311f081634bdf010"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\train_4M\\data0079.aselmdb",
+          "size_bytes": 285147136,
+          "sha256": "62fed35dd45eae8e029c82dbd9f88db46094707f1081f256f80a3cc507e10954"
+        }
+      ],
+      "sample_indices": [
+        28930,
+        32612,
+        143986,
+        370956,
+        383074,
+        477247,
+        558863,
+        568330,
+        663293,
+        686222,
+        724731,
+        741646,
+        784539,
+        787428,
+        964247,
+        1097395,
+        1220108,
+        1311110,
+        1343978,
+        1419518,
+        1464752,
+        1484133,
+        1528888,
+        1580380,
+        1587271,
+        1764283,
+        1808759,
+        1816074,
+        1854373,
+        2092753,
+        2116406,
+        2150074,
+        2211179,
+        2512463,
+        2549585,
+        2598027,
+        2604774,
+        2610594,
+        2756094,
+        2782935,
+        2867283,
+        2905952,
+        2952832,
+        3093992,
+        3102815,
+        3145204,
+        3172946,
+        3222329,
+        3271212,
+        3273797,
+        3306811,
+        3476601,
+        3536248,
+        3601887,
+        3606114,
+        3689557,
+        3732457,
+        3742079,
+        3779186,
+        3799377,
+        3865472,
+        3942770,
+        3977601,
+        3982434
+      ],
+      "samples": [
+        {
+          "index": 28930,
+          "source_id": "geom_orca6/geom_99823682_0_1/orca.tar.zst"
+        },
+        {
+          "index": 32612,
+          "source_id": "omol/solvated_protein/outputs_240923/spf_1372239_0_1/step0/orca.tar.zst"
+        },
+        {
+          "index": 143986,
+          "source_id": "trans1x/t1x_rxn8990_2330_1284_0_1/orca.tar.zst"
+        },
+        {
+          "index": 370956,
+          "source_id": "ani2x/ani2x_021_71163_0_1/orca.tar.zst"
+        },
+        {
+          "index": 383074,
+          "source_id": "tm_react/ROST14_V3_Charge0_UHF2_swaplig_2_newlig_CNCCNNCC4_rev_step13_0_3/orca.tar.zst"
+        },
+        {
+          "index": 477247,
+          "source_id": "ani1xbb/aniBB_012_354429_0_3/orca.tar.zst"
+        },
+        {
+          "index": 558863,
+          "source_id": "tm_react/MOBH12_Os4_Charge0_UHF4_swaplig_0_newlig_Fc1cFcFcScFc1F7_step17_0_5/orca.tar.zst"
+        },
+        {
+          "index": 568330,
+          "source_id": "protein_core/4htz_coreB776_1_1/orca.tar.zst"
+        },
+        {
+          "index": 663293,
+          "source_id": "tm_react/MOBH19_Sn4_Charge4_UHF0_swaplig_0_newlig_NCOc1ccncc16_rev_step26_4_1/orca.tar.zst"
+        },
+        {
+          "index": 686222,
+          "source_id": "pdb_fragments_400K/5m63_HBS01_state0_LBS01_state0_0_1_ZINC001030634479_ligstate1_0_1/orca.tar.zst"
+        },
+        {
+          "index": 724731,
+          "source_id": "tm_react/MOR30_Hg2_Charge0_UHF0_swaplig_0_newlig_Fc1ccFcFcFc1F2_rev_step2_0_1/orca.tar.zst"
+        },
+        {
+          "index": 741646,
+          "source_id": "orbnet_denali/orbnet_CHEMBL2376616_conformers_b3887b07707c2cc892e6312e7ed43f4afabb2c764b4073415eb15b1e4573a115_1925076_0_1/orca.tar.zst"
+        },
+        {
+          "index": 784539,
+          "source_id": "ani2x/ani2x_014_35025_0_1/orca.tar.zst"
+        },
+        {
+          "index": 787428,
+          "source_id": "ani1xbb/aniBB_027_26262_1_1/orca.tar.zst"
+        },
+        {
+          "index": 964247,
+          "source_id": "pdb_fragments_400K/6pji_ABS01_state0_BBS01_state0_-5_1_ZINC000985560946_ligstate0_-2_1/orca.tar.zst"
+        },
+        {
+          "index": 1097395,
+          "source_id": "omol/electrolytes/md_based/outputs_241029/1511_C3H8O_3_shell_101_0_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 1220108,
+          "source_id": "trans1x/t1x_rxn5508_282_263_0_1/orca.tar.zst"
+        },
+        {
+          "index": 1311110,
+          "source_id": "rgd_uks/MR_466302_2_13_0_1/orca.tar.zst"
+        },
+        {
+          "index": 1343978,
+          "source_id": "ml_protein_interface/protein_interface_md_eqv2_bio_4xm0_ifaceF43_-1_1_886/orca.tar.zst"
+        },
+        {
+          "index": 1419518,
+          "source_id": "ani1xbb/aniBB_008_382940_0_1/orca.tar.zst"
+        },
+        {
+          "index": 1464752,
+          "source_id": "omol/metal_organics/restart5to6/job_1741632497_938e77b8544d/orca.tar.zst"
+        },
+        {
+          "index": 1484133,
+          "source_id": "ani1xbb/aniBB_006_35745_0_1/orca.tar.zst"
+        },
+        {
+          "index": 1528888,
+          "source_id": "pdb_fragments_400K/3zs0_DBS02_state0_1_1_ZINC000257318506_ligstate0_1_1/orca.tar.zst"
+        },
+        {
+          "index": 1580380,
+          "source_id": "ani1xbb/aniBB_017_58417_1_1/orca.tar.zst"
+        },
+        {
+          "index": 1587271,
+          "source_id": "ml_elytes/elytes_md_eqv2_electro_2793_C3H6O3_3_group_41_shell_0_0_1_0/orca.tar.zst"
+        },
+        {
+          "index": 1764283,
+          "source_id": "pdb_fragments_300K/6qgp_BBS02_state0_0_1_ZINC000459781767_ligstate0_2_1/orca.tar.zst"
+        },
+        {
+          "index": 1808759,
+          "source_id": "ml_protein_interface/protein_interface_md_eqv2_bio_3s2e_ifaceE287_0_1_0/orca.tar.zst"
+        },
+        {
+          "index": 1816074,
+          "source_id": "pdb_fragments_400K/2ovh_ABS02_state0_0_1_94260784_ligstate0_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 1854373,
+          "source_id": "spice/SPICE_DES370K_Single_Points_Dataset_v1_0_spice_brccbr_cl-_15_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 2092753,
+          "source_id": "ani1xbb/aniBB_009_190908_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 2116406,
+          "source_id": "geom_orca6/geom_94630427_0_1/orca.tar.zst"
+        },
+        {
+          "index": 2150074,
+          "source_id": "ani1xbb/aniBB_028_108028_1_1/orca.tar.zst"
+        },
+        {
+          "index": 2211179,
+          "source_id": "protein_interface/3nfg_ifaceL60_frame9_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 2512463,
+          "source_id": "omol/solvated_protein/outputs_240923/spf_222185_0_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 2549585,
+          "source_id": "trans1x/t1x_rxn5227_866_273_0_1/orca.tar.zst"
+        },
+        {
+          "index": 2598027,
+          "source_id": "pdb_fragments_400K/3fup_ABS01_state0_0_1_ZINC000663158942_ligstate0_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 2604774,
+          "source_id": "omol/metal_organics/restart5to6/job_1741505269_a52cbfb70bee/orca.tar.zst"
+        },
+        {
+          "index": 2610594,
+          "source_id": "omol/electrolytes/solvated_090624/phosphine_mol1607_solv5_0_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 2756094,
+          "source_id": "ani1xbb/aniBB_014_296781_1_1/orca.tar.zst"
+        },
+        {
+          "index": 2782935,
+          "source_id": "geom_orca6/geom_123743833_0_1/orca.tar.zst"
+        },
+        {
+          "index": 2867283,
+          "source_id": "omol/solvated_protein/outputs_240923/spf_2462062_0_1/step0/orca.tar.zst"
+        },
+        {
+          "index": 2905952,
+          "source_id": "geom_orca6/geom_103157623_0_1/orca.tar.zst"
+        },
+        {
+          "index": 2952832,
+          "source_id": "trans1x/t1x_rxn5362_1346_335_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3093992,
+          "source_id": "omol/electrolytes/solvated_090624/ammonium_mol1268_dimer1_0_1/step1/orca.tar.zst"
+        },
+        {
+          "index": 3102815,
+          "source_id": "rgd_uks/MR_478576_2_1_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3145204,
+          "source_id": "electrolytes_redox/2215_CH3O-1_3_group_9_shell_84_1_2/orca.tar.zst"
+        },
+        {
+          "index": 3172946,
+          "source_id": "electrolytes_reactivity/107573_10_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3222329,
+          "source_id": "spice/SPICE_Amino_Acid_Ligand_v1_0_spice_HR3_TRP_0_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3271212,
+          "source_id": "omol/solvated_protein/outputs_240923/spf_2683769_-1_2/step2/orca.tar.zst"
+        },
+        {
+          "index": 3273797,
+          "source_id": "pdb_pockets_300K/1c82_ABS01_state0_frame0_1_1/orca.tar.zst"
+        },
+        {
+          "index": 3306811,
+          "source_id": "omol/solvated_protein/outputs_240923/spf_1858192_0_1/step0/orca.tar.zst"
+        },
+        {
+          "index": 3476601,
+          "source_id": "ani1xbb/aniBB_011_94595_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3536248,
+          "source_id": "ani1xbb/aniBB_015_247986_1_1/orca.tar.zst"
+        },
+        {
+          "index": 3601887,
+          "source_id": "ani1xbb/aniBB_009_218604_0_3/orca.tar.zst"
+        },
+        {
+          "index": 3606114,
+          "source_id": "ani1xbb/aniBB_007_219788_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3689557,
+          "source_id": "pmechdb/pmechdb_43532_step3_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 3732457,
+          "source_id": "electrolytes_reactivity/111408_3_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3742079,
+          "source_id": "ml_mo/mo_md_mace_mp_141774_11_0_1_584/orca.tar.zst"
+        },
+        {
+          "index": 3779186,
+          "source_id": "omol/solvated_protein/outputs_240923/spf_2069436_-1_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 3799377,
+          "source_id": "ani2x/ani2x_011_333249_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3865472,
+          "source_id": "ani1xbb/aniBB_007_22408_0_1/orca.tar.zst"
+        },
+        {
+          "index": 3942770,
+          "source_id": "omol/metal_organics/restart5to6/job_1741402337_f5d0ff46ab71/orca.tar.zst"
+        },
+        {
+          "index": 3977601,
+          "source_id": "omol/electrolytes/solvated_090624/tetrahydrogalldate_mol1736_solv3_-1_1/step5/orca.tar.zst"
+        },
+        {
+          "index": 3982434,
+          "source_id": "omol/metal_organics/restart5to6/job_1741593226_9a5a08e08f24/orca.tar.zst"
+        }
+      ],
+      "sample_checks": {
+        "count": 64,
+        "atomic_numbers": "integer 1..118; raw and FairChem agree",
+        "positions": "finite, Nx3; FairChem differs only by uniform box-centering translation",
+        "energy": "finite scalar; raw and FairChem agree",
+        "forces": "finite Nx3; raw and FairChem agree",
+        "charge_spin": "present in raw atoms.info; integer; FairChem agrees",
+        "source_id": "present and unique within sampled split",
+        "natoms_min": 6,
+        "natoms_max": 196,
+        "elements_observed": [
+          1,
+          3,
+          5,
+          6,
+          7,
+          8,
+          9,
+          14,
+          15,
+          16,
+          17,
+          21,
+          22,
+          23,
+          31,
+          32,
+          34,
+          35,
+          37,
+          50,
+          51,
+          53,
+          55,
+          73,
+          76,
+          78,
+          80,
+          81
+        ],
+        "charges_observed": [
+          -2,
+          -1,
+          0,
+          1,
+          2,
+          4
+        ],
+        "spin_multiplicities_observed": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "metadata_keys_observed": [
+          "charge",
+          "composition",
+          "data_id",
+          "homo_energy",
+          "homo_lumo_gap",
+          "integrated_densities",
+          "lowdin_charges",
+          "lowdin_spins",
+          "mulliken_charges",
+          "mulliken_spins",
+          "n_basis",
+          "n_scf_steps",
+          "nbo_charges",
+          "nbo_spins",
+          "nl_energy",
+          "num_atoms",
+          "num_ecp_electrons",
+          "num_electrons",
+          "reference_source",
+          "s_squared",
+          "s_squared_dev",
+          "sid",
+          "source",
+          "spin",
+          "unrestricted",
+          "warnings"
+        ]
+      }
+    },
+    {
+      "split": "val",
+      "archive_url": "https://dl.fbaipublicfiles.com/opencatalystproject/data/omol/250514/val.tar.gz",
+      "path": "D:\\11785 final project 2\\omol25-data\\val",
+      "row_count": 2762021,
+      "files": [
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0000.aselmdb",
+          "size_bytes": 290377728,
+          "sha256": "4177fa54a17c6260b0a007b9655141837b819d02e6112539adb44664c97c2a31"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0001.aselmdb",
+          "size_bytes": 281038848,
+          "sha256": "a8b5454e67e80fcf4c61c2fd7980e5998be046928367e2c388e9b046b1901b25"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0002.aselmdb",
+          "size_bytes": 292630528,
+          "sha256": "8680371f3b8855b3723285055d64edecaa0b9c90a073360922f7f7837a6eb66e"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0003.aselmdb",
+          "size_bytes": 296185856,
+          "sha256": "023c55bd0b1fc7211cd007b3b492b6774bc9c5550dce4aa93f60759cd8acce65"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0004.aselmdb",
+          "size_bytes": 290107392,
+          "sha256": "1b6d328e0491af8cfbe6eab190d8e374fd64acdc494309f34fc2a8b859ad7159"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0005.aselmdb",
+          "size_bytes": 289828864,
+          "sha256": "288ee9453f5e12292156e80200308154a3e0ffe54d0a2f2d91c35dff00a27081"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0006.aselmdb",
+          "size_bytes": 290869248,
+          "sha256": "0c8cf257ab52fbe1c6f5a12dd0e48b24788d6c903c5c3d7844506bdcdb7061dc"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0007.aselmdb",
+          "size_bytes": 280854528,
+          "sha256": "ab1003c4332c38d0fd705d375dcbede91799edbb0c7e6112bbf2d3b6a06d3183"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0008.aselmdb",
+          "size_bytes": 297275392,
+          "sha256": "076df7ac9ad5c88bb7739f41d80b08fa520a716dcaa62104880418b5a18592fa"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0009.aselmdb",
+          "size_bytes": 285323264,
+          "sha256": "1f2286680bcb3a400e52105018d6bb45a4ebb0aa0a896624dfb5f7c8016836b2"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0010.aselmdb",
+          "size_bytes": 294739968,
+          "sha256": "aad8fe2a1d0abdf907c53413d8a1196817b2548fc1612a2b9a1ab61ed0ca3c41"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0011.aselmdb",
+          "size_bytes": 293548032,
+          "sha256": "5c3a2112884c57ed4fc9e8f3f1858ecc04231bba919859c17753f39709f1a2c5"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0012.aselmdb",
+          "size_bytes": 293359616,
+          "sha256": "7f960d079a8466587f7c40918601303a1ffdb41d4300c5a951add6ddef09df6e"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0013.aselmdb",
+          "size_bytes": 288092160,
+          "sha256": "2f8bf81e05037722dd4e002a39ad156efa1754c214661fa4edd5a7147fd8ef6d"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0014.aselmdb",
+          "size_bytes": 295563264,
+          "sha256": "00e8533a82836c4a485420e8b53e0959f7fe8a4e649314dec48e4fae9f042f87"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0015.aselmdb",
+          "size_bytes": 280784896,
+          "sha256": "537e35494517509a21c7476495d4f4af5c87e133d9d020a78a44728cdb4933d0"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0016.aselmdb",
+          "size_bytes": 285401088,
+          "sha256": "f103bd1aaec2a96aba6b498b3a64ce21c0444594e385bba39e626977321faa52"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0017.aselmdb",
+          "size_bytes": 292208640,
+          "sha256": "dfa8eabbbd01bc5b13d0435537cd40826fe52ace61835522297da2e8c29d44c0"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0018.aselmdb",
+          "size_bytes": 285491200,
+          "sha256": "451aad2f9151bbee064d3504cb8bf4cde214e4b00805e1d977b274ee57b73e82"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0019.aselmdb",
+          "size_bytes": 282988544,
+          "sha256": "6099b2f1e57c0a36ba989e8d5f985d8d4d74b1d01b810be0ffbeebdce6220c76"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0020.aselmdb",
+          "size_bytes": 294428672,
+          "sha256": "74e4ae058d63347bfe7e7be80cc3f127aac981486eb50ee8f30465f98deeb68d"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0021.aselmdb",
+          "size_bytes": 292777984,
+          "sha256": "67f9b46c434c4acf5a47719820576dec95f40460531dff443051898ad78ee63d"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0022.aselmdb",
+          "size_bytes": 288632832,
+          "sha256": "0188c98af0f92b30779d2352889d1172b2c8ed5903b3f5cdf9b8131bb97774cb"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0023.aselmdb",
+          "size_bytes": 292069376,
+          "sha256": "825cc4899514c391c5bd7a9b7e6797f4f0b8f3d7face3535a26bf77905c0e9a5"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0024.aselmdb",
+          "size_bytes": 295608320,
+          "sha256": "944184dc016911b7ffcb35c2f6737beef3593a96c112bafee447301987165fbd"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0025.aselmdb",
+          "size_bytes": 296841216,
+          "sha256": "9ddb1938223375fb10087cbc3630262aea104e6b03bd2f8feda2bd9263fe57be"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0026.aselmdb",
+          "size_bytes": 278097920,
+          "sha256": "72a64f00a8d301bc7e09fdeefb1992c2066205209fe50ba7be0d7d24c6f8bc5b"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0027.aselmdb",
+          "size_bytes": 294502400,
+          "sha256": "a2dab9fa10fc361b3188f58b49e3ee05ed30b73a55778817697fbdbabe93110e"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0028.aselmdb",
+          "size_bytes": 286126080,
+          "sha256": "81080585866d4ac37523c27e43f7a4c42176baab515e9ce237654b68e7282baa"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0029.aselmdb",
+          "size_bytes": 267472896,
+          "sha256": "4d13f80dad85e1793dcefe0dcc02fc694e23cc76623672389743931e702e5309"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0030.aselmdb",
+          "size_bytes": 289132544,
+          "sha256": "5bed90f9a4b5517d9184e814220780023c35309b67d0cd6a0d423133fd1d5ed9"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0031.aselmdb",
+          "size_bytes": 299888640,
+          "sha256": "a015aa0b6ac0fe3433c296e39e9db3c7209827db017e9b990477a7b0fa44d9fc"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0032.aselmdb",
+          "size_bytes": 278470656,
+          "sha256": "77e1fe3efc6be48afda0571b41f12719ab112024e16cbf012944ceb67e0c8aad"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0033.aselmdb",
+          "size_bytes": 287571968,
+          "sha256": "419785bbb192ad3d94b05a33e60fe831097ef553464ee87c3f5afa3f667f2e01"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0034.aselmdb",
+          "size_bytes": 273952768,
+          "sha256": "1919f9e478e53becc781d18c914e1b76392a87c57ff702f11df036515ac36367"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0035.aselmdb",
+          "size_bytes": 287395840,
+          "sha256": "152e24d2b68dc7e7d625bebc4e644b95c408c989636a7d690d1c97f07e26483a"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0036.aselmdb",
+          "size_bytes": 297549824,
+          "sha256": "a49f90752a9c3e47287b1246f60ee7cda4dd12a521f58438ea2e07e487597e20"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0037.aselmdb",
+          "size_bytes": 294404096,
+          "sha256": "3f56cd8db4c69b36b49beba69c8ac1b124bc2f23b514c10640280f83174a0e5a"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0038.aselmdb",
+          "size_bytes": 274821120,
+          "sha256": "89e4dc92b4e09f453034dedad658349dee1a28693240f882570cfba765c0454d"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0039.aselmdb",
+          "size_bytes": 284831744,
+          "sha256": "bcbd64dda762641de950ead118253f9636c9a73be286ad13baa6876e735e3994"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0040.aselmdb",
+          "size_bytes": 292483072,
+          "sha256": "276d489d3737af897c3f13a959aa23c63c33c8139db7e0ac2f3d43914b1f2cf1"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0041.aselmdb",
+          "size_bytes": 277655552,
+          "sha256": "eaffb9cbd0b68c1980632f61f2248d6c5c90e0524318c582f1dfede4f84908b3"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0042.aselmdb",
+          "size_bytes": 292257792,
+          "sha256": "a5f89083ec32ec19249b2ef18025669a8d4d5989d13701b70f8b81174c631966"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0043.aselmdb",
+          "size_bytes": 285638656,
+          "sha256": "4af1f14bf0dd8282955e8c7a6e1feed3c78c8cf795993024f073dc294e9a19bf"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0044.aselmdb",
+          "size_bytes": 289349632,
+          "sha256": "1b50ddc412aff0ef84866c8166798f9b9cb4dcb9c514e95dcf75b1edafcdeb75"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0045.aselmdb",
+          "size_bytes": 294756352,
+          "sha256": "571b56b4637e4bdc2ef30b50c0dccb8efdddf7cdc9b7e1813d8cd4765e4e8b87"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0046.aselmdb",
+          "size_bytes": 282341376,
+          "sha256": "83ece5d4d7bbe3b5dd382a26232709080aa68ecedca533018ba8b4ad74739dd8"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0047.aselmdb",
+          "size_bytes": 297476096,
+          "sha256": "94e6ae1da032377582e63b023cdb44aa4980b83df6bd225d391b3c48818bd4d1"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0048.aselmdb",
+          "size_bytes": 289648640,
+          "sha256": "f5efb1e09d428a00509ddeb592c34294e7c18090648d7f38c138cbe79bdccc6b"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0049.aselmdb",
+          "size_bytes": 289439744,
+          "sha256": "1540d6f33cd06339200ff2cdc4f9eabfd8e76e620cc221c6a9cdc080a67aa168"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0050.aselmdb",
+          "size_bytes": 292528128,
+          "sha256": "1c6531b6fb2c1271da580b2373b034b4810d264385c4b36af1e541ae9a888ed1"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0051.aselmdb",
+          "size_bytes": 299065344,
+          "sha256": "9b8e52c64a2bfdd8c3e4cc365f1942dbf847cdedeecd84aca0d233d3c97d4acb"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0052.aselmdb",
+          "size_bytes": 285241344,
+          "sha256": "3490bc125a4baab4c877cce23bf30f3dca1094487b083e4d269564fcc1aaa5c4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0053.aselmdb",
+          "size_bytes": 293601280,
+          "sha256": "486984889fc2c09397bc2db4ff1afa6b0d098e5fae61baa366f05930ee3e36b0"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0054.aselmdb",
+          "size_bytes": 289144832,
+          "sha256": "bb4043c040a7f902b750cc7a1fd33a410d7d9c724d604f74ee23bb2ac7cade50"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0055.aselmdb",
+          "size_bytes": 288600064,
+          "sha256": "b22382fc0b55e46db1c811c45132b4cca0e29bae8e39105b0babf92687f1fd68"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0056.aselmdb",
+          "size_bytes": 281772032,
+          "sha256": "08af5721d0db0252d1ad695e5c0046eeb55a19362090aa98fe4733756d30e334"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0057.aselmdb",
+          "size_bytes": 288714752,
+          "sha256": "dbb51031e3ed4f2ca1d7b7984c43d60b58f0a5cf0a25ca14de5fcdca22167768"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0058.aselmdb",
+          "size_bytes": 294809600,
+          "sha256": "ae0eeba58b0f63c53069efa51642dfd5f0f1127deda2d1982ec2536d7fbebab9"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0059.aselmdb",
+          "size_bytes": 293228544,
+          "sha256": "c1676a0a0d0d273f267575ed785420e6b0ac0dfba96666ea234a6312305302df"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0060.aselmdb",
+          "size_bytes": 300613632,
+          "sha256": "a48b114ef5b9b8a7337810b49c7be47019c8aa877b49cba2ea993f42d2f309dd"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0061.aselmdb",
+          "size_bytes": 294264832,
+          "sha256": "baf2c9c7bdc91323045987f2f077b6ddcd7309c57b513b44aff21d1ad56d083f"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0062.aselmdb",
+          "size_bytes": 290922496,
+          "sha256": "4c8947b31fc21fc227b70163d0c9c462fc9f8a025a4e485fe6e9d9a9c2be1307"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0063.aselmdb",
+          "size_bytes": 281001984,
+          "sha256": "aa3cc1355ec63b44e6290a017c266f234b6d96e137b237c4ed2fa848ac85d52b"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0064.aselmdb",
+          "size_bytes": 288280576,
+          "sha256": "19c7c93b81c68f31d7383c859fda36fa3390d34b75f2e49917dc7a8779b11aaa"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0065.aselmdb",
+          "size_bytes": 288313344,
+          "sha256": "16ee759cd0d55ce60a63edee1b0118c850a9421bdcbcb57fd3ec1968b6666b75"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0066.aselmdb",
+          "size_bytes": 285511680,
+          "sha256": "7b516a9089a42fad6ba9a4c1ca9d885c16f5405b6835d6fb406711e42cd12971"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0067.aselmdb",
+          "size_bytes": 279293952,
+          "sha256": "c77d78707d2b556bba949b17b5ddd6f302793de5ee0ca8f925999eb4b8d2f627"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0068.aselmdb",
+          "size_bytes": 273985536,
+          "sha256": "bb653d54b739623db92951f285ef815c57c90d19a6f2ecf0f0f6a00d918a3f23"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0069.aselmdb",
+          "size_bytes": 279855104,
+          "sha256": "4519ba0ff659db5751e557408c0d16beb19904ab355b4e66224e625e49f09571"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0070.aselmdb",
+          "size_bytes": 322994176,
+          "sha256": "1bd650291ab3c65e38234af5b744cfac95a87d1409c2ab4814a44e9c9787791c"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0071.aselmdb",
+          "size_bytes": 331657216,
+          "sha256": "5c5feedb2fbd61669457f4fa13db6dd47d1699ec5dcbd7221d7f48ee9842731f"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0072.aselmdb",
+          "size_bytes": 334655488,
+          "sha256": "164b2c3a17edd6ed16b7cea4ebd592a8afeac9d4022226a58ce675ffe9d59405"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0073.aselmdb",
+          "size_bytes": 346267648,
+          "sha256": "8f10c5e8e23c917fd25ecdc14ac8b7cf23fb99853710cdb2a7c03255041aba60"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0074.aselmdb",
+          "size_bytes": 343023616,
+          "sha256": "e8280ace93b1c59953975abe9c1d4999ee9c2489c71a9b2aa04f56a563d814de"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0075.aselmdb",
+          "size_bytes": 347521024,
+          "sha256": "b32d08d22ad937f20de6dc71cb3cec2e3082460d58a56bc748230891176187ab"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0076.aselmdb",
+          "size_bytes": 352313344,
+          "sha256": "bc0f492e0d6c871422b5d0534883a51046b2c6336c77c1145c649a7fe0eccea1"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0077.aselmdb",
+          "size_bytes": 356618240,
+          "sha256": "99064be2f93f906e2de5b6b94a88dbe5e42483b110b35113c0aec343337a6be6"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0078.aselmdb",
+          "size_bytes": 358957056,
+          "sha256": "090d37accacbf7d4cb6cd3f2b17c3d33660b21d59c3e64720202884828fafad4"
+        },
+        {
+          "path": "D:\\11785 final project 2\\omol25-data\\val\\data0079.aselmdb",
+          "size_bytes": 359628800,
+          "sha256": "747302d8659c383dad00f1ba33ef23b858a8ef3718bed0dc63ad09de599c9a8f"
+        }
+      ],
+      "sample_indices": [
+        8057,
+        40188,
+        45047,
+        76986,
+        128930,
+        175181,
+        182735,
+        193172,
+        211265,
+        244936,
+        281470,
+        285903,
+        343174,
+        363498,
+        441276,
+        504783,
+        538822,
+        606127,
+        610829,
+        648221,
+        650148,
+        670908,
+        715124,
+        723927,
+        758644,
+        824857,
+        873305,
+        886276,
+        887200,
+        954291,
+        1006437,
+        1060661,
+        1119772,
+        1135651,
+        1158424,
+        1171330,
+        1202647,
+        1212209,
+        1228059,
+        1338988,
+        1388201,
+        1435961,
+        1589303,
+        1677788,
+        1824232,
+        1867317,
+        1907486,
+        1942459,
+        1967337,
+        2089452,
+        2257311,
+        2260064,
+        2262193,
+        2299648,
+        2324092,
+        2382271,
+        2403995,
+        2443259,
+        2472206,
+        2491196,
+        2607339,
+        2608829,
+        2647814,
+        2724516
+      ],
+      "samples": [
+        {
+          "index": 8057,
+          "source_id": "omol/electrolytes/solvated_090624/anthraquinone_mol577_solv9_0_1/step1/orca.tar.zst"
+        },
+        {
+          "index": 40188,
+          "source_id": "ani1xbb/aniBB_022_318597_1_1/orca.tar.zst"
+        },
+        {
+          "index": 45047,
+          "source_id": "ani1xbb/aniBB_008_262717_0_1/orca.tar.zst"
+        },
+        {
+          "index": 76986,
+          "source_id": "omol/electrolytes/solvated_090624/carbamate_mol1126_solv6_0_1/step1/orca.tar.zst"
+        },
+        {
+          "index": 128930,
+          "source_id": "5A_elytes/3498_NO3-1_5_group_55_shell_110_0_1/orca.tar.zst"
+        },
+        {
+          "index": 175181,
+          "source_id": "pdb_fragments_300K/4u6z_ABS03_state0_-4_1_ZINC000302693985_ligstate1_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 182735,
+          "source_id": "omol/electrolytes/solvated_090624/tetrahydrogalldate_mol5_solv6_-1_1/step4/orca.tar.zst"
+        },
+        {
+          "index": 193172,
+          "source_id": "omol/electrolytes/solvated_090624/tetrahydrogalldate_mol825_dimer2_1_1/step4/orca.tar.zst"
+        },
+        {
+          "index": 211265,
+          "source_id": "omol/electrolytes/solvated_090624/benzothiadizaole_mol1707_solv9_0_3/step1/orca.tar.zst"
+        },
+        {
+          "index": 244936,
+          "source_id": "electrolytes_reactivity/97457_1_1_2/orca.tar.zst"
+        },
+        {
+          "index": 281470,
+          "source_id": "omol/electrolytes/solvated_090624/sulfamoyl_fluoride_mol588_solv1_0_1/step4/orca.tar.zst"
+        },
+        {
+          "index": 285903,
+          "source_id": "ml_elytes/elytes_md_eqv2_electro_3402_C4H8O_5_group_85_shell_0_0_1_1473/orca.tar.zst"
+        },
+        {
+          "index": 343174,
+          "source_id": "low_spin_23/183867_2_0_1/orca.tar.zst"
+        },
+        {
+          "index": 363498,
+          "source_id": "omol/electrolytes/solvated_090624/pyridazinium_mol763_solv7_1_1/step5/orca.tar.zst"
+        },
+        {
+          "index": 441276,
+          "source_id": "omol/electrolytes/solvated_090624/phthalimide_mol1525_solv1_0_1/step4/orca.tar.zst"
+        },
+        {
+          "index": 504783,
+          "source_id": "omol/electrolytes/solvated_090624/oxadiazine_mol1460_ood0_1_1/step3/orca.tar.zst"
+        },
+        {
+          "index": 538822,
+          "source_id": "omol/electrolytes/md_based/outputs_241029/3428_C3H7O-1_3_group_279_shell_401_0_1/step1/orca.tar.zst"
+        },
+        {
+          "index": 606127,
+          "source_id": "omol/electrolytes/solvated_090624/phosphonium_mol430_solv0_1_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 610829,
+          "source_id": "pdb_fragments_400K/5lws_ABS01_state0_-1_1_ZINC000982356895_ligstate0_-2_1/orca.tar.zst"
+        },
+        {
+          "index": 648221,
+          "source_id": "omol/electrolytes/solvated_090624/imidazolidine_mol742_dimer1_1_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 650148,
+          "source_id": "omol/metal_organics/restart5to6/job_1741466831_ffe63cf8396e/orca.tar.zst"
+        },
+        {
+          "index": 670908,
+          "source_id": "omol/electrolytes/solvated_090624/guanidinium_mol1701_solv7_1_1/step4/orca.tar.zst"
+        },
+        {
+          "index": 715124,
+          "source_id": "omol/electrolytes/solvated_090624/lactone_mol2193_solv2_0_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 723927,
+          "source_id": "pdb_fragments_400K/4xuf_ABS01_state0_-2_1_ZINC000021299134_ligstate0_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 758644,
+          "source_id": "scaled_separations_exp/3719_C4F3H6O2-1_3_group_84_shell_111_1.63_1_1/orca.tar.zst"
+        },
+        {
+          "index": 824857,
+          "source_id": "pdb_fragments_400K/3i6c_ABS02_state0_1_1_ZINC000736763923_ligstate0_2_1/orca.tar.zst"
+        },
+        {
+          "index": 873305,
+          "source_id": "droplet/206_C2H6O_3_group_446_shell_8_0_1/orca.tar.zst"
+        },
+        {
+          "index": 886276,
+          "source_id": "omol/electrolytes/solvated_090624/imidazolidine_mol2237_solv3_1_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 887200,
+          "source_id": "omol/electrolytes/solvated_090624/dinitrile_mol1138_dimer1_2_1/step0/orca.tar.zst"
+        },
+        {
+          "index": 954291,
+          "source_id": "omol/electrolytes/solvated_090624/azanide_mol1167_solv2_-1_1/step4/orca.tar.zst"
+        },
+        {
+          "index": 1006437,
+          "source_id": "pdb_fragments_400K/4iwq_ABS01_state0_-1_1_113543308_ligstate0_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 1060661,
+          "source_id": "omol/electrolytes/solvated_090624/cyclic_carbonate_mol1275_dimer2_2_1/step5/orca.tar.zst"
+        },
+        {
+          "index": 1119772,
+          "source_id": "omol/electrolytes/solvated_090624/imidazolidine_mol330_solv6_1_1/step4/orca.tar.zst"
+        },
+        {
+          "index": 1135651,
+          "source_id": "omol/electrolytes/solvated_090624/sulfonylimide_mol1289_dimer2_-1_1/step3/orca.tar.zst"
+        },
+        {
+          "index": 1158424,
+          "source_id": "omol/electrolytes/solvated_090624/pyrrolidinium_mol1049_solv1_1_1/step4/orca.tar.zst"
+        },
+        {
+          "index": 1171330,
+          "source_id": "pdb_fragments_300K/3qup_ABS01_state0_1_1_CHEMBL220564_ligstate1_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 1202647,
+          "source_id": "ani1xbb/aniBB_011_5706_1_1/orca.tar.zst"
+        },
+        {
+          "index": 1212209,
+          "source_id": "omol/electrolytes/solvated_090624/boroxine_mol1581_solv3_0_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 1228059,
+          "source_id": "ani1xbb/aniBB_018_435752_-2_3/orca.tar.zst"
+        },
+        {
+          "index": 1338988,
+          "source_id": "omol/electrolytes/solvated_090624/pyridazinium_mol153_solv3_1_1/step5/orca.tar.zst"
+        },
+        {
+          "index": 1388201,
+          "source_id": "protein_interface/4cm5_ifaceA168_frame9_1_1/orca.tar.zst"
+        },
+        {
+          "index": 1435961,
+          "source_id": "omol/electrolytes/solvated_090624/cyclic_sulfate_mol1718_rand0_2_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 1589303,
+          "source_id": "ani1xbb/aniBB_017_668714_0_1/orca.tar.zst"
+        },
+        {
+          "index": 1677788,
+          "source_id": "pdb_fragments_400K/6bqd_ABS01_state0_0_1_CHEMBL513385_ligstate2_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 1824232,
+          "source_id": "ani1xbb/aniBB_017_516506_-1_1/orca.tar.zst"
+        },
+        {
+          "index": 1867317,
+          "source_id": "pdb_fragments_300K/1hvj_ABS01_state0_BBS01_state0_-2_1_109032946_ligstate0_-3_1/orca.tar.zst"
+        },
+        {
+          "index": 1907486,
+          "source_id": "omol/electrolytes/solvated_090624/122-triazole_mol1886_solv7_1_1/step3/orca.tar.zst"
+        },
+        {
+          "index": 1942459,
+          "source_id": "omol/electrolytes/solvated_090624/cyclic_carbonate_mol2033_ood0_-1_1/step1/orca.tar.zst"
+        },
+        {
+          "index": 1967337,
+          "source_id": "omol/electrolytes/outputs_unsolvated_120424/guanidinium_mol1176_1_1/step0/orca.tar.zst"
+        },
+        {
+          "index": 2089452,
+          "source_id": "pdb_pockets_300K/3g6w_ABS04_state2_CBS03_state2_frame1_-2_1/orca.tar.zst"
+        },
+        {
+          "index": 2257311,
+          "source_id": "omol/electrolytes/solvated_090624/azanide_mol220_solv7_-1_1/step1/orca.tar.zst"
+        },
+        {
+          "index": 2260064,
+          "source_id": "omol/electrolytes/solvated_090624/lactam_mol1506_solv7_0_1/step2/orca.tar.zst"
+        },
+        {
+          "index": 2262193,
+          "source_id": "omol/electrolytes/solvated_090624/morpholinium_mol191_dimer0_0_1/step0/orca.tar.zst"
+        },
+        {
+          "index": 2299648,
+          "source_id": "5A_elytes/2687_Cr+2_5_group_2_shell_15_0_5/orca.tar.zst"
+        },
+        {
+          "index": 2324092,
+          "source_id": "protein_core/3ik9_coreA14_0_1/orca.tar.zst"
+        },
+        {
+          "index": 2382271,
+          "source_id": "omol/metal_organics/restart5to6/job_1741521520_a889cbe6e83a/orca.tar.zst"
+        },
+        {
+          "index": 2403995,
+          "source_id": "omol/electrolytes/solvated_090624/dinitrile_mol1563_solv7_0_1/step3/orca.tar.zst"
+        },
+        {
+          "index": 2443259,
+          "source_id": "ml_elytes/elytes_md_eqv2_electro_252_F-1_3_group_0_shell_0_0_5_1686/orca.tar.zst"
+        },
+        {
+          "index": 2472206,
+          "source_id": "ml_protein_interface/protein_interface_md_eqv2_bio_1zq7_ifaceB168_-1_1_252/orca.tar.zst"
+        },
+        {
+          "index": 2491196,
+          "source_id": "ml_protein_interface/protein_interface_md_eqv2_bio_2ig7_ifaceA136_-1_1_1408/orca.tar.zst"
+        },
+        {
+          "index": 2607339,
+          "source_id": "tm_react/MOBH3_Pb4_Charge0_UHF0_swaplig_0_newlig_CSiCCCC5_rev_step2_0_1/orca.tar.zst"
+        },
+        {
+          "index": 2608829,
+          "source_id": "ml_protein_interface/protein_interface_md_eqv2_bio_5cgg_ifaceH164_1_1_0/orca.tar.zst"
+        },
+        {
+          "index": 2647814,
+          "source_id": "nakb/5DSB_B18_E_frame0_-3_1/orca.tar.zst"
+        },
+        {
+          "index": 2724516,
+          "source_id": "ml_elytes/elytes_md_eqv2_electro_3632_C9H20N+_3_group_0_shell_0_0_1_718/orca.tar.zst"
+        }
+      ],
+      "sample_checks": {
+        "count": 64,
+        "atomic_numbers": "integer 1..118; raw and FairChem agree",
+        "positions": "finite, Nx3; FairChem differs only by uniform box-centering translation",
+        "energy": "finite scalar; raw and FairChem agree",
+        "forces": "finite Nx3; raw and FairChem agree",
+        "charge_spin": "present in raw atoms.info; integer; FairChem agrees",
+        "source_id": "present and unique within sampled split",
+        "natoms_min": 5,
+        "natoms_max": 290,
+        "elements_observed": [
+          1,
+          5,
+          6,
+          7,
+          8,
+          9,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          20,
+          23,
+          24,
+          29,
+          31,
+          32,
+          33,
+          34,
+          35,
+          43,
+          46,
+          47,
+          48,
+          51,
+          52,
+          53,
+          74,
+          78,
+          80,
+          82
+        ],
+        "charges_observed": [
+          -3,
+          -2,
+          -1,
+          0,
+          1,
+          2
+        ],
+        "spin_multiplicities_observed": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "metadata_keys_observed": [
+          "charge",
+          "composition",
+          "data_id",
+          "homo_energy",
+          "homo_lumo_gap",
+          "integrated_densities",
+          "lowdin_charges",
+          "lowdin_spins",
+          "mulliken_charges",
+          "mulliken_spins",
+          "n_basis",
+          "n_scf_steps",
+          "nbo_charges",
+          "nbo_spins",
+          "nl_energy",
+          "num_atoms",
+          "num_ecp_electrons",
+          "num_electrons",
+          "reference_source",
+          "s_squared",
+          "s_squared_dev",
+          "sid",
+          "source",
+          "spin",
+          "unrestricted",
+          "warnings"
+        ]
+      }
+    }
+  ],
+  "archives": [
+    {
+      "path": "D:\\11785 final project 2\\omol25-data\\train_4M.tar.gz",
+      "size_bytes": 19983081456,
+      "sha256": "1924f4f50128344cef731069b409757192a83eacdb47e0d0169efc3138ff9688"
+    },
+    {
+      "path": "D:\\11785 final project 2\\omol25-data\\val.tar.gz",
+      "size_bytes": 21293980744,
+      "sha256": "bc2f2aa70459ed029217f188d1e8ab0d90abbb90065235f6414d79246bad1ab8"
+    }
+  ],
+  "sampled_cross_split_id_overlap": 0
+}

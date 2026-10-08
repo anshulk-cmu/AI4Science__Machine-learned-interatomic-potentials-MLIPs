@@ -1,0 +1,41 @@
+_target_: fairchem.core.models.base.HydraModel
+pass_through_head_outputs: true
+finetune_config: null
+backbone:
+  model: fairchem.core.models.uma.escn_md.eSCNMDBackbone
+  num_layers: 4
+  sphere_channels: 128
+  hidden_channels: 128
+  edge_channels: 128
+  lmax: 2
+  mmax: 2
+  cutoff: ${training.cutoff}
+  max_num_elements: 100
+  num_distance_basis: 512
+  distance_function: gaussian
+  grid_resolution: null
+  norm_type: rms_norm_sh
+  act_type: gate
+  ff_type: grid
+  otf_graph: false
+  always_use_pbc: false
+  direct_forces: false
+  regress_forces: true
+  direct_stress: false
+  regress_stress: false
+  regress_hessian: false
+  activation_checkpointing: true
+  chg_spin_emb_type: pos_emb
+  cs_emb_grad: false
+  dataset_emb_grad: false
+  dataset_mapping: {omol: omol}
+  use_dataset_embedding: true
+  use_quaternion_wigner: false
+  use_cuda_graph_wigner: false
+  execution_mode: general
+heads:
+  omol:
+    module: fairchem.core.models.uma.escn_md.MLP_EFS_Head
+    reduce: sum
+    prefix: omol
+    wrap_property: true
