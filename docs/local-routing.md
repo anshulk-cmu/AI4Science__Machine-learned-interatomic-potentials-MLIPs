@@ -49,8 +49,8 @@ Local-6 starts with `expert_output_mix`, as proposed in the YAML. Both merge
 modes gather matrices per edge in this reference; neither is an optimized kernel.
 
 The code uses radius 6, envelope power 3, eight experts, and shared coefficients.
-Softmax and the small embedding/MLP dimensions are provisional; the YAML leaves
-normalization and hidden dimensions open. These are not measured 6M-model settings.
+Softmax, embedding size 16, and router hidden size 32 are provisional; the YAML
+leaves normalization and hidden dimensions open. These are not measured 6M-model settings.
 
 Pass the shared task/charge/spin encoder as `conditioner`, with signature
 `conditioner(task, charge, spin) -> [B, context_dim]`. No new encoding is defined
