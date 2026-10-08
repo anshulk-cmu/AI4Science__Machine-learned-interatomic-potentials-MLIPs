@@ -27,6 +27,19 @@ We also measure energy error, additivity, energy drift, interaction energies,
 inference speed, and memory. The plan includes 24 training runs across seeds;
 these are planned experiments, not results from this branch.
 
+## Current status
+
+Anshul completed the first released-model slab audit on 4 October. In that setup,
+MACE's additivity residual was at numerical noise, while ORB-v3 and the tested
+UMA checkpoints had errors that persisted with distance. The router-version test
+supports a global-routing explanation but does not establish it alone. These
+are slab results, including slabs evaluated with UMA's molecular task, not a
+molecular benchmark. See the [audit write-up](status-wip/README.md) for results
+and limits.
+
+Dense, Global, and Local-6 training runs remain pending in this repository.
+The midterm report is due 23 October.
+
 ## This branch
 
 **Standalone component with fairchem integration pending.**
@@ -38,6 +51,9 @@ results. The linear references do not replace fairchem's SO(2) layers.
 
 | Path | Contents |
 |---|---|
+| `audit/` | Released-model audit, checkpoint loaders, analysis, and W&B logging; see [commands](audit/README.md) |
+| `results/` | Raw energies, numerical controls, tables, plots, and cloud-run records |
+| `status-wip/` | Team-facing audit report and result snapshots |
 | `local_routing/router.py` | Input/result types, Global and Local routers, sparse composition sums, receiver adapter, and a small-system neighbor helper |
 | `local_routing/experts.py` | Expert-output mixing, structure merging, and atom merging for an ordinary linear layer |
 | `tests/test_local_routing.py` | 17 component tests, including derivatives and a toy force-loss training step |
@@ -61,6 +77,13 @@ The YAML is a discussion draft, not an executable training configuration. This
 package does not load it. The neighbor helper uses an O(N^2), non-periodic search;
 training needs a scalable helper. The expert execution modes are correctness
 references, with no speed or memory claim.
+
+## Setup
+
+Use the setup commands in the headers of `requirements.txt` and
+`requirements-mace.txt`. MACE uses a separate environment because of dependency
+conflicts with fairchem. Released UMA weights require Hugging Face access and
+license acceptance. Keep login tokens out of the repository.
 
 ## Checks
 
