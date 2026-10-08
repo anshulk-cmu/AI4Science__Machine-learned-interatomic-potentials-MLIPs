@@ -1,0 +1,109 @@
+# null means unresolved. No training defaults should be inferred from null.
+# Variants override common recursively; null replaces an entire section.
+draft_version: 1
+status: for_team_discussion
+
+common:
+  implementation:
+    repository: https://github.com/facebookresearch/fairchem
+    git_commit: null                    # Agree and pin before implementation.
+    fairchem_version: null
+    initialization: null                # From scratch or a specified checkpoint?
+    checkpoint: null
+
+  backbone:
+    family: uma_esen
+    # Candidate early UMA-S dimensions; NOT yet agreed or parameter-counted.
+    num_layers: 4
+    sphere_channels: 128
+    lmax: 2
+    mmax: 2
+    cutoff_angstrom: 6.0                # Message-passing cutoff, not routing radius.
+    max_neighbors: null                 # Max number of neighbers
+    remaining_architecture_config: null # Complete settings from the pinned version.
+
+  prediction:
+    task: omol
+    energy_reduction: sum
+    forces: negative_energy_gradient
+    charge_and_spin: from_sample
+
+  parameter_budget:
+    target_base_parameters: 6000000     # Approximate target, NOT total parameters. Base parameters count dosen't include router
+    target_router_parameters: null
+    # Measured total/base/router counts go into each run's resolved metadata.
+
+  experts:
+    enabled: true
+    num_experts: 8
+    placement: so2_convolution_linear_operations
+    placement_status: verify_exact_modules_in_pinned_version
+    compute_mode: null                 # Selected by Global/Local variant.
+
+  router:
+    type: null
+    hidden_dims: null
+    coefficient_normalization: null    # Pin original rule; use across routed variants. softmax?
+    coefficient_sharing: shared_across_expertized_operations
+    conditioning: [task, charge, spin]
+    preserve_position_gradients: true
+
+  routing_adapter:
+    edge_assignment: receiver # User the coefficients of receiver atom
+
+  data:
+    dataset: OMol25
+    intended_training_subset: official_4M
+    train_files: null                  # Path of train files
+    validation_files: null             # Path of val files
+    pilot_train_manifest: null         # Same sample IDs for all pilot variants.
+    pilot_validation_manifest: null
+    # Neutral closed-shell restriction is for additivity evaluation, not training.
+
+  training:
+    seed: null                         # Agree on one shared pilot seed.
+    batch_size: null                 # Need to decide atom/edge budget or structures per batch.
+    optimizer: null
+    learning_rate: null
+    loss_weights: {energy: null, forces: null}
+    max_steps: null
+    precision: null
+    device: cuda
+
+  logging:
+    wandb_project: null                # W&B project name
+    wandb_entity: null
+    save_resolved_config: true
+    save_code_commit: true
+    save_parameter_counts: true
+    measure_training_step_time: true
+    measure_peak_gpu_memory: true
+
+# Meeting overview in one file. Convert to native Hydra config groups later.
+variants:
+  dense:
+    experts:
+      enabled: false
+      num_experts: null
+      compute_mode: ordinary_linear
+    router: null                       # No router and no expert bank.
+    routing_adapter: null
+
+  global:
+    router:
+      type: global_composition
+    experts:
+      compute_mode: structure_merge
+
+  local6:
+    router:
+      type: local_composition
+      radius_angstrom: 6.0
+      include_self: true
+      kernel: polynomial_compact
+      kernel_power: 3                  # Proposed p; proposal requires p >= 3.
+    experts:
+      compute_mode: expert_output_mix  # Proposed correctness-first pilot implementation.
+      # Alternative: atom_merge; same linear map, different compute/memory costs.
+
+

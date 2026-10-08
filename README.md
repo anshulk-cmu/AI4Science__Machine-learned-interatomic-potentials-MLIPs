@@ -15,7 +15,7 @@ UMA routes its Mixture of Linear Experts (MoLE) with an average element embeddin
 - Configurations: Dense (no experts), Global (UMA-style routing over the whole structure), Element (routing by the atom's own element), Local-6 and Local-12 (routing from the neighborhood within 6 or 12 angstrom), and Local+Global.
 - Measures: energy and force error, the additivity residual on neutral singlet fragment pairs, spurious host-atom forces, and dissociation curves.
 
-## Status (2026-10-04)
+## Status (2026-10-08)
 
 Early stage. The proposal is submitted and the first baseline is done.
 
@@ -23,8 +23,11 @@ Early stage. The proposal is submitted and the first baseline is done.
   energy for two far-apart metal slabs that equals the sum of the parts. MACE does, exactly. ORB-v3 and all UMA
   models do not, by 0.5 eV to hundreds of eV, and the error does not shrink with distance. A test on UMA's stored
   router version number supports the whole-structure average as the cause. Read `status-wip/README.md`.
+- **Done: the standalone routing component.** Local composition, per-atom routing, the receiving-atom edge adapter,
+  and reference linear experts are implemented. All 17 component tests pass on CPU. This is a **standalone component
+  with fairchem integration pending**. Softmax and router dimensions are provisional. Read `docs/local-routing.md`.
 - **Not done yet:** the training baselines (Dense, Global, Local-6). They wait on the shared training pipeline and the
-  router interface, which the team is agreeing on now. The midterm report is due 23 October.
+  fairchem integration. The midterm report is due 23 October.
 
 ## Repository layout
 
@@ -33,6 +36,10 @@ Early stage. The proposal is submitted and the first baseline is done.
 | `status-wip/` | Reports only: the write-up, the final tables and the plots |
 | `audit/` | The audit code, with its own README and the exact commands |
 | `results/` | Raw per-run energies, null tests and cloud-run logs behind every number |
+| `local_routing/` | Local composition, router interface, receiving-atom adapter and reference linear experts |
+| `tests/` | Component tests for routing, derivatives and expert execution |
+| `docs/local-routing.md` | Router interface, test results and integration steps |
+| `configs/config_draft.yaml` | Yiwei's draft shared configuration; unresolved settings remain open |
 | `requirements.txt` | Environment for UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8) |
 | `requirements-mace.txt` | Separate environment for MACE, which cannot share one with fairchem |
 
