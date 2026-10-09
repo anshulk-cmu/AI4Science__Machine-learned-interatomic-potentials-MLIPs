@@ -1,7 +1,11 @@
 """One loader per model family. load() returns (energy function in eV, graph cutoff in angstrom)."""
 import os
+import sys
+from pathlib import Path
 
 import torch
+
+ROOT = Path(__file__).resolve().parents[1]
 
 SPIN = {"omat": 0, "omol": 1}            # the default of each task; charge is 0 for both
 
@@ -33,6 +37,8 @@ def _find(module, name):
 
 
 def _uma(model, task, dtype, version):
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))        # a checkpoint of ours names classes in training/ and local_routing/
     from fairchem.core import FAIRChemCalculator, pretrained_mlip
     from fairchem.core.units.mlip_unit.api.inference import InferenceSettings
     settings = "default"
