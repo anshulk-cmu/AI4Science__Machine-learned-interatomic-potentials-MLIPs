@@ -1,0 +1,77 @@
+#!/bin/bash
+# One pilot run: train a variant on the real OMol25 data, then check the size consistency of its final checkpoint.
+# Usage: pilot.sh dense|global|local6
+# Settings come from environment variables; the job files set them. The defaults are placeholders until the team agrees:
+#   PILOT_STEPS (10000)  PILOT_SEED (0)  PILOT_TRAIN_SAMPLES (200000)  PILOT_VAL_SAMPLES (5000)  PILOT_EVAL_EVERY, PILOT_CKPT_EVERY (steps/10)
+# The same data subset is used for every variant, because the sampling seed is fixed in the config.
+# Every stage writes its full output under $RUN/logs and a line to $RUN/summary.txt; the job exits 1 if a stage failed.
+# GPU: Dense and Global on a V100 with 32 GB (v100-32) or larger, Local-6 on an L40S (l40s-48) or larger.
+umask 002
+export PYTHONNOUSERSITE=1
+set -uo pipefail
+VARIANT=${1:?usage: pilot.sh dense|global|local6}
+case "$VARIANT" in dense|global) MIN_MIB=31000 ;; local6) MIN_MIB=44000 ;; *) echo "unknown variant $VARIANT"; exit 2 ;; esac
+ROOT=/ocean/projects/che260063p/shared
+REPO=${PILOT_REPO:-$ROOT/repo/AI4Science-MLIPs}
+PY=$ROOT/envs/mlip/bin/python
+STEPS=${PILOT_STEPS:-10000}
+SEED=${PILOT_SEED:-0}
+TRAIN_N=${PILOT_TRAIN_SAMPLES:-200000}
+VAL_N=${PILOT_VAL_SAMPLES:-5000}
+EVAL_EVERY=${PILOT_EVAL_EVERY:-$(( STEPS / 10 > 0 ? STEPS / 10 : 1 ))}
+CKPT_EVERY=${PILOT_CKPT_EVERY:-$EVAL_EVERY}
+RUN=$ROOT/runs/pilot_${VARIANT}_${SLURM_JOB_ID:-manual}
+LOGS=$RUN/logs
+SUMMARY=$RUN/summary.txt
+export OMOL_DATA_ROOT=$ROOT/data/omol25 OMOL_CACHE_DIR=$ROOT/cache
+export FAIRCHEM_CACHE_DIR=$ROOT/cache/fairchem WARP_CACHE_PATH=$ROOT/cache/warp
+mkdir -p "$LOGS" "$OMOL_CACHE_DIR" "$RUN/train"
+cd "$REPO"
+FAILED=0
+now() { date '+%Y-%m-%d %H:%M:%S'; }
+note() { echo "$(now) $*" | tee -a "$SUMMARY"; }
+stage() {   # stage NAME COMMAND...: full output to $LOGS/NAME.log, exit status to the summary
+    local name=$1; shift
+    note "START $name"
+    "$@" > "$LOGS/$name.log" 2>&1
+    local rc=$?
+    note "END   $name exit $rc (log: $LOGS/$name.log)"
+    [ $rc -ne 0 ] && FAILED=1
+    return $rc
+}
+
+note "pilot $VARIANT: steps $STEPS, seed $SEED, train samples $TRAIN_N, val samples $VAL_N, eval and checkpoint every $EVAL_EVERY and $CKPT_EVERY steps"
+{ echo "variant=$VARIANT steps=$STEPS seed=$SEED train_samples=$TRAIN_N val_samples=$VAL_N eval_every=$EVAL_EVERY ckpt_every=$CKPT_EVERY"
+  echo "job=${SLURM_JOB_ID:-manual} user=$USER host=$(hostname) repo=$REPO"; } > "$RUN/settings.txt"
+
+GPU_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
+note "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1), $GPU_MIB MiB"
+if [ "${GPU_MIB:-0}" -lt "$MIN_MIB" ]; then
+    note "RESULT: this GPU is too small for $VARIANT (need at least $MIN_MIB MiB: v100-32 for Dense and Global, l40s-48 for Local-6)"
+    exit 1
+fi
+
+( while true; do nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits >> "$LOGS/gpu_memory.txt"; sleep 5; done ) &
+POLL=$!
+START=$(date +%s)
+stage train env OMOL_RUN_DIR="$RUN/train" $PY -u -B -m training.run --mode train variant=$VARIANT job.run_name=pilot_$VARIANT \
+    job.seed=$SEED training.steps=$STEPS training.eval_every=$EVAL_EVERY training.ckpt_every=$CKPT_EVERY \
+    train_dataset.dataset_configs.omol.splits.train.sample_n=$TRAIN_N val_dataset.dataset_configs.omol.splits.val.sample_n=$VAL_N
+kill $POLL 2>/dev/null; wait $POLL 2>/dev/null
+note "training wall time $(( $(date +%s) - START )) s, peak GPU memory $(sort -n "$LOGS/gpu_memory.txt" | tail -1) MiB"
+grep -a -E "'train/loss'" "$LOGS/train.log" | tail -1 | sed -E "s/.*'train\/loss': ([0-9.]+).*'train\/step': ([0-9]+).*atoms_per_second\(approx\)': ([0-9.]+).*/last train step \2 loss \1 atoms per second \3/" | tee -a "$SUMMARY"
+grep -a -E 'val/loss|omol_energy,per_atom_mae|omol_forces,mae' "$LOGS/train.log" | tail -3 | tee -a "$SUMMARY"
+grep -a -E 'OOM-skipped batches' "$LOGS/train.log" | tail -1 | sed 's/.*OOM-skipped/OOM-skipped/' | tee -a "$SUMMARY"
+grep -a -E 'Traceback|Error' "$LOGS/train.log" | head -3 | tee -a "$SUMMARY"
+
+CKPT=$(ls "$RUN"/train/*/checkpoints/final/inference_ckpt.pt 2>/dev/null | head -1)
+if [ -n "$CKPT" ]; then
+    note "final checkpoint: $CKPT"
+    stage size_consistency $PY -u -B audit/check_checkpoint.py "$CKPT"
+    grep -a -E 'Delta|FAILED|Error' "$LOGS/size_consistency.log" | sed 's#.*/checkpoints#checkpoints#' | tee -a "$SUMMARY"
+else
+    note "no final checkpoint found"; FAILED=1
+fi
+find "$RUN/train" -maxdepth 5 -name 'offline-run-*' | tee -a "$SUMMARY"
+note "RESULT: $([ $FAILED -eq 0 ] && echo all stages passed || echo at least one stage failed)"
+exit $FAILED
