@@ -5,6 +5,7 @@ backbone:
   model: training.local_moe.eSCNMDLocalMoeBackbone
   routing_radius: 6.0
   routing_power: 3
+  checkpoint_chunk_size: 4096
   num_experts: 8
   use_composition_embedding: true
   moe_layer_type: pytorch

@@ -36,7 +36,8 @@ class LocalMOLE(MOLE):
 
 @registry.register_model("escnmd_local_moe_backbone")
 class eSCNMDLocalMoeBackbone(eSCNMDMoeBackbone):
-    def __init__(self, routing_radius: float = 6.0, routing_power: int = 3, **kwargs):
+    def __init__(self, routing_radius: float = 6.0, routing_power: int = 3,
+                 checkpoint_chunk_size: int | None = 4096, **kwargs):
         super().__init__(**kwargs)
         if self.num_experts == 0 or not self.use_composition_embedding:
             raise ValueError("local routing needs experts and use_composition_embedding")
@@ -48,6 +49,12 @@ class eSCNMDLocalMoeBackbone(eSCNMDMoeBackbone):
         for module in self.modules():
             if type(module) is MOLE:
                 module.__class__ = LocalMOLE      # same parameters and state dict
+        if checkpoint_chunk_size is not None:
+            # Mixing the expert outputs per edge holds an [edges, K, out] tensor per layer, so the edges
+            # go through activation checkpointing in chunks far smaller than fairchem's default (131072).
+            for module in self.modules():
+                if getattr(module, "activation_checkpoint_chunk_size", None) is not None:
+                    module.activation_checkpoint_chunk_size = checkpoint_chunk_size
         self._routing_inputs = None
         self._routing_graph = None
 

@@ -212,6 +212,13 @@ class LocalBackboneTests(unittest.TestCase):
         m = build("local6")
         self.assertGreater(abs(energy(m, atoms, charge=0, spin=1) - energy(m, atoms, charge=1, spin=2)), 1e-6)
 
+    def test_edges_are_checkpointed_in_small_chunks(self):
+        for variant, expected in (("local6", 4096), ("global", 128 * 1024)):
+            m = build(variant)
+            sizes = {x.activation_checkpoint_chunk_size for x in m.modules()
+                     if getattr(x, "activation_checkpoint_chunk_size", None) is not None}
+            self.assertEqual(sizes, {expected})
+
     def test_routing_state_is_cleared_after_a_forward_pass(self):
         from ase.build import molecule
 
