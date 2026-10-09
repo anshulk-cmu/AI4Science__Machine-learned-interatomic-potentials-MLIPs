@@ -75,3 +75,11 @@ foreach ($m in "uma-s-1p1", "uma-s-1p2") {
 - `tests/test_audit.py` checks this code on CPU with every model replaced by a stub. Run it from the repository root
   with `python -m unittest tests.test_audit`.
 - ORB needs `compile=False` on Windows because Triton is not installed. The loaders already set it.
+
+## Rerunning the null tests and the neon probe on Bridges-2
+
+`slurm/rerun_nulls_neon.sh` (a V100-32 job) runs the null tests of the nine MACE and UMA labels and the neon probe of MACE
+and UMA-S, and `slurm/rerun_orb.sh` (an L40S job: ORB's graph builder, NVIDIA Warp with CUDA 13, needs a GPU of compute
+capability 7.5 or higher) runs ORB-v3. Both write the new files to `shared/runs/<job>/work/results`, not into the repository, so
+a later sync cannot overwrite them. The UMA weights are read from a private folder (the model is gated). The run of
+2026-10-09 (jobs 48975723 and 48975738) took 7 min 41 s and 5 min 30 s; its numbers are in `status-wip/README.md`.

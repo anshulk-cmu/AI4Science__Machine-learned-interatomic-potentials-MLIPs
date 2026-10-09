@@ -207,8 +207,12 @@ the forces on the slab unchanged. Averaged over the 20 shaken runs, the largest 
 mean change are: MACE about 1e-12 meV/A; ORB-v3 1.11 and 0.42; UMA-S-1.1 `omat` 1.49 and 0.71, `omol` 136.6 and
 58.6; UMA-S-1.2 `omat` 6.83 and 2.55, `omol` 8.10 and 3.74 meV/A. The values at 10 and 50 angstrom agree to
 within 3e-10 meV/A.
-The `noise_dforce` column in these files is always 0 because the repeated call was an ASE cache hit, so it is not a
-noise floor. The code now measures the floor from a copy of the slab with its atoms in a different order.
+These numbers were measured again on 2026-10-09 on a V100-32 (ORB on an L40S) after the ASE cache fix and did not change.
+The `noise_dforce` column is now a real floor: the largest force difference on a slab atom between the slab and a copy with
+its atoms in a different order. Over the 21 runs it is at most 1.6e-12 (MACE), 6.4e-12 (ORB-v3), 1.6e-12 (UMA-S-1.1
+`omat`), 1.1e-10 (UMA-S-1.1 `omol`), 1.6e-12 (UMA-S-1.2 `omat`) and 5.9e-12 meV/A (UMA-S-1.2 `omol`), about ten orders of
+magnitude below every non-zero effect above. MACE's 1e-12 is at that floor, so it is zero. In the files before the rerun
+this column was always 0, because the repeated call was an ASE cache hit.
 
 ## 8. Limits, stated plainly
 
@@ -218,10 +222,14 @@ noise floor. The code now measures the floor from a copy of the slab with its at
   changes nothing else.
 - Geometries are unrelaxed and use one specific shared cell, so the values are for this setup only. The interval is
   over shakes of one strained, unrelaxed crystal, not over different structures.
-- tau uses one sigma_E pooled over all null tests. In the committed null files the repeat test N1 was an ASE cache
-  hit, an exact zero, which lowers sigma_E by at most 7 percent; raising every tau above the floor by 10 percent
-  changes no verdict and no flatness result. The null
-  tests do not cover float32 bias or the coordinate range of gaps of 50 angstrom and more.
+- tau uses one sigma_E pooled over all null tests. The null tests of the ten float64 labels were rerun on 2026-10-09 after
+  the ASE cache fix, with 27 repeats each (the padding test N4 now also uses pads of 100 and 230 angstrom). The repeat test
+  N1 is now a real recomputation: bit-identical for ORB-v3 and every UMA label, and different by at most 5.7e-14 eV for
+  MACE. sigma_E is at most 0.000005 meV, so tau stays at the 0.001 meV floor, and no verdict, interval or flatness result
+  changed (the summary tables are byte-identical to before). UMA-M (float32, on a cloud GPU) was not rerun: its null file
+  still has the cache-hit N1, which lowers its sigma_E by at most about 4 percent (an estimate); raising every tau above
+  the floor by 10 percent changes no verdict. The null tests of UMA-M do not cover float32 bias or the coordinate range of
+  gaps of 50 angstrom and more.
 - The comparison with the paper uses the shaken mean. With the ideal geometry instead, the ratios are 0.60 (ORB),
   5.06 (UMA-S-1.1 materials), 1.22 (UMA-S-1.1 molecules), 2.98 (UMA-M-1.1 materials) and 0.82 (UMA-M-1.1 molecules).
 - ORB gives -4.8e-3 meV for the ideal Ni + Ni pair at every gap, 4.8 times the 0.001 meV floor. This is not
