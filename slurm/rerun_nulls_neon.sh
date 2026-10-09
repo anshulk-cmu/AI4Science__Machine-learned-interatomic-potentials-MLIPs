@@ -1,6 +1,7 @@
 #!/bin/bash
 # Rerun the null tests and the neon probe for the float64 models after the ASE cache fix (the first versions of the
-# committed null files compared a cached result with itself). The old files are moved to results/old_before_cachefix.
+# committed null files compared a cached result with itself). The new files are written to $OUT/work/results; the old
+# ones stay in the repository until they are replaced.
 # UMA-M ran in float32 on a cloud GPU and is not rerun. ORB runs on an L40S (slurm/rerun_orb.sh). UMA weights come from the private folder $UMA (gated model).
 # Every stage writes its own log under $OUT/logs; the job exits 1 if any stage failed. Run it on a V100-32.
 umask 002
@@ -29,14 +30,12 @@ stage() {
     return $rc
 }
 
-cd "$REPO/audit"
-OLD=$REPO/results/old_before_cachefix
-mkdir -p "$OLD"
-for f in ../results/nulls_*.csv ../results/neon_*.csv; do
-    case "$f" in *uma-m-1p1*|*orb-v3*) continue ;; esac
-    [ -e "$f" ] && mv "$f" "$OLD/"
-done
-note "old null and neon files moved to $OLD"
+# work in a copy so that syncing the repository to Bridges-2 later cannot overwrite the new files
+WORK=$OUT/work
+mkdir -p "$WORK/results"
+cp -r "$REPO/audit" "$WORK/audit"
+cd "$WORK/audit"
+note "writing results to $WORK/results"
 
 stage nulls_medium $PYC -u nulls.py --family mace --model medium
 stage neon_medium $PYC -u neon_probe.py --family mace --model medium
@@ -50,6 +49,6 @@ for T in omat omol; do
     stage nulls_uma-s-1p1-v1_$T $PYM -u nulls.py --family uma --model $UMA/uma-s-1p1.pt --label uma-s-1p1-v1 --task $T --model-version 1.0
 done
 for f in "$LOGS"/nulls_*.log; do echo "$(basename $f .log): $(grep -a 'sigma_E' $f | tail -1)" | tee -a "$SUMMARY"; done
-ls ../results/nulls_*.csv ../results/neon_*.csv | tee -a "$SUMMARY"
+ls -l ../results | tee -a "$SUMMARY"
 note "RESULT: $([ $FAILED -eq 0 ] && echo all stages passed || echo at least one stage failed)"
 exit $FAILED

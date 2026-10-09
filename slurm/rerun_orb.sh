@@ -1,7 +1,7 @@
 #!/bin/bash
 # Rerun the ORB-v3 null tests and neon probe (float64) after the ASE cache fix. ORB builds its graph with NVIDIA Warp, which
 # with CUDA 13 needs a GPU of compute capability 7.5 or higher: use an L40S (l40s-48) or an H100, not a V100.
-# The old ORB files were moved to results/old_before_cachefix by rerun_nulls_neon.sh.
+# The new files are written to $OUT/work/results, not into the repository.
 umask 002
 export PYTHONNOUSERSITE=1
 set -uo pipefail
@@ -25,9 +25,14 @@ stage() {
     [ $rc -ne 0 ] && FAILED=1
     return $rc
 }
-cd "$REPO/audit"
+WORK=$OUT/work
+mkdir -p "$WORK/results"
+cp -r "$REPO/audit" "$WORK/audit"
+cd "$WORK/audit"
+note "writing results to $WORK/results"
 stage nulls_orb-v3 $PY -u nulls.py --family orb --model orb-v3
 stage neon_orb-v3 $PY -u neon_probe.py --family orb --model orb-v3
 grep -a 'sigma_E' "$LOGS/nulls_orb-v3.log" | tee -a "$SUMMARY"
+ls -l ../results | tee -a "$SUMMARY"
 note "RESULT: $([ $FAILED -eq 0 ] && echo all stages passed || echo at least one stage failed)"
 exit $FAILED
