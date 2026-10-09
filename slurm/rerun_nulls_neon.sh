@@ -1,7 +1,7 @@
 #!/bin/bash
 # Rerun the null tests and the neon probe for the float64 models after the ASE cache fix (the first versions of the
 # committed null files compared a cached result with itself). The old files are moved to results/old_before_cachefix.
-# UMA-M ran in float32 on a cloud GPU and is not rerun. UMA weights come from the private folder $UMA (gated model).
+# UMA-M ran in float32 on a cloud GPU and is not rerun. ORB runs on an L40S (slurm/rerun_orb.sh). UMA weights come from the private folder $UMA (gated model).
 # Every stage writes its own log under $OUT/logs; the job exits 1 if any stage failed. Run it on a V100-32.
 umask 002
 export PYTHONNOUSERSITE=1
@@ -33,15 +33,14 @@ cd "$REPO/audit"
 OLD=$REPO/results/old_before_cachefix
 mkdir -p "$OLD"
 for f in ../results/nulls_*.csv ../results/neon_*.csv; do
-    case "$f" in *uma-m-1p1*) continue ;; esac
+    case "$f" in *uma-m-1p1*|*orb-v3*) continue ;; esac
     [ -e "$f" ] && mv "$f" "$OLD/"
 done
 note "old null and neon files moved to $OLD"
 
 stage nulls_medium $PYC -u nulls.py --family mace --model medium
 stage neon_medium $PYC -u neon_probe.py --family mace --model medium
-stage nulls_orb-v3 $PYM -u nulls.py --family orb --model orb-v3
-stage neon_orb-v3 $PYM -u neon_probe.py --family orb --model orb-v3
+# ORB is not run here: its graph builder (NVIDIA Warp with CUDA 13) needs sm_75 or higher and fails on a V100; see rerun_orb.sh
 for T in omat omol; do
     for L in uma-s-1p1 uma-s-1p2; do
         stage nulls_${L}_$T $PYM -u nulls.py --family uma --model $UMA/$L.pt --label $L --task $T
