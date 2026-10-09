@@ -1,6 +1,7 @@
 defaults:
   - variant: dense
   - data: generic
+  - element_refs: omol
   - _self_
 
 job:
@@ -18,9 +19,17 @@ job:
 
 training:
   steps: 100
+  warmup_steps: null  # null = round(0.05 * steps), see training/schedulers.py
+  eval_every: ${training.steps}
+  ckpt_every: ${training.steps}
   max_atoms: 320
+  max_neighbors: 300
   cutoff: 6.0
   workers: 0
+  # One normalizer for both tasks. 1.433569 is the official allscaip omol_4m value
+  # (configs/allscaip/omol_4m.yml, fairchem_core-2.21.0), the closest official analogue.
+  # Refit it on train_4M before a full run.
+  normalizer_rmsd: 1.433569
 
 # OMol tasks
 tasks:
@@ -30,8 +39,14 @@ tasks:
     property: energy
     out_spec: {_target_: fairchem.core.units.mlip_unit.mlip_unit.OutputSpec, dim: [1], dtype: float32}
     datasets: [omol]
-    normalizer: {_target_: fairchem.core.modules.normalization.normalizer.Normalizer, mean: 0.0, rmsd: 1.0}
-    element_references: null
+    normalizer: {_target_: fairchem.core.modules.normalization.normalizer.Normalizer, mean: 0.0, rmsd: '${training.normalizer_rmsd}'}
+    element_references:
+      _target_: fairchem.core.modules.normalization.element_references.ElementReferences
+      element_references:
+        # float64 because the references are thousands of eV, as in the official OMol tasks
+        _target_: torch.DoubleTensor
+        _args_:
+          - ${element_refs.omol_elem_refs}
     loss_fn:
       _target_: fairchem.core.modules.loss.DDPMTLoss
       loss_fn: {_target_: fairchem.core.modules.loss.PerAtomMAELoss}
@@ -46,7 +61,7 @@ tasks:
     property: forces
     out_spec: {_target_: fairchem.core.units.mlip_unit.mlip_unit.OutputSpec, dim: [3], dtype: float32}
     datasets: [omol]
-    normalizer: {_target_: fairchem.core.modules.normalization.normalizer.Normalizer, mean: 0.0, rmsd: 1.0}
+    normalizer: {_target_: fairchem.core.modules.normalization.normalizer.Normalizer, mean: 0.0, rmsd: '${training.normalizer_rmsd}'}
     element_references: null
     loss_fn:
       _target_: fairchem.core.modules.loss.DDPMTLoss
@@ -63,7 +78,7 @@ runner:
   eval_dataloader: ${eval_dataloader}
   max_epochs: null
   max_steps: ${training.steps}
-  evaluate_every_n_steps: ${training.steps}
+  evaluate_every_n_steps: ${training.eval_every}
   train_eval_unit:
     _target_: fairchem.core.units.mlip_unit.mlip_unit.MLIPTrainEvalUnit
     job_config: ${job}
@@ -75,19 +90,18 @@ runner:
       lr: 0.0002
       weight_decay: 0.001
     cosine_lr_scheduler_fn:
-      _target_: fairchem.core.units.mlip_unit.mlip_unit._get_consine_lr_scheduler
+      _target_: training.schedulers.cosine_with_warmup
       _partial_: true
+      warmup_steps: ${training.warmup_steps}
       warmup_factor: 0.2
-      warmup_epochs: 0.05
       lr_min_factor: 0.01
-      epochs: null
       steps: ${training.steps}
     bf16: false
     print_every: 1
     clip_grad_norm: 10.0
-    ema_decay: null
-    save_inference_ckpt: false
+    ema_decay: 0.999
+    save_inference_ckpt: true
   callbacks:
     - _target_: fairchem.core.components.train.train_runner.TrainCheckpointCallback
-      checkpoint_every_n_steps: ${training.steps}
+      checkpoint_every_n_steps: ${training.ckpt_every}
       max_saved_checkpoints: 3

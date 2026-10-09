@@ -2,7 +2,7 @@
 
 Status: downloaded and verified on 2026-10-07. The reproducible audit result and fixed audit sample list are in `manifests/omol25_data_manifest.json`.
 
-`mlip-project/requirements.txt` pins `fairchem-core==2.21.0`. The adjacent `fairchem` source checkout is at commit `db9b17fc6eff8bd167fc2174fddc8f43bab34629` (tag `fairchem_core-2.23.0`), so running Python from that checkout would not match the pinned package. Run the audit in the pinned package environment; its version check rejects a mismatch. The [2.21.0 source](https://github.com/facebookresearch/fairchem/blob/fairchem_core-2.21.0/src/fairchem/core/datasets/atomic_data.py) confirms `AtomicData.from_ase` uses `atoms.info.get("charge", 0)` and `atoms.info.get("spin", 0)` when those keys are requested.
+This repository's `requirements.txt` pins `fairchem-core==2.21.0`. The adjacent `fairchem` source checkout is at commit `db9b17fc6eff8bd167fc2174fddc8f43bab34629` (tag `fairchem_core-2.23.0`), so running Python from that checkout would not match the pinned package. Run the audit in the pinned package environment; its version check rejects a mismatch. The [2.21.0 source](https://github.com/facebookresearch/fairchem/blob/fairchem_core-2.21.0/src/fairchem/core/datasets/atomic_data.py) confirms `AtomicData.from_ase` uses `atoms.info.get("charge", 0)` and `atoms.info.get("spin", 0)` when those keys are requested.
 
 ## Source and scope
 
@@ -33,11 +33,11 @@ tar -xzf "$dataRoot\train_4M.tar.gz" -C $dataRoot
 tar -xzf "$dataRoot\val.tar.gz" -C $dataRoot
 ```
 
-Inspect the extracted directory names before auditing. The audit expects `$dataRoot\train_4M` and `$dataRoot\val`, each containing `.aselmdb` files. Leave archives and extracted files under `$dataRoot`, which is outside `fairchem` and `mlip-project`.
+Inspect the extracted directory names before auditing. The audit expects `$dataRoot\train_4M` and `$dataRoot\val`, each containing `.aselmdb` files. Leave archives and extracted files under `$dataRoot`, which is outside `fairchem` and this repository.
 
 ## Real-data audit
 
-Run from `mlip-project` in the pinned environment. The two cache variables keep FairChem and Warp caches outside the Git repositories:
+Run from the root of this repository in the pinned environment. The two cache variables keep FairChem and Warp caches outside the Git repositories:
 
 ```powershell
 $env:FAIRCHEM_CACHE_DIR = 'D:\11785 final project 2\omol25-cache\fairchem'
@@ -45,6 +45,6 @@ $env:WARP_CACHE_PATH = 'D:\11785 final project 2\omol25-cache\warp'
 & 'D:\11785 final project 2\omol25-env\Scripts\python.exe' scripts/audit_omol25.py --data-root 'D:\11785 final project 2\omol25-data' --source-revision $revision --output manifests/omol25_data_manifest.json
 ```
 
-The script uses `AseDBDataset` for both official splits and checks the full split row counts. With seed 11785, it selects 64 fixed indices per split (validation uses seed 11786). Each raw ASE `Atoms` object and converted FairChem sample must agree on atomic numbers, relative positions, energy, forces, total charge, and spin multiplicity. FairChem centers each molecule in a 120 Å box, so absolute coordinates differ by a uniform translation. It checks source IDs, sampled cross-split ID overlap, atom counts, numeric shape, and NaN/Inf. It rejects missing raw charge or spin because the pinned FairChem `AtomicData.from_ase` silently uses 0 for absent values. It writes each `.aselmdb` SHA-256, archive SHA-256, actual byte sizes, sample indices and IDs, metadata key names, and summary ranges. It does not store coordinates, energy, or forces in Git. A failure leaves the previous manifest intact.
+The script uses `AseDBDataset` for both official splits and checks the full split row counts. With seed 11785, it selects 64 fixed indices per split (validation uses seed 11786). Each raw ASE `Atoms` object and converted FairChem sample must agree on atomic numbers, relative positions, energy, forces, total charge, and spin multiplicity. FairChem's `molecule_cell_size=120` calls `atoms.center(vacuum=120)`, which adds 120 Å of vacuum on each side of the molecule, so absolute coordinates differ by a uniform translation. Atomic numbers must lie in 1..118 and below 100, the model's `max_num_elements`. It checks source IDs, atom counts, numeric shape, and NaN/Inf. The cross-split ID check is weak: it only confirms that the sampled train and val IDs do not overlap, not that the full splits are disjoint. Both archives must be present in the data root; pass `--no-archives` to audit the extracted splits without them. It rejects missing raw charge or spin because the pinned FairChem `AtomicData.from_ase` silently uses 0 for absent values. It writes each `.aselmdb` SHA-256, archive SHA-256, actual byte sizes, sample indices and IDs, metadata key names, and summary ranges. It does not store coordinates, energy, or forces in Git. A failure leaves the previous manifest intact.
 
 This is a fixed **audit** sample, not a complete statistical audit of every row. Unit labels come from the publisher's documentation; the script checks values and reader consistency, not the underlying DFT unit conversion, force sign, energy-reference convention, or domain meaning. These semantic questions need separate source or calculation checks before training.

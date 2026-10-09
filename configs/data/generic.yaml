@@ -1,8 +1,9 @@
 # @package _global_
 # Full OMol-compatible ASE DB splits, using FairChem's native dataset stack.
 data:
-  train_src: ../omol25-data/train_4M  # Directory of train data
-  val_src: ../omol25-data/val  # Directory of val data
+  root: ${oc.env:OMOL_DATA_ROOT,../omol25-data}  # Relative paths resolve from the repository root
+  train_src: ${data.root}/train_4M  # Directory of train data
+  val_src: ${data.root}/val  # Directory of val data
 
 train_dataset:
   _target_: fairchem.core.datasets.mt_concat_dataset.create_concat_dataset
@@ -21,7 +22,7 @@ train_dataset:
         r_data_keys: [spin, charge]
         r_edges: true
         radius: ${training.cutoff}
-        max_neigh: ${training.max_atoms}
+        max_neigh: ${training.max_neighbors}
       key_mapping:
         energy: omol_energy
         forces: omol_forces
@@ -48,7 +49,7 @@ val_dataset:
         r_data_keys: [spin, charge]
         r_edges: true
         radius: ${training.cutoff}
-        max_neigh: ${training.max_atoms}
+        max_neigh: ${training.max_neighbors}
       key_mapping:
         energy: omol_energy
         forces: omol_forces
