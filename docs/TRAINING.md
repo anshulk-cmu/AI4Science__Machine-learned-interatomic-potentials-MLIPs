@@ -136,3 +136,21 @@ variant, change `backbone.model` to the custom class's import path, and add
 its router arguments there.
 - Run with `variant=<new_variant>`; the shared train
 and data configs can stay the same.
+
+## Local-6
+
+`variant=local6` uses `training.local_moe.eSCNMDLocalMoeBackbone` (`configs/variant/local6.yaml`). It has the same
+parameters as Global (37,938,985) and differs only in the router: each atom averages the element embeddings of its
+neighbors within 6 A, and every message edge mixes the experts with the coefficients of its receiving atom.
+
+- Tests: `tests/test_local_backbone.py` (13 tests, float64, CPU and CUDA). Far-apart fragments are additive for Local and
+  Dense but not Global, the per-edge mixing equals fairchem's merged layers when every atom gets the structure mean, and
+  the forces equal the energy gradient. Run them in Linux or WSL2.
+- Memory: Local mixes the expert outputs per edge, which needs several times the memory of Global. A 20-step run with
+  the default `training.max_atoms=320` ran out of memory on a 12 GB laptop GPU even with `checkpoint_chunk_size: 4096`
+  and the mixing recomputed in the backward pass. Lower `training.max_atoms` or run on a larger GPU (Bridges-2). The peak
+  memory per setting has not been measured yet.
+- Not supported: a routing radius above the message cutoff (Local-12), graph parallelism, merging into one linear layer.
+- fairchem builds each edge frame from Euler angles, which are singular for an edge exactly along y. Forces there differ
+  from the energy gradient, for Dense as well. The tests rotate molecules off the axes for that reason.
+
