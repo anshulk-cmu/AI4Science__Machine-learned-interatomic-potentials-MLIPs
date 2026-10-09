@@ -8,6 +8,7 @@ from ase import Atoms
 
 import geometry as g
 import models
+from run_audit import finished_runs
 
 ROOT = Path(__file__).resolve().parents[1]
 DISTANCES = (10, 50)        # surface to probe, angstrom; both beyond the 6 A cutoff
@@ -38,7 +39,7 @@ def main():
     label = a.label or a.model + (f"-v{a.model_version:g}" if a.model_version else "")
     ideal = g.ideal_slab("Al")
     out = ROOT / "results" / f"neon_{label}_{a.task}.csv"
-    done = set(pd.read_csv(out).run) if out.exists() else set()   # resume after a crash
+    done = finished_runs(out, len(DISTANCES))
 
     for run in range(a.runs + 1):
         if run in done:
@@ -48,13 +49,17 @@ def main():
         for d in DISTANCES:
             base, ne, both = probe_cell(slab, d)
             g.assert_disconnected(both, cutoff)
-            f0, f0_again = energy.forces(base), energy.forces(base)
+            f0 = energy.forces(base)
             n = len(slab)
             dforce = np.linalg.norm(energy.forces(both)[:n] - f0, axis=1) * 1000.0     # meV/A per slab atom
+            perm = np.random.default_rng(run).permutation(n)
+            f_perm = np.empty_like(f0)
+            f_perm[perm] = energy.forces(base[perm])
+            # noise floor in meV/A: largest force change on a slab atom when only the atom order of the slab alone changes
+            noise = np.linalg.norm(f_perm - f0, axis=1).max() * 1000.0
             rows.append(dict(model=label, task=a.task, dtype=a.dtype, distance=d, run=run,
                              d_energy_mev=(energy(both) - energy(base) - energy(ne)) * 1000.0,
-                             max_dforce=dforce.max(), mean_dforce=dforce.mean(),
-                             noise_dforce=np.linalg.norm(f0_again - f0, axis=1).max() * 1000.0))
+                             max_dforce=dforce.max(), mean_dforce=dforce.mean(), noise_dforce=noise))
         out.parent.mkdir(exist_ok=True)
         pd.DataFrame(rows).to_csv(out, mode="a", header=not out.exists(), index=False)
         print(f"{label} {a.task} run {run} done: max dF {rows[-1]['max_dforce']:.4g} meV/A at {DISTANCES[-1]} A")

@@ -50,6 +50,8 @@ def main():
     tau = analyze.tolerances()[(a.tau_label or label, a.task)]
     state = hook(energy.unit)
     if a.no_balance:
+        # This changes the model, so the Delta it gives is not a result. Only the charge channels are switched off;
+        # the spin channels are left untouched.
         for m in energy.unit.model.modules():
             if hasattr(m, "charge_channel_end"):
                 m.charge_channel_end = m.charge_channel_start
@@ -75,6 +77,7 @@ def main():
         part_ni = forced(g.isolated(ni), z_union) - e_ni
         assert state["calls"] == calls + 2, "the router hook was not used"
         control = forced(g.isolated(al), g.isolated(al).numbers) - e_al      # own composition must change nothing
+        assert abs(control) * 1000.0 <= tau, f"run {run}: control {control * 1000.0:.4g} meV is above tau"
         delta = (e_pair - e_al - e_ni) * 1000.0
         rows.append(dict(model=label, task=a.task, run=run, al_part_mev=part_al * 1000.0,
                          ni_part_mev=part_ni * 1000.0, delta_mev=delta,
@@ -84,7 +87,9 @@ def main():
     out = ROOT / "results" / f"f1_{label}_{a.task}.csv"
     pd.DataFrame(rows).to_csv(out, index=False)
     df = pd.DataFrame(rows)
-    print(f"max |residual| {df.residual_mev.abs().max():.4g} meV, max |control| {df.control_mev.abs().max():.4g} meV, tau {tau:.4g} meV")
+    worst = df.residual_mev.abs().max()
+    print(f"max |residual| {worst:.4g} meV, max |control| {df.control_mev.abs().max():.4g} meV, tau {tau:.4g} meV")
+    print("F1", "PASS" if worst <= tau else "FAIL", "(max |residual| <= tau)")
 
 
 if __name__ == "__main__":

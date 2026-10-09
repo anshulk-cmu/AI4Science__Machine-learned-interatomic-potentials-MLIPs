@@ -21,10 +21,11 @@ Early stage. The proposal is submitted and the first baseline is done.
 
 - **Done: the audit of released models.** We tested whether MACE, ORB-v3, UMA-S-1.1, UMA-S-1.2 and UMA-M-1.1 give an
   energy for two far-apart metal slabs that equals the sum of the parts. MACE does, exactly. ORB-v3 and all UMA
-  models do not, by 0.5 eV to hundreds of eV, and the error does not shrink with distance. A test on UMA's stored
-  router version number supports the whole-structure average as the cause. Read `status-wip/README.md`.
+  models do not, by 0.5 eV to hundreds of eV, and the error does not shrink with distance. A forcing test shows that
+  the whole-structure router average is the whole cause in UMA-S-1.1; UMA-S-1.2 has a second whole-structure term,
+  charge balancing. Read `status-wip/README.md`.
 - **Done: the standalone routing component.** Local composition, per-atom routing, the receiving-atom edge adapter,
-  and reference linear experts are implemented. All 17 component tests pass on CPU. This is a **standalone component
+  and reference linear experts are implemented. All 44 component tests pass on CPU. This is a **standalone component
   with fairchem integration pending**. Softmax and router dimensions are provisional. Read `docs/local-routing.md`.
 - **Not done yet:** the training baselines (Dense, Global, Local-6). They wait on the shared training pipeline and the
   fairchem integration. The midterm report is due 23 October.
@@ -34,13 +35,19 @@ Early stage. The proposal is submitted and the first baseline is done.
 | Folder or file | What it holds |
 |---|---|
 | `status-wip/` | Reports only: the write-up, the final tables and the plots |
-| `audit/` | The audit code, with its own README and the exact commands |
-| `results/` | Raw per-run energies, null tests and cloud-run logs behind every number |
+| `audit/` | The audit code (slab test, null tests, neon probe `neon_probe.py`, forcing test `f1_forcing.py`, W&B upload `log_wandb.py`), with its own README and the exact commands |
+| `results/` | Raw per-run energies, null tests, neon and forcing-test results, and cloud-run logs behind every number |
 | `local_routing/` | Local composition, router interface, receiving-atom adapter and reference linear experts |
-| `tests/` | Component tests for routing, derivatives and expert execution |
+| `tests/` | Component tests for routing, derivatives and expert execution, and tests of the audit code and the training configuration |
 | `docs/local-routing.md` | Router interface, test results and integration steps |
 | `configs/config_draft.yaml` | Yiwei's draft shared configuration; unresolved settings remain open |
+| `configs/` (other files) | Training configuration: `train.yaml`, the data config in `data/`, the Dense and Global variants in `variant/`, element references in `element_refs/` |
+| `training/` | Version-checked entry point for the fairchem training CLI |
+| `docs/TRAINING.md` | How to set up and run training |
+| `scripts/` | OMol25 data preparation notes and the data audit script |
+| `manifests/` | The OMol25 data manifest written by the data audit |
 | `requirements.txt` | Environment for UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8) |
+| `requirements-training.txt` | Extra packages for training, installed after `requirements.txt` |
 | `requirements-mace.txt` | Separate environment for MACE, which cannot share one with fairchem |
 
 ## Setup

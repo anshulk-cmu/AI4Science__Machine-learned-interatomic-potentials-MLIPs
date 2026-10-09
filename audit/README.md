@@ -29,20 +29,49 @@ foreach ($m in "uma-s-1p1", "uma-s-1p2") {
     & $py1 run_audit.py --family uma --model $m --task $t
   }
 }
-# UMA-M needs a 24 GB GPU and was run in float32 on a rented machine:
+# UMA-M needs a 24 GB GPU and was run in float32 on a rented machine, on both tasks:
 #   nulls.py / run_audit.py --family uma --model uma-m-1p1 --task omat --dtype float32
+#   nulls.py / run_audit.py --family uma --model uma-m-1p1 --task omol --dtype float32
 
-# router version test (5 shaken runs):
-& $py1 nulls.py     --family uma --model uma-s-1p2 --task omat --model-version 1.1
-& $py1 run_audit.py --family uma --model uma-s-1p2 --task omat --model-version 1.1 --runs 5
+# router version test (5 shaken runs), both directions and both tasks:
+foreach ($t in "omat", "omol") {
+  & $py1 nulls.py     --family uma --model uma-s-1p2 --task $t --model-version 1.1
+  & $py1 run_audit.py --family uma --model uma-s-1p2 --task $t --model-version 1.1 --runs 5
+  & $py1 nulls.py     --family uma --model uma-s-1p1 --task $t --model-version 1.0
+  & $py1 run_audit.py --family uma --model uma-s-1p1 --task $t --model-version 1.0 --runs 5
+}
 
 & $py1 analyze.py       # statistics, decision rule, plots
 & $py1 report.py        # results.md and the overview plot
+
+# neon probe (1 ideal + 20 shaken runs)
+& $py2 neon_probe.py --family mace --model medium
+& $py1 neon_probe.py --family orb  --model orb-v3
+foreach ($m in "uma-s-1p1", "uma-s-1p2") {
+  foreach ($t in "omat", "omol") { & $py1 neon_probe.py --family uma --model $m --task $t }
+}
+
+# forcing test F1, UMA only; tau comes from the null tests of the same label
+& $py1 f1_forcing.py --model uma-s-1p1 --task omat
+& $py1 f1_forcing.py --model uma-s-1p2 --task omat
+& $py1 f1_forcing.py --model uma-s-1p1 --task omat --model-version 1.0 --runs 2
+& $py1 f1_forcing.py --model uma-s-1p2 --task omat --model-version 1.1 --runs 2
+& $py1 f1_forcing.py --model uma-s-1p2 --task omat --no-balance --label uma-s-1p2-nobal --tau-label uma-s-1p2 --runs 2
+
+# upload the tables, plots and result files to W&B (needs a W&B login)
+& $py1 log_wandb.py
 ```
 
 ## Notes
 
 - Run one job at a time on a laptop GPU.
-- `run_audit.py` resumes after a crash, since it skips runs already saved.
-- Never use the fairchem `turbo` setting: it merges the experts from the first structure and hides the effect.
+- `run_audit.py` and `neon_probe.py` resume after a crash. A run counts as done only when all its rows are saved (18
+  per run for the audit, 2 for the neon probe); the rows of an unfinished run are dropped and the run is repeated.
+- `f1_forcing.py --no-balance` changes the model, so the Delta it gives is not a result. It switches off only the
+  charge balancing and leaves the spin channels untouched.
+- Never use the fairchem `turbo` setting. It merges the experts once, for the first structure. A later structure of
+  different composition makes `merge_mole` raise an error, so turbo would only silently hide the effect in
+  same-composition cases.
+- `tests/test_audit.py` checks this code on CPU with every model replaced by a stub. Run it from the repository root
+  with `python -m unittest tests.test_audit`.
 - ORB needs `compile=False` on Windows because Triton is not installed. The loaders already set it.

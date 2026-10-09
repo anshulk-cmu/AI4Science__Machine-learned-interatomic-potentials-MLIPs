@@ -12,6 +12,7 @@ def _energy(calc, info=None):
         atoms = atoms.copy()
         if info:
             atoms.info.update(info)
+        calc.reset()                         # ASE would return the cached result for identical atoms
         atoms.calc = calc
         return atoms
 
@@ -26,7 +27,7 @@ def _find(module, name):
     """First positive number stored under this attribute name in any submodule."""
     for m in module.modules():
         v = getattr(m, name, None)
-        if isinstance(v, (int, float)) and v > 0:
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
             return float(v)
     raise RuntimeError(f"no {name} found in the model")
 
