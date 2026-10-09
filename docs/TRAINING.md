@@ -64,7 +64,7 @@ Common runtime overrides:
 | `train.yaml` | `training.warmup_steps` | linear warmup length in steps; `null` means `round(0.05 * steps)`. It does not depend on the dataloader length. |
 | `train.yaml` | `training.eval_every` | steps between validation runs; defaults to `training.steps`. |
 | `train.yaml` | `training.ckpt_every` | steps between checkpoints; defaults to `training.steps`. |
-| `train.yaml` | `training.max_atoms` | The batch size in atoms; larger structures are dropped by the sampler. The file holds the base value 320. `training/run.py` multiplies it by variant: Dense and Global 2.5x (800 atoms), Local-6 1.25x (400 atoms), to fill a 32 GB GPU. Pass `training.max_atoms=N` to set it yourself. |
+| `train.yaml` | `training.max_atoms` | The batch size in atoms, `450` for every variant; larger structures are dropped by the sampler. |
 | `train.yaml` | `training.max_neighbors` | `300` nearest neighbours kept per atom inside the cutoff (`a2g_args.max_neigh`, both splits). |
 | `train.yaml` | `training.cutoff` | `6.0` Å graph/model cutoff. |
 | `train.yaml` | `training.normalizer_rmsd` | shared energy and force normalizer. |
@@ -166,4 +166,11 @@ wandb sync $OMOL_RUN_DIR/<run>/logs/wandb/offline-run-*
 
 `WANDB_ENTITY` and `WANDB_PROJECT` override the defaults (`anshulk-cmu`, `mlip-local-routing`). Set `WANDB_MODE=online` to
 log live. The run name is `job.run_name`.
+
+## GPU requirement
+
+Use at least a V100 with 32 GB (`v100-32` on Bridges-2; `l40s-48` and `h100-80` also fit). The settings assume it: with 320
+atoms per batch the smoke test peaked at 7.1 GiB (Dense), 7.9 GiB (Global) and 19.3 GiB (Local-6) on a V100-32, so 450 atoms
+needs roughly 10, 11 and 27 GiB (a scaled estimate, not yet measured). A 16 GB GPU (`v100-16`) will not fit Local-6, and the
+12 GB laptop GPU ran out of memory on it. `training/run.py` prints a warning when the GPU has less than 31 GiB.
 

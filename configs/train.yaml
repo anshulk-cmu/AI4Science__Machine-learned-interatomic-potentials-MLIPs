@@ -22,7 +22,7 @@ training:
   warmup_steps: null  # null = round(0.05 * steps), see training/schedulers.py
   eval_every: ${training.steps}
   ckpt_every: ${training.steps}
-  max_atoms: 320
+  max_atoms: 450  # atoms per batch, the same for every variant; needs a GPU with 32 GB
   max_neighbors: 300
   cutoff: 6.0
   workers: 0

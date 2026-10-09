@@ -119,7 +119,7 @@ class ComposedConfigTests(unittest.TestCase):
     def test_neighbors_and_data_root(self):
         for loader in (self.cfg.runner.train_dataloader, self.cfg.runner.eval_dataloader):
             self.assertEqual(loader.dataset.dataset_configs.omol.a2g_args.max_neigh, 300)
-        self.assertEqual(self.cfg.runner.train_dataloader.batch_sampler_fn.max_atoms, 320)
+        self.assertEqual(self.cfg.runner.train_dataloader.batch_sampler_fn.max_atoms, 450)
         with mock.patch.dict(os.environ, {"OMOL_DATA_ROOT": "/data/omol"}):
             cfg = compose("dense")
         splits = (cfg.runner.train_dataloader.dataset.dataset_configs.omol.splits.train,
@@ -209,21 +209,20 @@ class RunGuardTests(unittest.TestCase):
         with mock.patch.object(self.run, "version", return_value="2.21.0"), \
                 mock.patch("fairchem.core._cli.main") as cli:
             self.run.main()
-        cli.assert_called_once_with(argparse.Namespace(config="configs/train.yaml"),
-                                    ["variant=dense", "training.max_atoms=800"])
+        cli.assert_called_once_with(argparse.Namespace(config="configs/train.yaml"), ["variant=dense"])
         self.assertEqual(os.environ["FAIRCHEM_CACHE_DIR"], str((ROOT.parent / "cacheProbe" / "fairchem").resolve()))
 
-    def test_batch_size_follows_the_variant_unless_overridden(self):
-        expected = {"dense": 800, "global": 800, "local6": 400}
-        for variant, atoms in expected.items():
-            for extra, want in (([], atoms), (["training.max_atoms=123"], 123)):
-                with self.subTest(variant=variant, extra=extra):
-                    argv = ["run", f"variant={variant}", *extra]
-                    with mock.patch.object(sys, "argv", argv),                             mock.patch.object(self.run, "version", return_value="2.21.0"),                             mock.patch("fairchem.core._cli.main") as cli:
-                        self.run.main()
-                    overrides = cli.call_args[0][1]
-                    self.assertEqual([o for o in overrides if o.startswith("training.max_atoms=")],
-                                     [f"training.max_atoms={want}"])
+    def test_small_gpu_gets_a_warning(self):
+        import io
+        from contextlib import redirect_stdout
+
+        for gib, warned in ((11.9, True), (31.7, False), (79.6, False)):
+            props = mock.Mock(total_memory=int(gib * 2**30))
+            with mock.patch("torch.cuda.is_available", return_value=True),                     mock.patch("torch.cuda.get_device_properties", return_value=props):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    self.run.warn_if_small_gpu()
+            self.assertEqual("WARNING" in out.getvalue(), warned, gib)
 
     def test_wandb_defaults_to_offline_and_respects_the_environment(self):
         for key in ("WANDB_MODE", "WANDB_CACHE_DIR", "WANDB_CONFIG_DIR"):
