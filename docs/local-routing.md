@@ -19,13 +19,26 @@ and task, total charge, and spin multiplicity `[B]`. Local also requires a
 Use compatible dtypes and devices throughout.
 
 Neighbor indices are `[2,E]`: row 0 sends, row 1 receives. Include each directed
-pair once, with no self edges. The composition calculation adds the central atom
+pair once per image, with no zero-distance self edges. A self edge at a distance
+above zero is a periodic image of the central atom and is allowed, as is the same
+pair at several distances. The composition calculation adds the central atom
 with weight one. Supply all neighbors within the routing radius, even if that
 radius exceeds the message cutoff. The receiver convention is agreed by the team.
 
+The neighbor-list contract: the list is complete within the routing radius and
+is not truncated by `max_neighbors`, the distances carry gradients to positions,
+and no two rows of (receiver, sender, distance) are identical. The router raises
+`ValueError` on duplicate rows, on detached distances when positions require
+gradients, and on distances whose dtype or device differ from the router's.
+
 Distances must retain gradients to positions. `reference_neighbors` does this
-for small, non-periodic systems, using an O(N^2) search. The composition calculation
+for small, non-periodic systems, using an O(N^2) search. It never makes self
+edges, since a non-periodic system has no images. The composition calculation
 itself uses sparse indexed sums. Training will need the shared geometry helper.
+
+`include_self: true` in `configs/config_draft.yaml` means the central atom counts
+with weight one in its own average. It is unrelated to fairchem's `include_self`
+option, where version 1.0 divides by N+1.
 
 `edge_coefficients` maps atom or structure coefficients to receiving edges.
 `LinearExperts` implements one ordinary linear operation with a shared bias.
@@ -54,7 +67,10 @@ leaves normalization and hidden dimensions open. These are not measured 6M-model
 
 Pass the shared task/charge/spin encoder as `conditioner`, with signature
 `conditioner(task, charge, spin) -> [B, context_dim]`. No new encoding is defined
-here. Unconditioned tests require explicit `allow_unconditioned=True`.
+here. Unconditioned tests require explicit `allow_unconditioned=True`. Local
+coefficients of a fragment do not depend on distant atoms in the same structure,
+except through this structure-level context: a different total charge changes
+the coefficients of every atom.
 
 The repository pins fairchem 2.21.0 and PyTorch 2.8.0+cu128, while the draft's
 version/commit fields are null. Reconcile those fields when the shared backbone
@@ -78,11 +94,18 @@ and PyTorch 2.8.0. PyTorch warned that NumPy was absent in the temporary test
 environment; these tests use tensor operations and do not require NumPy.
 CUDA, fairchem integration, full-model forces, and MD stability remain untested.
 
+`tests/test_local_routing_contracts.py` adds 27 tests: the neighbor-list and
+coefficient contracts above, the error paths, float32 paths, unequal structure
+sizes, interleaved batch ids, permuted edges, isolated atoms, envelope powers 4
+and 5, radius 0, and a pair at exactly the radius. Set `ROUTER_TEST_DEVICE=cuda`
+to run both files on a GPU; the default is `cpu`. All 44 tests passed on
+8 October 2026 on Windows CPU with Python 3.12.15 and PyTorch 2.8.0+cu128.
+
 ## Handoff and dates
 
 Yiwei is targeting a usable shared pipeline on 8 October: fixed pilot data,
 Dense training/validation, W&B, checkpoints, and model integration points.
-Local-6 integration depends on that code. His travel starts 9 October, so use
+Local-6 integration depends on that code. Her travel starts 9 October, so use
 the 8 October meeting to confirm the encoder, geometry helper, exact SO(2)
 modules, coefficient normalization, and any unfinished pipeline work.
 
@@ -91,7 +114,7 @@ Anshul accepted these dates for Pragati:
 - 8 October: agree on the interface and implementation approach.
 - 11 October: report progress and blockers.
 - 15 October: router merged; Local-6 runs a few batches; force checks complete.
-- 16–18 October: short pilot if integration and GPU access are ready.
+- 16 to 18 October: short pilot if integration and GPU access are ready.
 
 If Local-6 is not running by 15 October, the agreed midterm fallback is to report
 it as implemented but not trained. Dense and Global remain the midterm baseline.

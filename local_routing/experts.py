@@ -9,7 +9,8 @@ class LinearExperts(nn.Module):
 
     x: [E,I]; weights: [K,O,I]. No activation occurs before output mixing.
     Mixed-output mode is a reference; it materializes [E,K,O]. Merging creates
-    [N,O,I] for Local or [B,O,I] for Global and gathers per-edge matrices.
+    [N,O,I] for Local or [B,O,I] for Global, then gathers an [E,O,I] tensor of
+    per-edge matrices, so its memory scales with [E,O,I], not only [N,O,I].
     This is not an optimized grouped GEMM implementation.
     """
     def __init__(self, in_features, out_features, num_experts=8, bias=True):

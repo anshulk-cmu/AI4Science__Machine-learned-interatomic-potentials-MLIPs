@@ -1,8 +1,17 @@
+import os
 import unittest
 import torch
 from local_routing import (CompositionRouter, RoutingInputs, RoutingNeighbors,
                            RoutingResult, LinearExperts, edge_coefficients,
                            local_composition, reference_neighbors)
+
+
+def setUpModule():
+    torch.set_default_device(os.environ.get("ROUTER_TEST_DEVICE", "cpu"))
+
+
+def tearDownModule():
+    torch.set_default_device(None)
 
 
 class RoutingTests(unittest.TestCase):
