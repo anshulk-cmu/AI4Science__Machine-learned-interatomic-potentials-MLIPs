@@ -1,6 +1,7 @@
 #!/bin/bash
 # Build the training environment on Ocean. Run it inside a Slurm job, never on a login node.
 umask 002
+export PYTHONNOUSERSITE=1
 set -euo pipefail
 ROOT=/ocean/projects/che260063p/shared
 REPO=${1:-$ROOT/repo/AI4Science-MLIPs}

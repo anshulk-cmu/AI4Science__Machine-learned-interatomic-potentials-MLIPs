@@ -2,6 +2,7 @@
 # Smoke test on one GPU: the unit tests, then 20 training steps of Dense, Global and Local-6 on a sample of the
 # real OMol25 data, then the size-consistency check on each saved checkpoint. Run it inside a Slurm job.
 umask 002
+export PYTHONNOUSERSITE=1
 set -uo pipefail
 ROOT=/ocean/projects/che260063p/shared
 REPO=${1:-$ROOT/repo/AI4Science-MLIPs}
@@ -9,6 +10,8 @@ PY=$ROOT/envs/mlip/bin/python
 export OMOL_DATA_ROOT=$ROOT/data/omol25 OMOL_CACHE_DIR=$ROOT/cache OMOL_RUN_DIR=$ROOT/runs/smoke_${SLURM_JOB_ID:-manual}
 mkdir -p "$OMOL_RUN_DIR" "$OMOL_CACHE_DIR"
 cd "$REPO"
+echo "== environment"
+$PY -c "import torch, fairchem.core; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 echo "== unit tests"
 $PY -B -m unittest discover -s tests 2>&1 | tail -4
 for V in dense global local6; do
