@@ -80,7 +80,9 @@ runner:
   max_steps: ${training.steps}
   evaluate_every_n_steps: ${training.eval_every}
   train_eval_unit:
-    _target_: fairchem.core.units.mlip_unit.mlip_unit.MLIPTrainEvalUnit
+    _target_: training.guarded_unit.GuardedTrainEvalUnit
+    gc_every: 50                  # collect garbage and empty the CUDA cache every 50 steps
+    max_consecutive_oom: 5        # an out-of-memory batch is skipped; this many in a row stops the run
     job_config: ${job}
     model: ${variant}
     tasks: ${tasks}

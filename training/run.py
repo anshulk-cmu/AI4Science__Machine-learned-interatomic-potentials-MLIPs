@@ -14,8 +14,8 @@ def warn_if_small_gpu():
     if torch.cuda.is_available():
         gib = torch.cuda.get_device_properties(0).total_memory / 2**30
         if gib < MIN_GPU_GIB:
-            print(f"WARNING: this GPU has {gib:.1f} GiB. Use at least a V100 with 32 GB (v100-32, l40s-48 or h100-80): "
-                  "Local-6 needs about 27 GiB at the default batch size.", flush=True)
+            print(f"WARNING: this GPU has {gib:.1f} GiB. Use a V100 with 32 GB (v100-32) for Dense and Global and an L40S "
+                  "(l40s-48) for Local-6, which peaked at 26 GiB at the default batch size.", flush=True)
 
 
 def main():
@@ -32,6 +32,8 @@ def main():
     cache = Path(os.environ.get("OMOL_CACHE_DIR", root.parent / "omol25-cache")).resolve()
     os.environ.setdefault("FAIRCHEM_CACHE_DIR", str(cache / "fairchem"))
     os.environ.setdefault("WARP_CACHE_PATH", str(cache / "warp"))
+    # less fragmentation, so fewer out-of-memory errors; OMOL_GPU_MEMORY_FRACTION caps the GPU memory for the OOM drill
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     # W&B stays local: runs are written under the run directory on Ocean and uploaded later with `wandb sync`
     os.environ.setdefault("WANDB_MODE", "offline")
     os.environ.setdefault("WANDB_CACHE_DIR", str(cache / "wandb"))
@@ -47,6 +49,10 @@ def main():
     from fairchem.core._cli import main as fairchem_main
 
     warn_if_small_gpu()
+    if os.environ.get("OMOL_GPU_MEMORY_FRACTION"):
+        import torch
+
+        torch.cuda.set_per_process_memory_fraction(float(os.environ["OMOL_GPU_MEMORY_FRACTION"]))
 
     fairchem_main(argparse.Namespace(config=args.config), overrides)
 

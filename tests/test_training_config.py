@@ -224,6 +224,14 @@ class RunGuardTests(unittest.TestCase):
                     self.run.warn_if_small_gpu()
             self.assertEqual("WARNING" in out.getvalue(), warned, gib)
 
+    def test_allocator_setting_and_memory_cap(self):
+        os.environ.pop("PYTORCH_CUDA_ALLOC_CONF", None)
+        os.environ["OMOL_GPU_MEMORY_FRACTION"] = "0.3"
+        with mock.patch.object(self.run, "version", return_value="2.21.0"), mock.patch("fairchem.core._cli.main"),                 mock.patch("torch.cuda.set_per_process_memory_fraction") as cap:
+            self.run.main()
+        self.assertEqual(os.environ["PYTORCH_CUDA_ALLOC_CONF"], "expandable_segments:True")
+        cap.assert_called_once_with(0.3)
+
     def test_wandb_defaults_to_offline_and_respects_the_environment(self):
         for key in ("WANDB_MODE", "WANDB_CACHE_DIR", "WANDB_CONFIG_DIR"):
             os.environ.pop(key, None)

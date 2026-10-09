@@ -169,8 +169,28 @@ log live. The run name is `job.run_name`.
 
 ## GPU requirement
 
-Use at least a V100 with 32 GB (`v100-32` on Bridges-2; `l40s-48` and `h100-80` also fit). The settings assume it: with 320
-atoms per batch the smoke test peaked at 7.1 GiB (Dense), 7.9 GiB (Global) and 19.3 GiB (Local-6) on a V100-32, so 450 atoms
-needs roughly 10, 11 and 27 GiB (a scaled estimate, not yet measured). A 16 GB GPU (`v100-16`) will not fit Local-6, and the
-12 GB laptop GPU ran out of memory on it. `training/run.py` prints a warning when the GPU has less than 31 GiB.
+| Variant | GPU on Bridges-2 | Why |
+|---|---|---|
+| Dense, Global | `v100-32` (V100, 32 GB) or larger | measured peak 19.5 and 20.0 GiB at 450 atoms per batch |
+| Local-6 | `l40s-48` (L40S, 48 GB) | measured peak 26.3 GiB at 450 atoms on a V100-32, which leaves only about 5 GiB of headroom |
 
+Peaks are from the 20-step smoke test (`nvidia-smi`, so they include the allocator cache). Memory is not linear in the
+batch: a larger limit also admits larger molecules with many more edges. A 16 GB GPU (`v100-16`) fits none of the three
+at 450 atoms, and the 12 GB laptop GPU ran out of memory on Local-6. `training/run.py` prints a warning when the GPU has
+less than 31 GiB.
+
+## Out-of-memory protection
+
+Every variant trains with `training.guarded_unit.GuardedTrainEvalUnit` (`train_eval_unit` in `configs/train.yaml`):
+
+- A batch that runs out of GPU memory is skipped and counted (`OOM: skipped train batch ...` in the log, with its atoms
+  and edges), gradients are cleared, the cache is emptied and the learning-rate schedule still advances. A skipped
+  validation batch is counted too. At the end the log says `OOM-skipped batches: N train, M eval`, and W&B gets
+  `train/oom_skipped_batches`.
+- `max_consecutive_oom: 5` stops the run with a clear message after five skipped batches in a row, because the batch is
+  then too big for the GPU (lower `training.max_atoms` or use a larger GPU).
+- `gc_every: 50` collects Python garbage and empties the CUDA cache every 50 steps.
+- `training/run.py` sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` to reduce fragmentation (override by setting it).
+- Single process only: skipping a batch on one rank of several would desynchronize the others.
+- Drill: `OMOL_GPU_MEMORY_FRACTION=0.35` caps the GPU memory of a run so some batches cannot fit. The smoke job
+  (`slurm/smoke_train.sh`) runs it for every variant and checks that the run skips batches and still finishes.
