@@ -11,4 +11,5 @@ free -g | head -2
 $PY -c "import torch, fairchem.core, pymatgen, wandb; print('torch', torch.__version__, 'cuda available', torch.cuda.is_available(), 'threads', torch.get_num_threads())"
 $PY -m pip check
 for split in train_4M val; do echo "$split: $(ls $ROOT/data/omol25/$split/*.aselmdb | wc -l) shards"; done
-$PY -B -m unittest discover -s "$ROOT/repo/AI4Science-MLIPs/tests" -t "$ROOT/repo/AI4Science-MLIPs" -p 'test_local_routing*.py' 2>&1 | grep -E '^(Ran|OK|FAILED)'
+cd "$ROOT/repo/AI4Science-MLIPs"
+$PY -B -m unittest discover -s tests -p 'test_local_routing*.py' 2>&1 | tail -5   # pipefail: a failing test fails the job
