@@ -2,6 +2,7 @@ defaults:
   - variant: dense
   - data: generic
   - element_refs: omol
+  - logger: wandb
   - _self_
 
 job:
@@ -10,7 +11,6 @@ job:
   run_dir: ${oc.env:OMOL_RUN_DIR,../omol25-runs}
   seed: 0
   debug: false
-  logger: null
   scheduler:
     mode: LOCAL
     ranks_per_node: 1

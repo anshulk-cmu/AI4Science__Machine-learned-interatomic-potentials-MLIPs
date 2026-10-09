@@ -118,7 +118,6 @@ python -m training.run --mode train variant=global \
 ## Known gaps
 
 - No Local router variant yet (see below).
-- The W&B logger is off (`job.logger: null`).
 - The normalizer `rmsd` is the allscaip value, not refit on `train_4M`.
 - Energy and force loss weights are 1:1 (coefficient 1.0 each) and have not been tuned.
 - `training.workers` is 0, so data loading runs in the training process.
@@ -153,4 +152,18 @@ neighbors within 6 A, and every message edge mixes the experts with the coeffici
 - Not supported: a routing radius above the message cutoff (Local-12), graph parallelism, merging into one linear layer.
 - fairchem builds each edge frame from Euler angles, which are singular for an edge exactly along y. Forces there differ
   from the energy gradient, for Dense as well. The tests rotate molecules off the axes for that reason.
+
+## Weights and Biases (offline)
+
+`train.yaml` turns the W&B logger on through the `logger: wandb` config group (`logger=none` turns it off). `training/run.py`
+sets `WANDB_MODE=offline`, so nothing leaves the machine: the run files are written under the run directory
+(`OMOL_RUN_DIR`, on Ocean for cluster runs) and the W&B cache and config go under `OMOL_CACHE_DIR`. Upload a run later from
+a machine with internet and a W&B login:
+
+```bash
+wandb sync $OMOL_RUN_DIR/<run>/logs/wandb/offline-run-*
+```
+
+`WANDB_ENTITY` and `WANDB_PROJECT` override the defaults (`anshulk-cmu`, `mlip-local-routing`). Set `WANDB_MODE=online` to
+log live. The run name is `job.run_name`.
 

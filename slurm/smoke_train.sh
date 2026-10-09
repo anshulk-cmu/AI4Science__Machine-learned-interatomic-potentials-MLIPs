@@ -24,3 +24,5 @@ for V in dense global local6; do
 done
 echo "== size consistency of the checkpoints"
 $PY -B audit/check_checkpoint.py "$OMOL_RUN_DIR"/*/checkpoints/final/inference_ckpt.pt
+echo "== W&B offline runs"
+find "$OMOL_RUN_DIR" -maxdepth 5 -name 'offline-run-*'

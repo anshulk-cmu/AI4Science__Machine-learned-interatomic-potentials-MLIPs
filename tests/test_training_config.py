@@ -97,6 +97,12 @@ class ComposedConfigTests(unittest.TestCase):
             self.assertAlmostEqual(float(task.normalizer.rmsd), 1.433569, places=6)
             self.assertEqual(float(task.normalizer.mean), 0.0)
 
+    def test_wandb_logger_on_by_default_and_switchable(self):
+        logger = self.cfg.job.logger
+        self.assertTrue(logger._target_.endswith("WandBSingletonLogger.init_wandb"))
+        self.assertEqual(logger.project, "mlip-local-routing")
+        self.assertIsNone(compose("dense", "logger=none").job.logger)
+
     def test_ema_and_inference_checkpoint(self):
         self.assertEqual(self.unit.ema_decay, 0.999)
         self.assertIs(self.unit.save_inference_ckpt, True)
@@ -205,6 +211,19 @@ class RunGuardTests(unittest.TestCase):
             self.run.main()
         cli.assert_called_once_with(argparse.Namespace(config="configs/train.yaml"), ["variant=dense"])
         self.assertEqual(os.environ["FAIRCHEM_CACHE_DIR"], str((ROOT.parent / "cacheProbe" / "fairchem").resolve()))
+
+    def test_wandb_defaults_to_offline_and_respects_the_environment(self):
+        for key in ("WANDB_MODE", "WANDB_CACHE_DIR", "WANDB_CONFIG_DIR"):
+            os.environ.pop(key, None)
+        os.environ["OMOL_CACHE_DIR"] = str(ROOT.parent / "cacheProbe")
+        with mock.patch.object(self.run, "version", return_value="2.21.0"), mock.patch("fairchem.core._cli.main"):
+            self.run.main()
+        self.assertEqual(os.environ["WANDB_MODE"], "offline")
+        self.assertEqual(os.environ["WANDB_CACHE_DIR"], str((ROOT.parent / "cacheProbe" / "wandb").resolve()))
+        os.environ["WANDB_MODE"] = "online"
+        with mock.patch.object(self.run, "version", return_value="2.21.0"), mock.patch("fairchem.core._cli.main"):
+            self.run.main()
+        self.assertEqual(os.environ["WANDB_MODE"], "online")
 
 
 if __name__ == "__main__":

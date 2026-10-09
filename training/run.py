@@ -20,6 +20,10 @@ def main():
     cache = Path(os.environ.get("OMOL_CACHE_DIR", root.parent / "omol25-cache")).resolve()
     os.environ.setdefault("FAIRCHEM_CACHE_DIR", str(cache / "fairchem"))
     os.environ.setdefault("WARP_CACHE_PATH", str(cache / "warp"))
+    # W&B stays local: runs are written under the run directory on Ocean and uploaded later with `wandb sync`
+    os.environ.setdefault("WANDB_MODE", "offline")
+    os.environ.setdefault("WANDB_CACHE_DIR", str(cache / "wandb"))
+    os.environ.setdefault("WANDB_CONFIG_DIR", str(cache / "wandb_config"))
 
     import fairchem.core
 
