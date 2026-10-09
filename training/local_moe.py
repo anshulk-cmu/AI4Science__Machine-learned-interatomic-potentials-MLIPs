@@ -21,16 +21,23 @@ from local_routing import RoutingNeighbors, local_composition
 class LocalMOLE(MOLE):
     """MOLE with the same parameters, mixing the expert outputs per edge instead of merging per structure."""
 
+    def _mix(self, x, alpha):
+        flat = x.reshape(x.shape[0], -1, x.shape[-1])
+        mixed = torch.einsum("emi,koi->emko", flat, self.weights)
+        y = torch.einsum("emko,ek->emo", mixed, alpha.to(mixed.dtype))
+        return y.reshape(*x.shape[:-1], self.out_features)
+
     def forward(self, x):
         g = self.global_mole_tensors
         # activation checkpointing feeds the edges in chunks, ac_start_idx is the chunk offset
         alpha = g.edge_coefficients[g.ac_start_idx : g.ac_start_idx + x.shape[0]]
         if alpha.shape[0] != x.shape[0]:
             raise ValueError("edge coefficients do not cover this chunk of edges")
-        flat = x.reshape(x.shape[0], -1, x.shape[-1])
-        mixed = torch.einsum("emi,koi->emko", flat, self.weights)
-        y = torch.einsum("emko,ek->emo", mixed, alpha.to(mixed.dtype))
-        y = y.reshape(*x.shape[:-1], self.out_features)
+        if torch.is_grad_enabled() and (x.requires_grad or alpha.requires_grad):
+            # the [edges, K, out] tensor is K times the output, so recompute it in the backward pass
+            y = torch.utils.checkpoint.checkpoint(self._mix, x, alpha, use_reentrant=False)
+        else:
+            y = self._mix(x, alpha)
         return y if self.bias is None else y + self.bias
 
 
