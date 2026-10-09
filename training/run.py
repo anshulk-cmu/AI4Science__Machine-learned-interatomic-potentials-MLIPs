@@ -5,12 +5,21 @@ from importlib.metadata import distribution, version
 import os
 from pathlib import Path
 
+BASE_ATOMS = 320   # training.max_atoms in configs/train.yaml
+# Atoms per batch, as a multiple of the base, chosen to fill a 32 GB GPU: the smoke test peaked at 7.1 GiB (Dense),
+# 7.9 GiB (Global) and 19.3 GiB (Local-6) with 320 atoms. Pass training.max_atoms=N to override.
+BATCH_SCALE = {"dense": 2.5, "global": 2.5, "local6": 1.25}
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=("train",), default="train")
     parser.add_argument("-c", "--config", default="configs/train.yaml")
     args, overrides = parser.parse_known_args()
+
+    variant = next((o.split("=", 1)[1] for o in overrides if o.startswith("variant=")), "dense")
+    if variant in BATCH_SCALE and not any(o.startswith("training.max_atoms=") for o in overrides):
+        overrides.append(f"training.max_atoms={round(BASE_ATOMS * BATCH_SCALE[variant])}")
 
     if version("fairchem-core") != "2.21.0":
         raise RuntimeError("Use requirements.txt: fairchem-core must be exactly 2.21.0")

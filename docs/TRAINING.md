@@ -64,7 +64,7 @@ Common runtime overrides:
 | `train.yaml` | `training.warmup_steps` | linear warmup length in steps; `null` means `round(0.05 * steps)`. It does not depend on the dataloader length. |
 | `train.yaml` | `training.eval_every` | steps between validation runs; defaults to `training.steps`. |
 | `train.yaml` | `training.ckpt_every` | steps between checkpoints; defaults to `training.steps`. |
-| `train.yaml` | `training.max_atoms` | `320` atoms per batch; larger structures are dropped by the sampler. |
+| `train.yaml` | `training.max_atoms` | The batch size in atoms; larger structures are dropped by the sampler. The file holds the base value 320. `training/run.py` multiplies it by variant: Dense and Global 2.5x (800 atoms), Local-6 1.25x (400 atoms), to fill a 32 GB GPU. Pass `training.max_atoms=N` to set it yourself. |
 | `train.yaml` | `training.max_neighbors` | `300` nearest neighbours kept per atom inside the cutoff (`a2g_args.max_neigh`, both splits). |
 | `train.yaml` | `training.cutoff` | `6.0` Å graph/model cutoff. |
 | `train.yaml` | `training.normalizer_rmsd` | shared energy and force normalizer. |
@@ -146,7 +146,7 @@ neighbors within 6 A, and every message edge mixes the experts with the coeffici
   Dense but not Global, the per-edge mixing equals fairchem's merged layers when every atom gets the structure mean, and
   the forces equal the energy gradient. Run them in Linux or WSL2.
 - Memory: Local mixes the expert outputs per edge, which needs several times the memory of Global. A 20-step run with
-  the default `training.max_atoms=320` ran out of memory on a 12 GB laptop GPU even with `checkpoint_chunk_size: 4096`
+  `training.max_atoms=320` ran out of memory on a 12 GB laptop GPU even with `checkpoint_chunk_size: 4096`
   and the mixing recomputed in the backward pass. Lower `training.max_atoms` or run on a larger GPU (Bridges-2). The peak
   memory per setting has not been measured yet.
 - Not supported: a routing radius above the message cutoff (Local-12), graph parallelism, merging into one linear layer.

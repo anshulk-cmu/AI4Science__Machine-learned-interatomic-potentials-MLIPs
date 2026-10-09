@@ -209,8 +209,21 @@ class RunGuardTests(unittest.TestCase):
         with mock.patch.object(self.run, "version", return_value="2.21.0"), \
                 mock.patch("fairchem.core._cli.main") as cli:
             self.run.main()
-        cli.assert_called_once_with(argparse.Namespace(config="configs/train.yaml"), ["variant=dense"])
+        cli.assert_called_once_with(argparse.Namespace(config="configs/train.yaml"),
+                                    ["variant=dense", "training.max_atoms=800"])
         self.assertEqual(os.environ["FAIRCHEM_CACHE_DIR"], str((ROOT.parent / "cacheProbe" / "fairchem").resolve()))
+
+    def test_batch_size_follows_the_variant_unless_overridden(self):
+        expected = {"dense": 800, "global": 800, "local6": 400}
+        for variant, atoms in expected.items():
+            for extra, want in (([], atoms), (["training.max_atoms=123"], 123)):
+                with self.subTest(variant=variant, extra=extra):
+                    argv = ["run", f"variant={variant}", *extra]
+                    with mock.patch.object(sys, "argv", argv),                             mock.patch.object(self.run, "version", return_value="2.21.0"),                             mock.patch("fairchem.core._cli.main") as cli:
+                        self.run.main()
+                    overrides = cli.call_args[0][1]
+                    self.assertEqual([o for o in overrides if o.startswith("training.max_atoms=")],
+                                     [f"training.max_atoms={want}"])
 
     def test_wandb_defaults_to_offline_and_respects_the_environment(self):
         for key in ("WANDB_MODE", "WANDB_CACHE_DIR", "WANDB_CONFIG_DIR"):
