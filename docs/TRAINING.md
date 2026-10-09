@@ -196,3 +196,40 @@ Every variant trains with `training.guarded_unit.GuardedTrainEvalUnit` (`train_e
 - Single process only: skipping a batch on one rank of several would desynchronize the others.
 - Drill: `OMOL_GPU_MEMORY_FRACTION=0.35` caps the GPU memory of a run so some batches cannot fit. The smoke job
   (`slurm/smoke_train.sh`) runs it for every variant and checks that the run skips batches and still finishes.
+
+## Pilot jobs on Bridges-2
+
+One job file per pilot in `slurm/`; each person submits one. All three call `slurm/pilot.sh`, which trains the variant on the real
+OMol25 data, then checks the size consistency of the final checkpoint.
+
+| Pilot | Job file | GPU | Time limit | Who |
+|---|---|---|---|---|
+| Dense | `pilot_dense.job` | `v100-32` | 6 h | Yiwei |
+| Global | `pilot_global.job` | `v100-32` | 6 h | Anshul |
+| Local-6 | `pilot_local6.job` | `l40s-48` | 10 h | Pragati |
+
+Submit from a login node (project `che260063p`, 1 SU per GPU-hour):
+
+```bash
+cd /ocean/projects/che260063p/shared/repo/AI4Science-MLIPs/slurm
+sbatch pilot_dense.job            # or pilot_global.job, pilot_local6.job
+squeue --me                       # state of your jobs
+```
+
+The job emails Anshul by default; add `--mail-user=you@andrew.cmu.edu` to `sbatch` to get the emails yourself. Output goes to
+`/ocean/projects/che260063p/shared/logs/slurm-<jobid>.out` and everything else to
+`/ocean/projects/che260063p/shared/runs/pilot_<variant>_<jobid>/`: `summary.txt` (one line per stage, peak GPU memory, last loss,
+validation numbers, skipped OOM batches, the size-consistency Delta), `settings.txt`, `logs/` (the full output of every stage) and
+`train/` (checkpoints and the offline W&B run).
+
+**Settings.** The four lines `PILOT_STEPS`, `PILOT_SEED`, `PILOT_TRAIN_SAMPLES` and `PILOT_VAL_SAMPLES` near the end of each job
+file (10000, 0, 200000, 5000) are placeholders until the team agrees; the three job files must carry the same values. If you raise the
+steps, raise the time limit (`#SBATCH -t`). Measured at 450 atoms per batch in the 30-step tests: Dense 651, Global 673 and Local-6
+333 atoms per second, about 0.69, 0.67 and 1.35 s per step, so 10,000 steps take about 2, 2 and 4 hours plus the evaluations.
+`pilot.sh` refuses a GPU that is too small (Dense and Global need 31 GB or more, Local-6 44 GB or more).
+
+**Tested on 2026-10-09** with 30 steps, 2,000 training and 200 validation structures (jobs 48977565, 48977567, 48977587), all stages
+passed: Dense 8 min 26 s, peak 10.5 GiB, Delta 3.7e-06 meV; Global 8 min 41 s, 11.4 GiB, Delta -31.4 meV; Local-6 12 min 20 s on an
+L40S, 29.2 GiB, Delta 2.8e-06 meV. These are pipeline checks, not model quality. Most of the time of these short runs went into the
+evaluations (every 3 steps) and the first import of torch from Ocean.
+
