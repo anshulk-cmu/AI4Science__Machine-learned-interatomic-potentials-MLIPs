@@ -1,8 +1,9 @@
 #!/bin/bash
 # Download and unpack the OMol25 train_4M and val splits, then check the archives against the sizes and
 # SHA-256 values in manifests/omol25_data_manifest.json. Run it inside a Slurm job.
+umask 002
 set -euo pipefail
-ROOT=/ocean/projects/che260063p/akumar45
+ROOT=/ocean/projects/che260063p/shared
 REPO=${1:-$ROOT/repo/AI4Science-MLIPs}
 BASE=https://dl.fbaipublicfiles.com/opencatalystproject/data/omol/250514
 mkdir -p "$ROOT/data/omol25" && cd "$ROOT/data/omol25"

@@ -1,7 +1,8 @@
 #!/bin/bash
 # Build the training environment on Ocean. Run it inside a Slurm job, never on a login node.
+umask 002
 set -euo pipefail
-ROOT=/ocean/projects/che260063p/akumar45
+ROOT=/ocean/projects/che260063p/shared
 REPO=${1:-$ROOT/repo/AI4Science-MLIPs}
 ENV=$ROOT/envs/mlip
 export CONDA_PKGS_DIRS=$ROOT/.conda/pkgs PIP_CACHE_DIR=$ROOT/.pipcache TMPDIR=$ROOT/tmp

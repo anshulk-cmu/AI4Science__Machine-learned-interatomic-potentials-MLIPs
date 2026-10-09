@@ -10,7 +10,7 @@
 #SBATCH --mail-user=anshulk@andrew.cmu.edu
 # made by make_sbatch.py from the Bridges-2 guide; estimated at most 1 SU
 # files created here are owned by the Unix group in effect at submission (p. 7):
-# submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/akumar45/logs' afterwards
+# submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/logs' afterwards
 set -x
-cd /ocean/projects/che260063p/akumar45/logs
-bash /ocean/projects/che260063p/akumar45/repo/AI4Science-MLIPs/slurm/smoke_train.sh
+cd /ocean/projects/che260063p/shared/logs
+bash /ocean/projects/che260063p/shared/repo/AI4Science-MLIPs/slurm/smoke_train.sh

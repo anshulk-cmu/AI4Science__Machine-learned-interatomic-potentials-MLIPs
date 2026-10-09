@@ -1,8 +1,9 @@
 #!/bin/bash
 # Smoke test on one GPU: the unit tests, then 20 training steps of Dense, Global and Local-6 on a sample of the
 # real OMol25 data, then the size-consistency check on each saved checkpoint. Run it inside a Slurm job.
+umask 002
 set -uo pipefail
-ROOT=/ocean/projects/che260063p/akumar45
+ROOT=/ocean/projects/che260063p/shared
 REPO=${1:-$ROOT/repo/AI4Science-MLIPs}
 PY=$ROOT/envs/mlip/bin/python
 export OMOL_DATA_ROOT=$ROOT/data/omol25 OMOL_CACHE_DIR=$ROOT/cache OMOL_RUN_DIR=$ROOT/runs/smoke_${SLURM_JOB_ID:-manual}
