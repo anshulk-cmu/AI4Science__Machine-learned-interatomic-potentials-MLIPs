@@ -1,9 +1,8 @@
 # Local router
 
-**Standalone component with fairchem integration pending.**
-
-The router and a linear-expert reference are implemented. The SO(2) layer
-integration and OMol25 training runs remain to be done.
+The router and a linear-expert reference are implemented in `local_routing/`. They are integrated into fairchem 2.21.0
+as the Local-6 backbone (`training/local_moe.py`, `configs/variant/local6.yaml`; see `docs/TRAINING.md`). Local-6 has
+been trained for 30 steps on real OMol25 data on Bridges-2. Long training runs are still to be done.
 
 ## Interface
 
@@ -95,7 +94,8 @@ The toy scalar is not a molecular potential.
 All 17 tests passed again on 8 October 2026, on macOS CPU with Python 3.12.14
 and PyTorch 2.8.0. PyTorch warned that NumPy was absent in the temporary test
 environment; these tests use tensor operations and do not require NumPy.
-CUDA, fairchem integration, full-model forces, and MD stability remain untested.
+MD stability remains untested. CUDA, the fairchem integration and full-model forces are tested by
+`tests/test_local_backbone.py`.
 
 `tests/test_local_routing_contracts.py` adds 27 tests: the neighbor-list and
 coefficient contracts above, the error paths, float32 paths, unequal structure
@@ -106,20 +106,14 @@ to run both files on a GPU; the default is `cpu`. All 44 tests passed on
 
 ## Handoff and dates
 
-Yiwei is targeting a usable shared pipeline on 8 October: fixed pilot data,
-Dense training/validation, W&B, checkpoints, and model integration points.
-Local-6 integration depends on that code. Her travel starts 9 October, so use
-the 8 October meeting to confirm the encoder, geometry helper, exact SO(2)
-modules, coefficient normalization, and any unfinished pipeline work.
+Local-6 is integrated and tested. The full suite has 101 tests (`python -m unittest discover -s tests`), run on 9 October
+2026 on Windows CPU (Python 3.12, PyTorch 2.8.0+cu128). The Linux CPU and CUDA runs were done earlier on Bridges-2.
 
-Anshul accepted these dates for Pragati:
+Dates for Pragati:
 
-- 8 October: agree on the interface and implementation approach.
 - 11 October: report progress and blockers.
-- 15 October: router merged; Local-6 runs a few batches; force checks complete.
-- 16 to 18 October: short pilot if integration and GPU access are ready.
+- 12 to 18 October: the Local-6 pilot, `slurm/pilot_local6.job` on an L40S (`l40s-48`). It needs a working PSC login.
+  If that is still blocked, Anshul submits it.
 
-If Local-6 is not running by 15 October, the agreed midterm fallback is to report
-it as implemented but not trained. Dense and Global remain the midterm baseline.
-Describe exactly which components are implemented; this package alone does not
-establish a working Local-6 backbone.
+If Local-6 cannot be trained by the deadline, the agreed midterm fallback is to report it as implemented but not
+trained. Dense and Global remain the midterm baseline.

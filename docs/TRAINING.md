@@ -117,12 +117,12 @@ python -m training.run --mode train variant=global \
 
 ## Known gaps
 
-- No Local router variant yet (see below).
+- The pilot settings (steps, seeds, fixed sample lists) are placeholders until the team agrees.
 - The normalizer `rmsd` is the allscaip value, not refit on `train_4M`.
 - Energy and force loss weights are 1:1 (coefficient 1.0 each) and have not been tuned.
 - `training.workers` is 0, so data loading runs in the training process.
-- `max_neighbors: 300` is the `eSCNMDBackbone` default. Whether any OMol atom has more than 300
-  neighbours within 6 Å, which would truncate its edges, has not been measured.
+- `max_neighbors: 300` is the `eSCNMDBackbone` default. On the 27,697 structures of the `neutral_val` subset the largest
+  neighbour count within 6 Å is 85, so 300 never truncates there. It has not been measured on `train_4M`.
 - The ids of the structures drawn by `sample_n` in pilot runs are not recorded.
 
 ## Add a Local Router

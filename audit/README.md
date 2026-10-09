@@ -51,6 +51,9 @@ foreach ($m in "uma-s-1p1", "uma-s-1p2") {
   foreach ($t in "omat", "omol") { & $py1 neon_probe.py --family uma --model $m --task $t }
 }
 
+# size-consistency check of trained checkpoints (the pilot jobs call this)
+& $py1 check_checkpoint.py <path to inference_ckpt.pt>
+
 # forcing test F1, UMA only; tau comes from the null tests of the same label
 & $py1 f1_forcing.py --model uma-s-1p1 --task omat
 & $py1 f1_forcing.py --model uma-s-1p2 --task omat
