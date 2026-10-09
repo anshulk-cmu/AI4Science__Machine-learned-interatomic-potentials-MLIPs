@@ -171,10 +171,12 @@ log live. The run name is `job.run_name`.
 
 | Variant | GPU on Bridges-2 | Why |
 |---|---|---|
-| Dense, Global | `v100-32` (V100, 32 GB) or larger | measured peak 19.5 and 20.0 GiB at 450 atoms per batch |
-| Local-6 | `l40s-48` (L40S, 48 GB) | measured peak 26.3 GiB at 450 atoms on a V100-32, which leaves only about 5 GiB of headroom |
+| Dense, Global | `v100-32` (V100, 32 GB) or larger | measured peak 9.5 GiB (Dense) and 10.5 GiB (Global) at 450 atoms per batch |
+| Local-6 | `l40s-48` (L40S, 48 GB) | measured peak 26.3 GiB at 450 atoms (on a V100-32 and on an L40S), which leaves about 18 GiB free on the L40S and only about 5 GiB on a V100-32 |
 
-Peaks are from the 20-step smoke test (`nvidia-smi`, so they include the allocator cache). Memory is not linear in the
+Peaks are from the 20-step smoke test (`nvidia-smi`, so they include the allocator cache), run with the settings in the next
+section (expandable segments, cache cleared every 50 steps). Without them the same runs showed 19.5 GiB (Dense) and 20.0 GiB
+(Global); Local-6 stayed at 26.3 GiB. Memory is not linear in the
 batch: a larger limit also admits larger molecules with many more edges. A 16 GB GPU (`v100-16`) fits none of the three
 at 450 atoms, and the 12 GB laptop GPU ran out of memory on Local-6. `training/run.py` prints a warning when the GPU has
 less than 31 GiB.
