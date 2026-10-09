@@ -1,6 +1,7 @@
 """Size-consistency check of trained checkpoints: Delta for the Al and Ni slabs (ideal geometry) at each gap."""
 import argparse
 import sys
+import traceback
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -17,15 +18,22 @@ def main():
     ap.add_argument("--gaps", type=int, nargs="+", default=[8, 100])
     a = ap.parse_args()
     al, ni = g.ideal_slab("Al"), g.ideal_slab("Ni")
+    failed = 0
     for path in a.checkpoints:
-        energy, cutoff = models.load("uma", path, a.task, a.dtype)
-        e_al, e_ni = energy(g.isolated(al)), energy(g.isolated(ni))
-        deltas = []
-        for gap in a.gaps:
-            pair = g.stacked(al, ni, gap)
-            g.assert_disconnected(pair, cutoff)
-            deltas.append(f"{gap} A: {(energy(pair) - e_al - e_ni) * 1000:.6g}")
-        print(f"{path}  Delta meV  " + "  ".join(deltas), flush=True)
+        try:
+            energy, cutoff = models.load("uma", path, a.task, a.dtype)
+            e_al, e_ni = energy(g.isolated(al)), energy(g.isolated(ni))
+            deltas = []
+            for gap in a.gaps:
+                pair = g.stacked(al, ni, gap)
+                g.assert_disconnected(pair, cutoff)
+                deltas.append(f"{gap} A: {(energy(pair) - e_al - e_ni) * 1000:.6g}")
+            print(f"{path}  Delta meV  " + "  ".join(deltas), flush=True)
+        except Exception:                      # one bad checkpoint must not hide the others
+            failed += 1
+            print(f"{path}  FAILED", flush=True)
+            traceback.print_exc()
+    sys.exit(1 if failed else 0)
 
 
 if __name__ == "__main__":

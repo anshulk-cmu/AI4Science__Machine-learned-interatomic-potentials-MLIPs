@@ -55,11 +55,14 @@ def reference_neighbors(positions: Tensor, batch: Tensor, radius: float) -> Rout
 
 
 def local_composition(embeddings: Tensor, batch: Tensor, neighbors: RoutingNeighbors,
-                      radius: float = 6.0, power: int = 3) -> Tensor:
+                      radius: float = 6.0, power: int = 3, check_duplicates: bool = True) -> Tensor:
     """Smooth sparse composition average with the central atom counted once.
 
     A zero-distance self edge is rejected because the central atom is already
     included. A self edge at d > 0 is a periodic image and adds its weight.
+    Rows with the same (receiver, sender, distance) are rejected as duplicates. Pass
+    check_duplicates=False for a periodic graph: two images of one atom pair can lie at
+    exactly the same distance (opposite cell shifts), and the row carries no cell offset.
     """
     if not math.isfinite(radius) or radius < 0 or not isinstance(power, int) or power < 3:
         raise ValueError("radius must be finite/nonnegative and power an integer >=3")
@@ -78,9 +81,10 @@ def local_composition(embeddings: Tensor, batch: Tensor, neighbors: RoutingNeigh
     if bool(((sender == receiver) & (distances == 0)).any()):
         raise ValueError("omit zero-distance self edges: central atom is already included")
     # float64 holds int64 indices exactly below 2**53 and every float32/float64 distance.
-    rows = torch.stack((receiver.double(), sender.double(), distances.detach().double()), dim=1)
-    if torch.unique(rows, dim=0).shape[0] != rows.shape[0]:
-        raise ValueError("duplicate neighbor edges")
+    if check_duplicates:
+        rows = torch.stack((receiver.double(), sender.double(), distances.detach().double()), dim=1)
+        if torch.unique(rows, dim=0).shape[0] != rows.shape[0]:
+            raise ValueError("duplicate neighbor edges")
     if bool((batch[sender] != batch[receiver]).any()):
         raise ValueError("routing neighbors cannot cross structure boundaries")
     if not bool(torch.isfinite(distances).all()) or bool((distances < 0).any()):

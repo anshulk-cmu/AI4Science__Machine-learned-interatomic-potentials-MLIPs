@@ -271,6 +271,15 @@ class ContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate neighbor edges"):
             self.composition([[0, 1, 0], [1, 0, 1]], torch.tensor([2., 2., 2.], dtype=F64))
 
+    def test_r1_check_can_be_switched_off_for_periodic_graphs(self):
+        # two images of one pair at the same distance (opposite cell shifts) are legitimate edges
+        edges, distances = torch.tensor([[0, 0], [1, 1]]), torch.tensor([2., 2.], dtype=F64)
+        with self.assertRaisesRegex(ValueError, "duplicate neighbor edges"):
+            local_composition(self.emb, self.batch, RoutingNeighbors(edges, distances))
+        out = local_composition(self.emb, self.batch, RoutingNeighbors(edges, distances), check_duplicates=False)
+        w = (1 - 4 / 36)**3
+        torch.testing.assert_close(out[1], (self.emb[1] + 2 * w * self.emb[0]) / (1 + 2 * w))
+
     def test_r1_same_pair_at_different_distances_allowed(self):
         w1, w2 = (1 - 4 / 36)**3, (1 - 9 / 36)**3
         out = self.composition([[0, 0], [1, 1]], torch.tensor([2., 3.], dtype=F64))

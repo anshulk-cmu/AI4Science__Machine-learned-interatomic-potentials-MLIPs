@@ -145,7 +145,7 @@ class LocalBackboneTests(unittest.TestCase):
         a, b, union = fragments()
         import training.local_moe as lm
 
-        def mean_composition(embeddings, batch, neighbors, radius, power):
+        def mean_composition(embeddings, batch, neighbors, radius, power, **kwargs):
             totals = torch.zeros(int(batch.max()) + 1, embeddings.shape[1], dtype=embeddings.dtype, device=embeddings.device)
             totals = totals.index_add(0, batch, embeddings)
             counts = torch.bincount(batch).to(embeddings.dtype)
@@ -179,6 +179,28 @@ class LocalBackboneTests(unittest.TestCase):
             minus.positions[atom, axis] -= step
             numeric = -(energy(m, plus) - energy(m, minus)) / (2 * step)
             self.assertAlmostEqual(numeric, forces[atom, axis], delta=1e-7)
+
+    def test_periodic_slabs_run_and_far_slabs_are_additive(self):
+        # The benchmark geometry: periodic Al and Ni slabs in a 10.7 A cell. fairchem's graph holds
+        # several images of one atom pair at the same distance there, which once failed the duplicate check.
+        sys.path.insert(0, str(ROOT / "audit"))
+        import geometry as g
+        from fairchem.core.datasets.atomic_data import AtomicData, atomicdata_list_to_batch
+
+        def periodic_energy(model, atoms):
+            atoms = atoms.copy()
+            atoms.info.update(charge=0, spin=1)
+            data = AtomicData.from_ase(atoms, task_name="omol", r_edges=False, r_data_keys=["spin", "charge"],
+                                       r_forces=False, r_stress=False, target_dtype=torch.float64)
+            return model(atomic_list_to_batch([data]).to(DEVICE))["omol_energy"]["energy"].item()
+
+        atomic_list_to_batch = atomicdata_list_to_batch
+        al, ni = g.ideal_slab("Al"), g.ideal_slab("Ni")
+        for variant in ("local6", "dense"):
+            m = build(variant)
+            delta = (periodic_energy(m, g.stacked(al, ni, 10)) - periodic_energy(m, g.isolated(al))
+                     - periodic_energy(m, g.isolated(ni)))
+            self.assertLess(abs(delta), 1e-9, variant)
 
     def test_energy_is_invariant_to_rotation_translation_and_atom_order(self):
         from ase.build import molecule

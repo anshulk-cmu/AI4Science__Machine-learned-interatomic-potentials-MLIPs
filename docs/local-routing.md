@@ -30,6 +30,9 @@ is not truncated by `max_neighbors`, the distances carry gradients to positions,
 and no two rows of (receiver, sender, distance) are identical. The router raises
 `ValueError` on duplicate rows, on detached distances when positions require
 gradients, and on distances whose dtype or device differ from the router's.
+`local_composition(..., check_duplicates=False)` skips the duplicate check. The fairchem backbone
+(`training/local_moe.py`) uses it, because a periodic graph can hold two images of one atom pair at exactly
+the same distance (opposite cell shifts) and the rows carry no cell offset.
 
 Distances must retain gradients to positions. `reference_neighbors` does this
 for small, non-periodic systems, using an O(N^2) search. It never makes self
