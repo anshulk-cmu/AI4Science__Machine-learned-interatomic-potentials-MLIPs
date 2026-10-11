@@ -120,7 +120,7 @@ python -m training.run --mode train variant=global \
 
 ## Known gaps
 
-- The pilots are a short regime: 20,000 steps are about 1/1,900 of the official eSEN run. They measure seed noise and test the
+- The pilots are a short regime: 50,000 steps are about 1/760 of the official eSEN run (two passes over the 200,000 training rows). They measure seed noise and test the
   pipeline, they do not give final accuracy.
 - The normalizer `rmsd` is the allscaip value 1.433569, not refit. Measured on the pilot lists (job 49039106, 2026-10-11): the per-atom
   force-norm RMS is 2.12 eV/A on the 200,000 training rows (component RMS 1.23) and 1.54 on the 5,000 validation rows, so the official
@@ -179,7 +179,7 @@ log live. The run name is `job.run_name`.
 | Variant | GPU on Bridges-2 | Why |
 |---|---|---|
 | Dense, Global | `v100-32` (V100, 32 GB) or larger | measured peak 9.5 GiB (Dense) and 10.5 GiB (Global) at 450 atoms per batch |
-| Local-6 | `l40s-48` (L40S, 48 GB) | measured peak 26.3 GiB at 450 atoms (on a V100-32 and on an L40S), which leaves about 18 GiB free on the L40S and only about 5 GiB on a V100-32 |
+| Local-6 | `h100-80` (H100, 80 GB, 2 SU per GPU-hour), chosen by the team on 2026-10-11 for memory headroom; `l40s-48` also works | measured peak 26.3 GiB at 450 atoms in the smoke test, 27.6 GiB in the 30-step pilot test and 37.3 GiB in a longer run on an L40S (46 GiB), so the L40S had about 9 GiB free; the H100 has about 40 GiB more. The H100 has not run this environment yet |
 
 Peaks are from the 20-step smoke test (`nvidia-smi`, so they include the allocator cache), run with the settings in the next
 section (expandable segments, cache cleared every 50 steps). Without them the same runs showed 19.5 GiB (Dense) and 20.0 GiB
@@ -188,21 +188,26 @@ batch: a larger limit also admits larger molecules with many more edges. A 16 GB
 at 450 atoms, and the 12 GB laptop GPU ran out of memory on Local-6. `training/run.py` prints a warning when the GPU has
 less than 31 GiB.
 
-## Out-of-memory protection
+## Out-of-memory monitor
 
-Every variant trains with `training.guarded_unit.GuardedTrainEvalUnit` (`train_eval_unit` in `configs/train.yaml`):
+Every variant trains with `training.guarded_unit.GuardedTrainEvalUnit` (`train_eval_unit` in `configs/train.yaml`). It is a monitor and a
+cleanup, not a filter. **No batch is ever skipped.**
 
-- A batch that runs out of GPU memory is skipped and counted (`OOM: skipped train batch ...` in the log, with its atoms
-  and edges), gradients are cleared, the cache is emptied and the learning-rate schedule still advances. A skipped
-  validation batch is counted too. At the end the log says `OOM-skipped batches: N train, M eval`, and W&B gets
-  `train/oom_skipped_batches`.
-- `max_consecutive_oom: 5` stops the run with a clear message after five skipped batches in a row, because the batch is
-  then too big for the GPU (lower `training.max_atoms` or use a larger GPU).
+- A batch that runs out of GPU memory logs a warning (`OOM: train batch (N atoms, E edges) ran out of memory, event k; cleaned up,
+  attempt a of 3. GPU memory: ...`). The unit then clears the gradients, collects Python garbage, empties the CUDA cache and runs the
+  same batch again. A batch that runs after a retry counts as recovered. The cleanup runs outside the `except` block, because the
+  traceback of an error holds the tensors of the failed step.
+- `max_oom_retries: 2`: if a batch still fails after two retries, the run stops with a message that says the batch "does not fit this
+  GPU", so a real memory problem is seen and not hidden. The last checkpoint stays on disk. Validation batches are treated the same way.
+- At the end the log says `OOM events: N train (R recovered), M eval (R recovered); no batch was skipped`, and W&B gets `train/oom_events`.
+  The pilot `summary.txt` shows the first events and this line. Any event is worth a look; nothing blocks the run unless a batch fails
+  after its retries.
 - `gc_every: 50` collects Python garbage and empties the CUDA cache every 50 steps.
 - `training/run.py` sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` to reduce fragmentation (override by setting it).
-- Single process only: skipping a batch on one rank of several would desynchronize the others.
-- Drill: `OMOL_GPU_MEMORY_FRACTION=0.35` caps the GPU memory of a run so some batches cannot fit. The smoke job
-  (`slurm/smoke_train.sh`) runs it for every variant and checks that the run skips batches and still finishes.
+- Single process only.
+- Drill: `OMOL_GPU_MEMORY_FRACTION=0.35` caps the GPU memory of a run so some batches cannot fit. The smoke job (`slurm/smoke_train.sh`)
+  runs it for every variant and checks that every event is cleaned up and retried, and that a batch that still does not fit stops the run
+  with "does not fit this GPU". The drill therefore may end with a failed run by design.
 
 ## Fixed sample lists
 
@@ -241,20 +246,21 @@ The validation rows are larger structures than the training rows on average (102
 
 ## Pilot jobs on Bridges-2
 
-The team agreed on 2026-10-11: 20,000 steps, 450 atoms per step, **three seeds** (0, 1, 2) per model, the fixed lists above, and a
-checkpoint and a validation every 2,000 steps. One job file per model in `slurm/`. Each is a Slurm array of three tasks, and the array task
-id is the seed (`#SBATCH --array=0-2`), so one `sbatch` starts all three seeds. All call `slurm/pilot.sh`, which checks the lists, trains
-the variant on the real OMol25 data, then checks the size consistency of the final checkpoint. Every step checkpoint is kept
-(`training.max_saved_checkpoints`), so the size consistency can be measured along the training.
+The team agreed on 2026-10-11, and changed the length on 2026-10-11 (later the same day): **50,000 steps**, 450 atoms per step, **three
+seeds** (0, 1, 2) per model, the fixed lists above, and a checkpoint and a validation every 5,000 steps (the default, steps/10). One job
+file per model in `slurm/`. Each is a Slurm array of three tasks, and the array task id is the seed (`#SBATCH --array=0-2`), so one
+`sbatch` starts all three seeds. All call `slurm/pilot.sh`, which checks the lists, trains the variant on the real OMol25 data, then
+checks the size consistency of the final checkpoint. Every step checkpoint is kept (`training.max_saved_checkpoints`), so the size
+consistency can be measured along the training. Every job has the Bridges-2 maximum time limit of 48 h.
 
 | Pilot | Job file | GPU | Time limit per task | Who |
 |---|---|---|---|---|
-| Dense | `pilot_dense.job` | `v100-32` | 12 h | Yiwei |
-| Global | `pilot_global.job` | `v100-32` | 12 h | Anshul |
-| Local-6 | `pilot_local6.job` | `l40s-48` | 20 h | Anshul submits (Pragati can too) |
+| Dense | `pilot_dense.job` | `v100-32` | 48 h | Yiwei |
+| Global | `pilot_global.job` | `v100-32` | 48 h | Anshul |
+| Local-6 | `pilot_local6.job` | `h100-80` | 48 h | Anshul submits (Pragati can too) |
 
 **Order.** First run `prep_pilot_data.job` once (CPU, `RM-shared`, 16 cores, 2 h limit). It writes the index files and checks the lists.
-Then submit the pilots from a login node (project `che260063p`, 1 SU per GPU-hour):
+Then submit the pilots from a login node (project `che260063p`, 1 SU per GPU-hour on a V100 or an L40S, 2 SU on an H100):
 
 ```bash
 cd /ocean/projects/che260063p/shared/repo/AI4Science-MLIPs/slurm
@@ -265,26 +271,29 @@ squeue --me                       # state of your jobs
 
 Limits are per user, not per project: the `gpu` QOS allows 128 GPUs and 5,000 submitted jobs per user, and no per-project limit is set
 (`sacctmgr show qos` and `sacctmgr show assoc`, 2026-10-11). Jobs of other projects count toward the same per-user limits, but they are
-charged to their own project. The real limit is free GPUs: Bridges-2 has 24 L40S GPUs in total for all users, so the three Local-6 seeds
-may start one after the other. Use `-A che260063p` so the hours are charged to this project.
+charged to their own project. The real limit is free GPUs. Bridges-2 has 24 L40S and 80 H100 GPUs in total for all users, so the three
+Local-6 seeds may start one after the other. Use `-A che260063p` so the hours are charged to this project.
 
 The job emails Anshul by default; add `--mail-user=you@andrew.cmu.edu` to `sbatch` to get the emails yourself. Output goes to
 `/ocean/projects/che260063p/shared/logs/slurm-<arrayjob>_<task>.out` and everything else to
 `/ocean/projects/che260063p/shared/runs/pilot_<variant>_s<seed>_<jobid>/`: `summary.txt` (one line per stage, peak GPU memory, last loss,
-validation numbers, skipped OOM batches, the size-consistency Delta), `settings.txt`, `logs/` (the full output of every stage) and
+validation numbers, OOM events, the size-consistency Delta), `settings.txt`, `logs/` (the full output of every stage) and
 `train/` (checkpoints and the offline W&B run).
 
-**Settings.** `PILOT_STEPS` is 20000 unless set when submitting (see the test below). The seed comes from the array task id. `PILOT_EVAL_EVERY` and `PILOT_CKPT_EVERY`
-default to steps/10, which is 2,000. Set `PILOT_TRAIN_SAMPLES` and `PILOT_VAL_SAMPLES` only for a short test with a random sample.
-Measured at 450 atoms per batch in the 30-step tests: Dense 638 to 651, Global 673 to 679 and Local-6 310 to 333 atoms per second, about
-0.69, 0.67 and 1.35 s per step. One seed of 20,000 steps therefore takes about 4 h (Dense, Global) and 8 h (Local-6) plus the evaluations
-(an estimate). Each validation reads 5,000 structures of about 510,000 atoms and computes forces, so at training speed it takes about
-13 min (Dense, Global) and 26 min (Local-6); with 11 validations the estimate is 6.2 h and 11.7 h per seed, which is why the limits are
-12 h and 20 h. The limit is a cap: only the hours used are charged. The cost at the time limits is at most 36 SU (Dense), 36 SU (Global)
-and 60 SU (Local-6) for the three seeds, 132 SU of the 2,948.
-`pilot.sh` refuses a GPU that is too small (Dense and Global need 31 GB or more, Local-6 44 GB or more).
+**Settings.** `PILOT_STEPS` is 50000 unless set when submitting (see the test below). The seed comes from the array task id.
+`PILOT_EVAL_EVERY` and `PILOT_CKPT_EVERY` default to steps/10, which is 5,000. Set `PILOT_TRAIN_SAMPLES` and `PILOT_VAL_SAMPLES` only for a
+short test with a random sample. Measured at 450 atoms per batch (30-step tests and the first 2,000 steps of a longer run): Dense 735,
+Global 525 and Local-6 359 atoms per second on an L40S, about 0.61, 0.86 and 1.25 s per step. The H100 speed is not measured. Each
+validation reads 5,000 structures and takes at most about 6 min (Dense), 6.6 min (Global) and 9.8 min (Local-6 on an L40S). Estimate for
+one seed of 50,000 steps with 11 validations: about 9.6 h (Dense), 13.1 h (Global) and 19.2 h (Local-6 at L40S speed; the H100 may be
+faster). The cost of the three seeds is then about 29 SU (Dense), 39 SU (Global) and about 115 SU (Local-6 at 2 SU per hour), about 183 SU
+of the 2,948. A limit is a cap, and only the hours used are charged: at the 48 h cap the worst case is 144, 144 and 288 SU, 576 SU in total.
+Each seed keeps 11 step checkpoints and the final one, about 865 MB each for Global and Local-6 and 140 MB for Dense, about 70 GB for all
+nine runs.
+`pilot.sh` refuses a GPU that is too small (Dense and Global need 31 GB or more, Local-6 44 GB or more, so an H100 or an L40S).
 
-**Test before the long runs.** One 30-step run per model on the real job files, the real fixed lists and seed 0 (about 3 SU in total).
+**Test before the long runs.** One 30-step run per model on the real job files, the real fixed lists and seed 0 (about 3 SU in total; the
+Local-6 test runs on an H100, which has not run this environment yet, so run it first).
 The switches set the steps, one validation at the end (the last validation runs twice, see "Validation and checkpoints"), a checkpoint
 every 15 steps, a different run folder name, one array task and a short time limit:
 
@@ -298,7 +307,7 @@ Pass the settings with `--export`. Bridges-2 sets `SBATCH_EXPORT=NONE` in the lo
 reach the job. This went wrong on 2026-10-11: the first "test" ran as a full 20,000-step job. Check `settings.txt` in the run folder
 (`steps=30`) before you wait for the result.
 
-Check in `runs/pilottest_<variant>_s0_<jobid>/summary.txt`: `verify_samples` all PASS, no OOM-skipped batch, a final checkpoint, the
+Check in `runs/pilottest_<variant>_s0_<jobid>/summary.txt`: `verify_samples` all PASS, no OOM event (or only recovered ones), a final checkpoint, the
 size-consistency Delta, and the time of one validation (it sets the real time limits).
 
 **Tested on 2026-10-09** (before the move to 64 basis functions, and with a random sample) with 30 steps, 2,000 training and 200 validation structures (jobs 48977565, 48977567, 48977587), all stages

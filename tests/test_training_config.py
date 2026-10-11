@@ -182,15 +182,15 @@ class PilotFilesTests(unittest.TestCase):
             self.assertLess(rows[-1], entry["rows_in_split"])
 
     def test_job_files_carry_the_agreed_settings(self):
-        expected = {"pilot_dense": ("v100-32", "12:00:00"), "pilot_global": ("v100-32", "12:00:00"),
-                    "pilot_local6": ("l40s-48", "20:00:00")}
+        expected = {"pilot_dense": ("v100-32", "48:00:00"), "pilot_global": ("v100-32", "48:00:00"),
+                    "pilot_local6": ("h100-80", "48:00:00")}
         for name, (gpu, limit) in expected.items():
             text = (ROOT / "slurm" / f"{name}.job").read_text(encoding="utf-8")
             self.assertIn("#SBATCH -A che260063p", text)
             self.assertIn(f"#SBATCH --gpus={gpu}:1", text)
             self.assertIn(f"#SBATCH -t {limit}", text)
             self.assertIn("#SBATCH --array=0-2", text)
-            self.assertIn("export PILOT_STEPS=${PILOT_STEPS:-20000}", text)
+            self.assertIn("export PILOT_STEPS=${PILOT_STEPS:-50000}", text)
             self.assertNotIn("PILOT_SEED", text)
             self.assertNotIn("PILOT_TRAIN_SAMPLES", text)
             self.assertIn("--mail-user=anshulk@andrew.cmu.edu", text)
@@ -200,7 +200,7 @@ class PilotFilesTests(unittest.TestCase):
         text = (ROOT / "slurm" / "pilot.sh").read_text(encoding="utf-8")
         self.assertLess(text.index("stage verify_samples"), text.index("stage train "))
         self.assertIn("SLURM_ARRAY_TASK_ID", text)
-        self.assertIn("PILOT_STEPS:-20000", text)
+        self.assertIn("PILOT_STEPS:-50000", text)
         self.assertIn("PILOT_RUN_PREFIX:-pilot", text)
         overrides = (ROOT / "slurm" / "pilot_data_overrides.sh").read_text(encoding="utf-8")
         for key in ("sample_n=null", "no_shuffle=true", "metadata_path", "subset_to"):

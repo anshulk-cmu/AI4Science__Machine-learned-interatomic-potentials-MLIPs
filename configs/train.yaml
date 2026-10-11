@@ -83,7 +83,7 @@ runner:
   train_eval_unit:
     _target_: training.guarded_unit.GuardedTrainEvalUnit
     gc_every: 50                  # collect garbage and empty the CUDA cache every 50 steps
-    max_consecutive_oom: 5        # an out-of-memory batch is skipped; this many in a row stops the run
+    max_oom_retries: 2            # an out-of-memory batch is cleaned up and retried this many times; if it still fails the run stops. No batch is skipped
     job_config: ${job}
     model: ${variant}
     tasks: ${tasks}

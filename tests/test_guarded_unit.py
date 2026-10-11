@@ -1,4 +1,4 @@
-"""Out-of-memory guard of the training unit: skip and count an OOM batch, stop after too many in a row, free memory."""
+"""Out-of-memory monitor of the training unit: log, clean up and retry the same batch, never skip it, stop loudly if it still fails."""
 
 import sys
 import types
@@ -33,13 +33,14 @@ class FakeBatch:
         return key in ("natoms", "edge_index")
 
 
-def make_unit(gc_every=50, max_consecutive_oom=3, steps=1):
+def make_unit(gc_every=50, max_oom_retries=2, steps=1):
     from torchtnt.framework.unit import AppStateMixin
 
     unit = object.__new__(gu.GuardedTrainEvalUnit)          # skip the heavy fairchem constructor
     AppStateMixin.__init__(unit)                            # the base class every attribute assignment relies on
-    unit.gc_every, unit.max_consecutive_oom = gc_every, max_consecutive_oom
-    unit.skipped_train_batches = unit.skipped_eval_batches = unit._consecutive_oom = 0
+    unit.gc_every, unit.max_oom_retries = gc_every, max_oom_retries
+    unit.oom_events = {"train": 0, "eval": 0}
+    unit.oom_recovered = {"train": 0, "eval": 0}
     unit.optimizer, unit.scheduler, unit.logger = mock.Mock(), mock.Mock(), None
     unit.train_progress = types.SimpleNamespace(num_steps_completed=steps)
     return unit
@@ -63,37 +64,48 @@ class ClassificationTests(unittest.TestCase):
 
         cfg = compose("dense").runner.train_eval_unit
         self.assertEqual(cfg._target_, "training.guarded_unit.GuardedTrainEvalUnit")
-        self.assertEqual((cfg.gc_every, cfg.max_consecutive_oom), (50, 5))
+        self.assertEqual((cfg.gc_every, cfg.max_oom_retries), (50, 2))
+        self.assertNotIn("max_consecutive_oom", cfg)
 
 
 class TrainStepTests(unittest.TestCase):
-    def test_oom_batch_is_skipped_counted_and_the_schedule_advances(self):
+    def test_oom_batch_is_cleaned_up_and_retried_never_skipped(self):
         unit = make_unit()
+        batch = FakeBatch()
         with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=[OOM, None]) as parent, \
                 mock.patch.object(gu, "free_memory") as free:
-            unit.train_step(None, FakeBatch())
-            self.assertEqual((unit.skipped_train_batches, unit._consecutive_oom), (1, 1))
-            unit.optimizer.zero_grad.assert_called_once_with(set_to_none=True)
-            unit.scheduler.step.assert_called_once()
-            free.assert_called()
-            unit.train_step(None, FakeBatch())                      # a good batch resets the run of failures
-            self.assertEqual((unit.skipped_train_batches, unit._consecutive_oom), (1, 0))
-            self.assertEqual(parent.call_count, 2)
+            unit.train_step(None, batch)
+        self.assertEqual(parent.call_count, 2)                       # the same batch ran again
+        self.assertEqual([c.args for c in parent.call_args_list], [(unit, None, batch)] * 2)
+        self.assertEqual((unit.oom_events["train"], unit.oom_recovered["train"]), (1, 1))
+        unit.optimizer.zero_grad.assert_called_once_with(set_to_none=True)
+        free.assert_called()
+        unit.scheduler.step.assert_not_called()                      # nothing is skipped, so the schedule is not touched
 
-    def test_too_many_in_a_row_stops_the_run(self):
-        unit = make_unit(max_consecutive_oom=3)
-        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=OOM), mock.patch.object(gu, "free_memory"):
+    def test_a_clean_step_records_nothing(self):
+        unit = make_unit()
+        with mock.patch.object(MLIPTrainEvalUnit, "train_step") as parent, mock.patch.object(gu, "free_memory") as free:
             unit.train_step(None, FakeBatch())
-            unit.train_step(None, FakeBatch())
-            with self.assertRaisesRegex(RuntimeError, "3 out-of-memory batches in a row"):
+        self.assertEqual(parent.call_count, 1)
+        self.assertEqual((unit.oom_events, unit.oom_recovered), ({"train": 0, "eval": 0}, {"train": 0, "eval": 0}))
+        unit.optimizer.zero_grad.assert_not_called()
+        free.assert_not_called()
+
+    def test_the_run_stops_loudly_when_the_retries_fail(self):
+        unit = make_unit(max_oom_retries=2)
+        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=OOM) as parent, mock.patch.object(gu, "free_memory"):
+            with self.assertRaisesRegex(RuntimeError, "50 atoms, 1000 edges.*does not fit this GPU"):
                 unit.train_step(None, FakeBatch())
+        self.assertEqual(parent.call_count, 3)                       # the first try and two retries
+        self.assertEqual((unit.oom_events["train"], unit.oom_recovered["train"]), (3, 0))
 
     def test_other_errors_pass_through_untouched(self):
         unit = make_unit()
-        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=ValueError("bad batch")):
+        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=ValueError("bad batch")) as parent:
             with self.assertRaisesRegex(ValueError, "bad batch"):
                 unit.train_step(None, FakeBatch())
-        self.assertEqual(unit.skipped_train_batches, 0)
+        self.assertEqual(parent.call_count, 1)
+        self.assertEqual(unit.oom_events["train"], 0)
         unit.optimizer.zero_grad.assert_not_called()
 
     def test_memory_is_freed_every_gc_every_steps(self):
@@ -108,27 +120,47 @@ class TrainStepTests(unittest.TestCase):
 
     def test_driver_oom_text_is_handled_like_a_torch_oom(self):
         unit = make_unit()
-        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=RuntimeError("CUDA driver error: out of memory")), \
+        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=[RuntimeError("CUDA driver error: out of memory"), None]), \
                 mock.patch.object(gu, "free_memory"):
             unit.train_step(None, FakeBatch())
-        self.assertEqual(unit.skipped_train_batches, 1)
+        self.assertEqual((unit.oom_events["train"], unit.oom_recovered["train"]), (1, 1))
 
-    def test_skip_is_logged_with_the_batch_size(self):
+    def test_each_event_is_logged_with_the_batch_size(self):
         unit = make_unit()
-        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=OOM), mock.patch.object(gu, "free_memory"), \
+        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=[OOM, None]), mock.patch.object(gu, "free_memory"), \
                 self.assertLogs(level="WARNING") as logs:
             unit.train_step(None, FakeBatch())
         self.assertIn("50 atoms, 1000 edges", logs.output[0])
+        self.assertIn("event 1", logs.output[0])
+        self.assertIn("1 recovered so far", logs.output[1])
+
+    def test_the_cleanup_runs_after_the_error_is_out_of_scope(self):
+        # The traceback of an exception holds the tensors of the failed step, so the cleanup must not run inside the except block.
+        unit = make_unit()
+        seen = []
+
+        def free():
+            import sys as _sys
+            seen.append(_sys.exc_info()[0])
+
+        with mock.patch.object(MLIPTrainEvalUnit, "train_step", side_effect=[OOM, None]), mock.patch.object(gu, "free_memory", side_effect=free):
+            unit.train_step(None, FakeBatch())
+        self.assertEqual(seen, [None])
 
 
 class EvalStepTests(unittest.TestCase):
-    def test_eval_oom_is_skipped_and_counted_without_stopping(self):
+    def test_eval_oom_is_retried_never_skipped(self):
         unit = make_unit()
-        with mock.patch.object(MLIPTrainEvalUnit, "eval_step", side_effect=[OOM, OOM, OOM, OOM, None]), \
-                mock.patch.object(gu, "free_memory"):
-            for _ in range(5):
+        with mock.patch.object(MLIPTrainEvalUnit, "eval_step", side_effect=[OOM, OOM, None]) as parent, mock.patch.object(gu, "free_memory"):
+            unit.eval_step(None, FakeBatch())
+        self.assertEqual(parent.call_count, 3)
+        self.assertEqual((unit.oom_events["eval"], unit.oom_recovered["eval"], unit.oom_events["train"]), (2, 1, 0))
+
+    def test_eval_stops_loudly_too(self):
+        unit = make_unit(max_oom_retries=1)
+        with mock.patch.object(MLIPTrainEvalUnit, "eval_step", side_effect=OOM), mock.patch.object(gu, "free_memory"):
+            with self.assertRaisesRegex(RuntimeError, "eval batch"):
                 unit.eval_step(None, FakeBatch())
-        self.assertEqual((unit.skipped_eval_batches, unit.skipped_train_batches), (4, 0))
 
 
 if __name__ == "__main__":

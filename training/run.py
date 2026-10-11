@@ -14,8 +14,8 @@ def warn_if_small_gpu():
     if torch.cuda.is_available():
         gib = torch.cuda.get_device_properties(0).total_memory / 2**30
         if gib < MIN_GPU_GIB:
-            print(f"WARNING: this GPU has {gib:.1f} GiB. Use a V100 with 32 GB (v100-32) for Dense and Global and an L40S "
-                  "(l40s-48) for Local-6, which peaked at 26 GiB at the default batch size.", flush=True)
+            print(f"WARNING: this GPU has {gib:.1f} GiB. Use a V100 with 32 GB (v100-32) for Dense and Global and an H100 "
+                  "(h100-80) or an L40S (l40s-48) for Local-6, which peaked at 37 GiB at the default batch size.", flush=True)
 
 
 def main():

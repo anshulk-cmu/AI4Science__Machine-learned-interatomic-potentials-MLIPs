@@ -1,9 +1,9 @@
 #!/bin/bash
 # Smoke test on one GPU: environment, unit tests, 20 training steps of each variant on a sample of the real OMol25 data,
-# an out-of-memory drill (the same run with the GPU memory capped, which must skip batches and still finish), the
+# an out-of-memory drill (the same run with the GPU memory capped: every batch that does not fit must be cleaned up and retried, and a batch that still does not fit must stop the run with a clear message), the
 # size-consistency check on each checkpoint, and the W&B offline runs.
 # Settings by environment variable: VARIANTS (default "dense global local6"), RUN_TESTS (default 1), DRILL_FRACTION
-# (default 0.35 of the GPU memory). Dense and Global belong on a V100-32, Local-6 on an L40S (docs/TRAINING.md).
+# (default 0.35 of the GPU memory). Dense and Global belong on a V100-32, Local-6 on an H100 or an L40S (docs/TRAINING.md).
 # Every stage writes its full output to its own file under $RUN/logs; $RUN/summary.txt gets one line per stage and the
 # key numbers. The job exits 1 if any stage failed, so Slurm and the email report the true outcome.
 umask 002
@@ -63,12 +63,17 @@ for V in $VARIANTS; do
     grep -a -E 'val/loss|omol_energy,per_atom_mae|omol_forces,mae' "$LOGS/train_$V.log" | head -3 | tee -a "$SUMMARY"
     grep -a -E 'Traceback|Error' "$LOGS/train_$V.log" | head -3 | tee -a "$SUMMARY"
 
-    # OOM drill: cap the GPU memory so some batches cannot fit; the run must skip them and finish
+    # OOM drill: cap the GPU memory so some batches cannot fit. Each one must be cleaned up and retried; a batch that still
+    # does not fit must stop the run with "does not fit this GPU". No batch is skipped.
     mkdir -p "$RUN/${V}_drill"
-    stage "oom_drill_$V" env OMOL_RUN_DIR="$RUN/${V}_drill" OMOL_GPU_MEMORY_FRACTION=$DRILL_FRACTION         $PY -u -B -m training.run --mode train variant=$V job.run_name=drill_$V training.steps=30         train_dataset.dataset_configs.omol.splits.train.sample_n=256         val_dataset.dataset_configs.omol.splits.val.sample_n=64
-    SKIPPED=$(grep -a -c 'OOM: skipped' "$LOGS/oom_drill_$V.log")
-    note "OOM drill $V (memory capped to $DRILL_FRACTION): $SKIPPED skipped batches; $(grep -a 'OOM-skipped batches' "$LOGS/oom_drill_$V.log" | tail -1 | sed 's/.*OOM-skipped/OOM-skipped/')"
-    [ "$SKIPPED" -eq 0 ] && note "DRILL INCONCLUSIVE for $V: no batch reached the cap, lower DRILL_FRACTION"
+    note "START oom_drill_$V"
+    env OMOL_RUN_DIR="$RUN/${V}_drill" OMOL_GPU_MEMORY_FRACTION=$DRILL_FRACTION $PY -u -B -m training.run --mode train variant=$V job.run_name=drill_$V training.steps=30 \
+        train_dataset.dataset_configs.omol.splits.train.sample_n=256 val_dataset.dataset_configs.omol.splits.val.sample_n=64 > "$LOGS/oom_drill_$V.log" 2>&1
+    DRILL_RC=$?
+    EVENTS=$(grep -a -c 'OOM: .* ran out of memory' "$LOGS/oom_drill_$V.log")
+    note "END   oom_drill_$V exit $DRILL_RC (memory capped to $DRILL_FRACTION): $EVENTS OOM events; $(grep -a 'OOM events' "$LOGS/oom_drill_$V.log" | tail -1 | sed 's/.*OOM events/OOM events/')"
+    if [ $DRILL_RC -ne 0 ] && ! grep -a -q 'does not fit this GPU' "$LOGS/oom_drill_$V.log"; then note "oom_drill_$V stopped for another reason"; FAILED=1; fi
+    [ "$EVENTS" -eq 0 ] && note "DRILL INCONCLUSIVE for $V: no batch reached the cap, lower DRILL_FRACTION"
 done
 
 for V in $VARIANTS; do

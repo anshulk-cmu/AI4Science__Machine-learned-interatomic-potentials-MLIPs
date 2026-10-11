@@ -112,7 +112,7 @@ Local-6 is integrated and tested. The full suite has 101 tests (`python -m unitt
 Dates for Pragati:
 
 - 11 October: report progress and blockers.
-- 12 to 18 October: the Local-6 pilot, `slurm/pilot_local6.job` on an L40S (`l40s-48`). It needs a working PSC login.
+- 12 to 18 October: the Local-6 pilot, `slurm/pilot_local6.job` on an H100 (`h100-80`). It needs a working PSC login.
   If that is still blocked, Anshul submits it.
 
 If Local-6 cannot be trained by the deadline, the agreed midterm fallback is to report it as implemented but not
