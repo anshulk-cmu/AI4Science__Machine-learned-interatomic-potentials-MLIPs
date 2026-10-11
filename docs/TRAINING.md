@@ -122,11 +122,14 @@ python -m training.run --mode train variant=global \
 
 - The pilots are a short regime: 20,000 steps are about 1/1,900 of the official eSEN run. They measure seed noise and test the
   pipeline, they do not give final accuracy.
-- The normalizer `rmsd` is the allscaip value, not refit on `train_4M`.
+- The normalizer `rmsd` is the allscaip value 1.433569, not refit. Measured on the pilot lists (job 49039106, 2026-10-11): the per-atom
+  force-norm RMS is 2.12 eV/A on the 200,000 training rows (component RMS 1.23) and 1.54 on the 5,000 validation rows, so the official
+  value matches neither and its origin is not known. The team keeps it for the pilots: it is the same for all variants and changes the
+  output learning rate by at most a factor of about 2.
 - Energy and force loss weights are 1:1 (coefficient 1.0 each) and have not been tuned.
 - `training.workers` is 0, so data loading runs in the training process.
-- `max_neighbors: 300` is the `eSCNMDBackbone` default. On the 27,697 structures of the `neutral_val` subset the largest
-  neighbour count within 6 Å is 85, so 300 never truncates there. It has not been measured on `train_4M`.
+- `max_neighbors: 300` never truncates. Measured on the pilot lists: the largest neighbour count within 6 Å is 162 (training) and 164
+  (validation), the mean is 32.6 and 35.9. The official cap of 30 would truncate 50.5 percent of the training atoms.
 - The pilots read fixed sample lists (see "Fixed sample lists"). A run with `sample_n` draws a random subset whose ids are not recorded.
 
 ## Add a Local Router
@@ -220,6 +223,21 @@ with `job.seed`. `scripts/check_pilot_data.py` has three commands:
 
 Tested on 2026-10-11 on the 27,697 structures of the `neutral_val` subset (WSL, CPU): `verify` passes, and with one row removed from a
 list it fails on the hash and the count.
+
+Measured on the lists by the prep job (`slurm/prep_pilot_data.job`, job 49039106, 12 min 42 s on 16 cores; results in
+`/ocean/projects/che260063p/shared/data/omol25/pilot/stats_*.json`, structure ids in `sids_*.txt`):
+
+| | 200,000 training rows | 5,000 validation rows |
+|---|---:|---:|
+| Atoms per structure (mean, maximum) | 55.1, 350 | 102.1, 349 |
+| Neighbours within 6 Å per atom (mean, maximum) | 32.6, 162 | 35.9, 164 |
+| Atoms with more than 30 / 50 / 100 / 300 neighbours | 50.5 / 12.5 / 0.08 / 0 percent | 57.4 / 17.9 / 0.07 / 0 percent |
+| Force norm RMS per atom, eV/A (component RMS) | 2.12 (1.23) | 1.54 (0.89) |
+| Energy residual per atom after the official references, eV (mean, RMS) | 0.136, 0.445 | 0.046, 0.251 |
+| Elements | 83, all with Z up to 83 | 82, all with Z up to 83 |
+| Neutral structures, singlets | 56 percent, 83 percent | 43 percent, 91 percent |
+
+The validation rows are larger structures than the training rows on average (102 against 55 atoms).
 
 ## Pilot jobs on Bridges-2
 
