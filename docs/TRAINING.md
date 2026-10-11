@@ -290,9 +290,13 @@ every 15 steps, a different run folder name, one array task and a short time lim
 
 ```bash
 cd /ocean/projects/che260063p/shared/repo/AI4Science-MLIPs/slurm
-PILOT_STEPS=30 PILOT_EVAL_EVERY=30 PILOT_CKPT_EVERY=15 PILOT_RUN_PREFIX=pilottest sbatch --array=0 -t 2:00:00 pilot_dense.job
+sbatch --export=PILOT_STEPS=30,PILOT_EVAL_EVERY=30,PILOT_CKPT_EVERY=15,PILOT_RUN_PREFIX=pilottest --array=0 -t 2:00:00 pilot_dense.job
 # the same for pilot_global.job and pilot_local6.job
 ```
+
+Pass the settings with `--export`. Bridges-2 sets `SBATCH_EXPORT=NONE` in the login shell, so a variable exported before `sbatch` does not
+reach the job. This went wrong on 2026-10-11: the first "test" ran as a full 20,000-step job. Check `settings.txt` in the run folder
+(`steps=30`) before you wait for the result.
 
 Check in `runs/pilottest_<variant>_s0_<jobid>/summary.txt`: `verify_samples` all PASS, no OOM-skipped batch, a final checkpoint, the
 size-consistency Delta, and the time of one validation (it sets the real time limits).
