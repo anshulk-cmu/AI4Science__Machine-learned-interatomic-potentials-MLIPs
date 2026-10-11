@@ -26,8 +26,8 @@ are next (12 to 18 October). The midterm report is due 23 October.
   the whole-structure router average is the whole cause in UMA-S-1.1; UMA-S-1.2 has a second whole-structure term,
   charge balancing. Read `status-wip/README.md`.
 - **Done: Local-6 inside fairchem.** `training/local_moe.py` and `configs/variant/local6.yaml` run Local-6 in the real
-  model, with the same parameters as Global (37,938,985; Dense has 6,267,777). The router component is in
-  `local_routing/`. All 101 tests pass (Windows CPU, and Linux on CPU and GPU). Read `docs/local-routing.md`.
+  model, with the same parameters as Global (37,652,265; Dense has 5,981,057). The router component is in
+  `local_routing/`. All 107 tests pass (Windows CPU, and Linux on CPU and GPU). Read `docs/local-routing.md`.
 - **Done: Bridges-2 setup.** Shared environment, OMol25 `train_4M` and validation data, job files, and 30-step test
   jobs of all three variants. On the saved checkpoints of two far-apart Al and Ni slabs, Dense and Local-6 give an
   energy error of about 3e-6 meV (zero) and Global gives about -31 meV. This is a pipeline check after 30 steps, not

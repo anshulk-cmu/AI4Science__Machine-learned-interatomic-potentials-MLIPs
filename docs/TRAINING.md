@@ -41,14 +41,15 @@ model on CPU (`tests/test_training_config.py` asserts them):
 
 | Variant | Total parameters | Expert bank | Router | Active per structure |
 | --- | ---: | ---: | ---: | ---: |
-| Dense | 6,267,777 | none | none | 6,267,777 |
-| Global | 37,938,985 | 36,179,968 (24 MOLE layers) | 17,320 | 6,285,097 |
+| Dense | 5,981,057 | none | none | 5,981,057 |
+| Global | 37,652,265 | 36,179,968 (24 MOLE layers) | 17,320 | 5,998,377 |
 
 The active count keeps one of the 8 expert weight slices in every MOLE layer, plus every
 parameter outside the expert weights (the MOLE biases are shared, not per expert). Both
-variants already meet the 6M base budget. Both use `num_distance_basis: 512`, the
-`eSCNMDBackbone` class default. The released UMA configs use 64, which gives 5,981,057 for
-Dense. It is left at 512 because changing it is a team decision.
+variants meet the 6M base budget. All variants use `num_distance_basis: 64`, as the released UMA-S-1.1 and the OMol25
+eSEN-sm model do (the `eSCNMDBackbone` class default is 512, which gave 6,267,777 for Dense and 37,938,985 for Global).
+The team chose 64 on 2026-10-11. Local-6 has the same parameters as Global. Each variant backbone also pins
+`max_neighbors` to `training.max_neighbors`, so the graph is the same in training and in inference.
 
 Energy targets: the energy task subtracts the official OMol element references
 (`ElementReferences(torch.DoubleTensor(...))`, as in the official OMol tasks) before
@@ -65,7 +66,8 @@ Common runtime overrides:
 | `train.yaml` | `training.eval_every` | steps between validation runs; defaults to `training.steps`. |
 | `train.yaml` | `training.ckpt_every` | steps between checkpoints; defaults to `training.steps`. |
 | `train.yaml` | `training.max_atoms` | The batch size in atoms, `450` for every variant; larger structures are dropped by the sampler. |
-| `train.yaml` | `training.max_neighbors` | `300` nearest neighbours kept per atom inside the cutoff (`a2g_args.max_neigh`, both splits). |
+| `train.yaml` | `training.max_neighbors` | `300` nearest neighbours kept per atom inside the cutoff (`a2g_args.max_neigh`, both splits, and the backbone). |
+| `train.yaml` | `training.max_saved_checkpoints` | step checkpoints kept on disk, `3`; the pilots keep all of them. |
 | `train.yaml` | `training.cutoff` | `6.0` Å graph/model cutoff. |
 | `train.yaml` | `training.normalizer_rmsd` | shared energy and force normalizer. |
 | `train.yaml` | `job.run_name` | set a distinct name for each run. |
@@ -74,6 +76,7 @@ Common runtime overrides:
 | `data/generic.yaml` | `data.train_src`, `data.val_src` | ASE DB split directories. |
 | `data/generic.yaml` | `train_dataset.dataset_configs.omol.splits.train.sample_n` | number of samples; set `null` to use all training rows. |
 | `data/generic.yaml` | `val_dataset.dataset_configs.omol.splits.val.sample_n` | number of samples; set `null` to use all validation rows. |
+| `data/generic.yaml` | `...splits.<split>.subset_to`, `metadata_path`, `no_shuffle` | a fixed list of rows instead of a random draw; see "Fixed sample lists" below. |
 
 `training/run.py` sets `FAIRCHEM_CACHE_DIR` and `WARP_CACHE_PATH` under env `OMOL_CACHE_DIR`
 (default `../omol25-cache`). Relative paths resolve from the repository root, which `run.py`
@@ -88,7 +91,7 @@ The split directories should contain their `.aselmdb` shards and matching
 - A checkpoint is written every `training.ckpt_every` steps, and also at step 0 (the callback
   runs before each step and `0 % ckpt_every == 0`) and once more at the end (`final`). With
   `save_inference_ckpt: true` each one also gets an inference checkpoint. The 3 newest step
-  checkpoints are kept.
+  checkpoints are kept (`training.max_saved_checkpoints`).
 - Validation runs every `training.eval_every` steps. torchtnt's `fit` also evaluates at the end
   of every epoch, including the epoch that `max_steps` cuts short, because `TrainEvalRunner`
   does not pass `evaluate_every_n_epochs` and its default is 1. When `steps` is a multiple of
@@ -117,13 +120,14 @@ python -m training.run --mode train variant=global \
 
 ## Known gaps
 
-- The pilot settings (steps, seeds, fixed sample lists) are placeholders until the team agrees.
+- The pilots are a short regime: 20,000 steps are about 1/1,900 of the official eSEN run. They measure seed noise and test the
+  pipeline, they do not give final accuracy.
 - The normalizer `rmsd` is the allscaip value, not refit on `train_4M`.
 - Energy and force loss weights are 1:1 (coefficient 1.0 each) and have not been tuned.
 - `training.workers` is 0, so data loading runs in the training process.
 - `max_neighbors: 300` is the `eSCNMDBackbone` default. On the 27,697 structures of the `neutral_val` subset the largest
   neighbour count within 6 Å is 85, so 300 never truncates there. It has not been measured on `train_4M`.
-- The ids of the structures drawn by `sample_n` in pilot runs are not recorded.
+- The pilots read fixed sample lists (see "Fixed sample lists"). A run with `sample_n` draws a random subset whose ids are not recorded.
 
 ## Add a Local Router
 
@@ -139,7 +143,7 @@ and data configs can stay the same.
 ## Local-6
 
 `variant=local6` uses `training.local_moe.eSCNMDLocalMoeBackbone` (`configs/variant/local6.yaml`). It has the same
-parameters as Global (37,938,985) and differs only in the router: each atom averages the element embeddings of its
+parameters as Global (37,652,265) and differs only in the router: each atom averages the element embeddings of its
 neighbors within 6 A, and every message edge mixes the experts with the coefficients of its receiving atom.
 
 - Tests: `tests/test_local_backbone.py` (13 tests, float64, CPU and CUDA). Far-apart fragments are additive for Local and
@@ -197,39 +201,74 @@ Every variant trains with `training.guarded_unit.GuardedTrainEvalUnit` (`train_e
 - Drill: `OMOL_GPU_MEMORY_FRACTION=0.35` caps the GPU memory of a run so some batches cannot fit. The smoke job
   (`slurm/smoke_train.sh`) runs it for every variant and checks that the run skips batches and still finishes.
 
+## Fixed sample lists
+
+All pilots read the same rows, not a random draw. `manifests/pilot_train_200k.txt` (200,000 rows of `train_4M`) and
+`manifests/pilot_val_5k.txt` (5,000 rows of `val`) hold one row number per line, sorted. `manifests/pilot_samples.json` has their
+sha256, counts and the seed of the draw (`scripts/make_pilot_manifests.py`). The lists are the source of truth, not the script.
+
+A run reads a list through fairchem's own `subset_to` hook: `sample_n=null`, `no_shuffle=true`, `metadata_path` set to a copy of
+`metadata.npz` with an extra field `index`, and `subset_to=[{metadata_key: index, op: in, rhv: <list file>}]`
+(`slurm/pilot_data_overrides.sh`). The dataset then holds the listed rows in ascending order, and the batch sampler shuffles them
+with `job.seed`. `scripts/check_pilot_data.py` has three commands:
+
+- `prep` writes the two index files under `$OMOL_DATA_ROOT/pilot/`.
+- `verify` composes the training config with these overrides, builds both datasets and checks that they hold exactly the listed rows and
+  that the lists match their hashes. Every pilot job runs it before training (`verify_samples` in `summary.txt`) and stops if it fails.
+- `stats` measures a list: neighbours within 6 A, force and energy scales with the official element references, elements, charges, spins
+  and structure ids.
+
+Tested on 2026-10-11 on the 27,697 structures of the `neutral_val` subset (WSL, CPU): `verify` passes, and with one row removed from a
+list it fails on the hash and the count.
+
 ## Pilot jobs on Bridges-2
 
-One job file per pilot in `slurm/`; each person submits one. All three call `slurm/pilot.sh`, which trains the variant on the real
-OMol25 data, then checks the size consistency of the final checkpoint.
+The team agreed on 2026-10-11: 20,000 steps, 450 atoms per step, **three seeds** (0, 1, 2) per model, the fixed lists above, and a
+checkpoint and a validation every 2,000 steps. One job file per model in `slurm/`. Each is a Slurm array of three tasks, and the array task
+id is the seed (`#SBATCH --array=0-2`), so one `sbatch` starts all three seeds. All call `slurm/pilot.sh`, which checks the lists, trains
+the variant on the real OMol25 data, then checks the size consistency of the final checkpoint. Every step checkpoint is kept
+(`training.max_saved_checkpoints`), so the size consistency can be measured along the training.
 
-| Pilot | Job file | GPU | Time limit | Who |
+| Pilot | Job file | GPU | Time limit per task | Who |
 |---|---|---|---|---|
-| Dense | `pilot_dense.job` | `v100-32` | 6 h | Yiwei |
-| Global | `pilot_global.job` | `v100-32` | 6 h | Anshul |
-| Local-6 | `pilot_local6.job` | `l40s-48` | 10 h | Pragati |
+| Dense | `pilot_dense.job` | `v100-32` | 8 h | Yiwei |
+| Global | `pilot_global.job` | `v100-32` | 8 h | Anshul |
+| Local-6 | `pilot_local6.job` | `l40s-48` | 14 h | Pragati |
 
-Submit from a login node (project `che260063p`, 1 SU per GPU-hour):
+**Order.** First run `prep_pilot_data.job` once (CPU, `RM-shared`, 16 cores, 2 h limit). It writes the index files and checks the lists.
+Then submit the pilots from a login node (project `che260063p`, 1 SU per GPU-hour):
 
 ```bash
 cd /ocean/projects/che260063p/shared/repo/AI4Science-MLIPs/slurm
-sbatch pilot_dense.job            # or pilot_global.job, pilot_local6.job
+sbatch prep_pilot_data.job        # once, before the first pilot
+sbatch pilot_dense.job            # or pilot_global.job, pilot_local6.job; three tasks, seeds 0 to 2
 squeue --me                       # state of your jobs
 ```
 
+Limits are per user, not per project: the `gpu` QOS allows 128 GPUs and 5,000 submitted jobs per user, and no per-project limit is set
+(`sacctmgr show qos` and `sacctmgr show assoc`, 2026-10-11). Jobs of other projects count toward the same per-user limits, but they are
+charged to their own project. The real limit is free GPUs: Bridges-2 has 24 L40S GPUs in total for all users, so the three Local-6 seeds
+may start one after the other. Use `-A che260063p` so the hours are charged to this project.
+
 The job emails Anshul by default; add `--mail-user=you@andrew.cmu.edu` to `sbatch` to get the emails yourself. Output goes to
-`/ocean/projects/che260063p/shared/logs/slurm-<jobid>.out` and everything else to
-`/ocean/projects/che260063p/shared/runs/pilot_<variant>_<jobid>/`: `summary.txt` (one line per stage, peak GPU memory, last loss,
+`/ocean/projects/che260063p/shared/logs/slurm-<arrayjob>_<task>.out` and everything else to
+`/ocean/projects/che260063p/shared/runs/pilot_<variant>_s<seed>_<jobid>/`: `summary.txt` (one line per stage, peak GPU memory, last loss,
 validation numbers, skipped OOM batches, the size-consistency Delta), `settings.txt`, `logs/` (the full output of every stage) and
 `train/` (checkpoints and the offline W&B run).
 
-**Settings.** The four lines `PILOT_STEPS`, `PILOT_SEED`, `PILOT_TRAIN_SAMPLES` and `PILOT_VAL_SAMPLES` near the end of each job
-file (10000, 0, 200000, 5000) are placeholders until the team agrees; the three job files must carry the same values. If you raise the
-steps, raise the time limit (`#SBATCH -t`). Measured at 450 atoms per batch in the 30-step tests: Dense 651, Global 673 and Local-6
-333 atoms per second, about 0.69, 0.67 and 1.35 s per step, so 10,000 steps take about 2, 2 and 4 hours plus the evaluations.
+**Settings.** `PILOT_STEPS=20000` is in each job file. The seed comes from the array task id. `PILOT_EVAL_EVERY` and `PILOT_CKPT_EVERY`
+default to steps/10, which is 2,000. Set `PILOT_TRAIN_SAMPLES` and `PILOT_VAL_SAMPLES` only for a short test with a random sample.
+Measured at 450 atoms per batch in the 30-step tests: Dense 638 to 651, Global 673 to 679 and Local-6 310 to 333 atoms per second, about
+0.69, 0.67 and 1.35 s per step. One seed of 20,000 steps therefore takes about 4 h (Dense, Global) and 8 h (Local-6) plus the evaluations
+(an estimate). The cost at the time limits is at most 24 SU (Dense), 24 SU (Global) and 42 SU (Local-6) for the three seeds.
 `pilot.sh` refuses a GPU that is too small (Dense and Global need 31 GB or more, Local-6 44 GB or more).
 
-**Tested on 2026-10-09** with 30 steps, 2,000 training and 200 validation structures (jobs 48977565, 48977567, 48977587), all stages
+**Tested on 2026-10-09** (before the move to 64 basis functions, and with a random sample) with 30 steps, 2,000 training and 200 validation structures (jobs 48977565, 48977567, 48977587), all stages
 passed: Dense 8 min 26 s, peak 10.5 GiB, Delta 3.7e-06 meV; Global 8 min 41 s, 11.4 GiB, Delta -31.4 meV; Local-6 12 min 20 s on an
 L40S, 29.2 GiB, Delta 2.8e-06 meV. These are pipeline checks, not model quality. Most of the time of these short runs went into the
 evaluations (every 3 steps) and the first import of torch from Ocean.
 
+With `num_distance_basis: 64` the same 30-step test (jobs 48978344, 48978349 and 48978351, 2026-10-09) gave: Dense 7 min 34 s, peak
+10.3 GiB, 638 atoms per second, Delta 2.8e-06 meV; Global 7 min 52 s, 11.3 GiB, 679 atoms per second, Delta -6.6 meV; Local-6 12 min 7 s on an
+L40S, 28.9 GiB, 310 atoms per second, Delta 3.7e-06 meV. No batch was skipped. The new pilot scripts (array, fixed lists) are checked by
+`tests/test_training_config.py` and by the list check above, and have not run a job yet.
