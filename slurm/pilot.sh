@@ -2,7 +2,7 @@
 # One pilot run: train a variant on the real OMol25 data, then check the size consistency of its final checkpoint.
 # Usage: pilot.sh dense|global|local6
 # Settings come from environment variables; the job files set them (agreed by the team on 2026-10-11):
-#   PILOT_STEPS (20000)  PILOT_SEED (the Slurm array task id, 0 to 2, else 0)  PILOT_EVAL_EVERY, PILOT_CKPT_EVERY (steps/10)
+#   PILOT_RUN_PREFIX (pilot; use another prefix for a test)  PILOT_STEPS (20000)  PILOT_SEED (the Slurm array task id, 0 to 2, else 0)  PILOT_EVAL_EVERY, PILOT_CKPT_EVERY (steps/10)
 # Data: the fixed lists manifests/pilot_train_200k.txt and pilot_val_5k.txt, the same for every variant and seed. The job
 # stops before training if the datasets do not hold exactly those rows. Run slurm/prep_pilot_data.job once before the pilots.
 # For a short test with a random sample instead, set PILOT_TRAIN_SAMPLES and PILOT_VAL_SAMPLES.
@@ -22,7 +22,7 @@ TRAIN_N=${PILOT_TRAIN_SAMPLES:-}
 VAL_N=${PILOT_VAL_SAMPLES:-}
 EVAL_EVERY=${PILOT_EVAL_EVERY:-$(( STEPS / 10 > 0 ? STEPS / 10 : 1 ))}
 CKPT_EVERY=${PILOT_CKPT_EVERY:-$EVAL_EVERY}
-RUN=$ROOT/runs/pilot_${VARIANT}_s${SEED}_${SLURM_JOB_ID:-manual}
+RUN=$ROOT/runs/${PILOT_RUN_PREFIX:-pilot}_${VARIANT}_s${SEED}_${SLURM_JOB_ID:-manual}
 LOGS=$RUN/logs
 SUMMARY=$RUN/summary.txt
 export OMOL_DATA_ROOT=$ROOT/data/omol25 OMOL_CACHE_DIR=$ROOT/cache

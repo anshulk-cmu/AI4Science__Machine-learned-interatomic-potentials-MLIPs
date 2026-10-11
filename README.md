@@ -35,8 +35,8 @@ are next (12 to 18 October). The midterm report is due 23 October.
 - **Next: the pilot runs.** Dense, Global and Local-6, one job file each in `slurm/`. The settings (steps, seeds,
   fixed sample lists, normalizer, size matching, neighbor cap, `num_distance_basis`) are waiting on the team's
   answers by mail. Until then the job files hold placeholders.
-- **Not done:** trained quality comparison, the size-consistency benchmark on the pilot checkpoints, Local-12,
-  Element, and Local+Global.
+- **Not done:** trained quality comparison and the size-consistency benchmark on the pilot checkpoints. Element, Local-12 and
+  Local+Global are later work (decided 2026-10-11); the midterm trains Dense, Global and Local-6.
 
 ## Repository layout
 
@@ -67,7 +67,7 @@ gated on Hugging Face, so log in and accept the license first. Never commit a to
 ## Who does what
 
 - Anshul Kumar: the audit, the Bridges-2 setup, the Local-6 integration into fairchem, the Global pilot run, and the size-consistency benchmark.
-- Pragati Bhattad: the router interface and local composition, and the Local-6 pilot run.
+- Pragati Bhattad: the router interface and local composition. Anshul submits the Local-6 pilot runs; Pragati can also submit them.
 - Yiwei Xia: the OMol25 training pipeline, the Dense pilot run, and the statistics.
 
 ## Team

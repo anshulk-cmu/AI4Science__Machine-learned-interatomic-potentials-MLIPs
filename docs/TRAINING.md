@@ -249,9 +249,9 @@ the variant on the real OMol25 data, then checks the size consistency of the fin
 
 | Pilot | Job file | GPU | Time limit per task | Who |
 |---|---|---|---|---|
-| Dense | `pilot_dense.job` | `v100-32` | 8 h | Yiwei |
-| Global | `pilot_global.job` | `v100-32` | 8 h | Anshul |
-| Local-6 | `pilot_local6.job` | `l40s-48` | 14 h | Pragati |
+| Dense | `pilot_dense.job` | `v100-32` | 12 h | Yiwei |
+| Global | `pilot_global.job` | `v100-32` | 12 h | Anshul |
+| Local-6 | `pilot_local6.job` | `l40s-48` | 20 h | Anshul submits (Pragati can too) |
 
 **Order.** First run `prep_pilot_data.job` once (CPU, `RM-shared`, 16 cores, 2 h limit). It writes the index files and checks the lists.
 Then submit the pilots from a login node (project `che260063p`, 1 SU per GPU-hour):
@@ -274,12 +274,28 @@ The job emails Anshul by default; add `--mail-user=you@andrew.cmu.edu` to `sbatc
 validation numbers, skipped OOM batches, the size-consistency Delta), `settings.txt`, `logs/` (the full output of every stage) and
 `train/` (checkpoints and the offline W&B run).
 
-**Settings.** `PILOT_STEPS=20000` is in each job file. The seed comes from the array task id. `PILOT_EVAL_EVERY` and `PILOT_CKPT_EVERY`
+**Settings.** `PILOT_STEPS` is 20000 unless set when submitting (see the test below). The seed comes from the array task id. `PILOT_EVAL_EVERY` and `PILOT_CKPT_EVERY`
 default to steps/10, which is 2,000. Set `PILOT_TRAIN_SAMPLES` and `PILOT_VAL_SAMPLES` only for a short test with a random sample.
 Measured at 450 atoms per batch in the 30-step tests: Dense 638 to 651, Global 673 to 679 and Local-6 310 to 333 atoms per second, about
 0.69, 0.67 and 1.35 s per step. One seed of 20,000 steps therefore takes about 4 h (Dense, Global) and 8 h (Local-6) plus the evaluations
-(an estimate). The cost at the time limits is at most 24 SU (Dense), 24 SU (Global) and 42 SU (Local-6) for the three seeds.
+(an estimate). Each validation reads 5,000 structures of about 510,000 atoms and computes forces, so at training speed it takes about
+13 min (Dense, Global) and 26 min (Local-6); with 11 validations the estimate is 6.2 h and 11.7 h per seed, which is why the limits are
+12 h and 20 h. The limit is a cap: only the hours used are charged. The cost at the time limits is at most 36 SU (Dense), 36 SU (Global)
+and 60 SU (Local-6) for the three seeds, 132 SU of the 2,948.
 `pilot.sh` refuses a GPU that is too small (Dense and Global need 31 GB or more, Local-6 44 GB or more).
+
+**Test before the long runs.** One 30-step run per model on the real job files, the real fixed lists and seed 0 (about 3 SU in total).
+The switches set the steps, one validation at the end (the last validation runs twice, see "Validation and checkpoints"), a checkpoint
+every 15 steps, a different run folder name, one array task and a short time limit:
+
+```bash
+cd /ocean/projects/che260063p/shared/repo/AI4Science-MLIPs/slurm
+PILOT_STEPS=30 PILOT_EVAL_EVERY=30 PILOT_CKPT_EVERY=15 PILOT_RUN_PREFIX=pilottest sbatch --array=0 -t 2:00:00 pilot_dense.job
+# the same for pilot_global.job and pilot_local6.job
+```
+
+Check in `runs/pilottest_<variant>_s0_<jobid>/summary.txt`: `verify_samples` all PASS, no OOM-skipped batch, a final checkpoint, the
+size-consistency Delta, and the time of one validation (it sets the real time limits).
 
 **Tested on 2026-10-09** (before the move to 64 basis functions, and with a random sample) with 30 steps, 2,000 training and 200 validation structures (jobs 48977565, 48977567, 48977587), all stages
 passed: Dense 8 min 26 s, peak 10.5 GiB, Delta 3.7e-06 meV; Global 8 min 41 s, 11.4 GiB, Delta -31.4 meV; Local-6 12 min 20 s on an
