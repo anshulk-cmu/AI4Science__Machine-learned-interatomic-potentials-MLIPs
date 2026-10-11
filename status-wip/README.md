@@ -216,8 +216,9 @@ this column was always 0, because the repeated call was an ASE cache hit.
 
 ## 8. Limits, stated plainly
 
-- UMA-M ran in float32, so its tolerance is larger (about 5 meV on the molecule task). It also ran on a cloud GPU
-  while UMA-S ran in float64, so any UMA-M versus UMA-S difference is confounded with precision.
+- UMA-M ran in float32, so its tolerance is larger than that of the float64 models (0.043 meV on the materials task and 3.6 meV on the
+  molecule task, after the rerun of 2026-10-11). It also ran on a cloud GPU while UMA-S ran in float64, so any UMA-M versus UMA-S
+  difference is confounded with precision.
 - The version number is read only at `escn_moe.py` line 149 in fairchem 2.21.0, the composition mean, so the swap
   changes nothing else.
 - Geometries are unrelaxed and use one specific shared cell, so the values are for this setup only. The interval is
@@ -226,10 +227,14 @@ this column was always 0, because the repeated call was an ASE cache hit.
   the ASE cache fix, with 27 repeats each (the padding test N4 now also uses pads of 100 and 230 angstrom). The repeat test
   N1 is now a real recomputation: bit-identical for ORB-v3 and every UMA label, and different by at most 5.7e-14 eV for
   MACE. sigma_E is at most 0.000005 meV, so tau stays at the 0.001 meV floor, and no verdict, interval or flatness result
-  changed (the summary tables are byte-identical to before). UMA-M (float32, on a cloud GPU) was not rerun: its null file
-  still has the cache-hit N1, which lowers its sigma_E by at most about 4 percent (an estimate); raising every tau above
-  the floor by 10 percent changes no verdict. The null tests of UMA-M do not cover float32 bias or the coordinate range of
-  gaps of 50 angstrom and more.
+  changed (the summary tables are byte-identical to before). UMA-M (float32) was rerun on 2026-10-11 on a V100-32 (job 49043042, 7 min 29 s, 27 repeats each,
+  the repeat test N1 now a real recomputation). Unlike the float64 models, it is not bit-identical on a repeat: the root mean square of
+  N1 is 0.0097 meV on `omat` and 0.71 meV on `omol`. sigma_E is 0.0086 meV (`omat`, before 0.0060) and 0.725 meV (`omol`, before
+  0.985), so tau is 0.043 and 3.62 meV (before 0.030 and 4.92). The earlier estimate that the cache bug changed the UMA-M sigma_E by
+  at most about 4 percent was wrong: the change is +44 percent and -26 percent. N2 and N3 also differ between the two runs; the cause
+  was not tested (a different GPU and a real repeat test are both possible). No verdict, flatness or comparison changed: only the
+  tolerance column of the 36 UMA-M rows of `results/summary.csv` changed. The UMA-M energies (21 runs) come from the cloud GPU and were
+  not rerun. The null tests of UMA-M do not cover float32 bias or the coordinate range of gaps of 50 angstrom and more.
 - The comparison with the paper uses the shaken mean. With the ideal geometry instead, the ratios are 0.60 (ORB),
   5.06 (UMA-S-1.1 materials), 1.22 (UMA-S-1.1 molecules), 2.98 (UMA-M-1.1 materials) and 0.82 (UMA-M-1.1 molecules).
 - ORB gives -4.8e-3 meV for the ideal Ni + Ni pair at every gap, 4.8 times the 0.001 meV floor. This is not

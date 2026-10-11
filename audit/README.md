@@ -29,7 +29,7 @@ foreach ($m in "uma-s-1p1", "uma-s-1p2") {
     & $py1 run_audit.py --family uma --model $m --task $t
   }
 }
-# UMA-M needs a 24 GB GPU and was run in float32 on a rented machine, on both tasks:
+# UMA-M needs a 24 GB GPU and was run in float32 on a rented machine, on both tasks (its null tests were rerun on Bridges-2, see below):
 #   nulls.py / run_audit.py --family uma --model uma-m-1p1 --task omat --dtype float32
 #   nulls.py / run_audit.py --family uma --model uma-m-1p1 --task omol --dtype float32
 
@@ -86,3 +86,7 @@ and UMA-S, and `slurm/rerun_orb.sh` (an L40S job: ORB's graph builder, NVIDIA Wa
 capability 7.5 or higher) runs ORB-v3. Both write the new files to `shared/runs/<job>/work/results`, not into the repository, so
 a later sync cannot overwrite them. The UMA weights are read from a private folder (the model is gated). The run of
 2026-10-09 (jobs 48975723 and 48975738) took 7 min 41 s and 5 min 30 s; its numbers are in `status-wip/README.md`.
+
+The null tests of UMA-M-1.1 (float32, tasks `omat` and `omol`) are rerun by `slurm/rerun_uma_m.sh` (a V100-32 job, at most 3 SU), which
+also writes to `shared/runs/<job>/work/results`. The 10.4 GiB checkpoint is read from the private folder. The run of 2026-10-11 (job
+49043042) took 7 min 29 s; its numbers are in `status-wip/README.md`.
