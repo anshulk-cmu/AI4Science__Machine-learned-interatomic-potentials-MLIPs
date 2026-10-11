@@ -1,0 +1,23 @@
+{
+  "method": "numpy.random.default_rng(seed).choice(rows, n, replace=False), then sorted",
+  "lists": {
+    "pilot_train_200k.txt": {
+      "split": "train_4M",
+      "rows_in_split": 3986754,
+      "count": 200000,
+      "seed": 11785,
+      "first": 0,
+      "last": 3986745,
+      "sha256": "de75c47ff4dae8dad9cf0e073c5b0ad3cb353e82c6275e1783a89b89a14ac60e"
+    },
+    "pilot_val_5k.txt": {
+      "split": "val",
+      "rows_in_split": 2762021,
+      "count": 5000,
+      "seed": 11786,
+      "first": 272,
+      "last": 2761911,
+      "sha256": "7ecd0a5457118d8e97cd1cfd1293406be7547d9c2c74e338cfeea492d7ae7087"
+    }
+  }
+}

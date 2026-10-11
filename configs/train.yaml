@@ -23,7 +23,8 @@ training:
   eval_every: ${training.steps}
   ckpt_every: ${training.steps}
   max_atoms: 450  # atoms per batch, the same for every variant; needs a GPU with 32 GB
-  max_neighbors: 300
+  max_neighbors: 300  # also pinned in each variant backbone, so the graph is the same in training and inference
+  max_saved_checkpoints: 3  # step checkpoints kept on disk; the pilots keep all of them
   cutoff: 6.0
   workers: 0
   # One normalizer for both tasks. 1.433569 is the official allscaip omol_4m value
@@ -106,4 +107,4 @@ runner:
   callbacks:
     - _target_: fairchem.core.components.train.train_runner.TrainCheckpointCallback
       checkpoint_every_n_steps: ${training.ckpt_every}
-      max_saved_checkpoints: 3
+      max_saved_checkpoints: ${training.max_saved_checkpoints}

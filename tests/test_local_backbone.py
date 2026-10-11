@@ -115,7 +115,7 @@ class LocalBackboneTests(unittest.TestCase):
             GlobalHydra.instance().clear()
             counts[variant] = sum(p.numel() for p in hydra.utils.instantiate(cfg.runner.train_eval_unit.model).parameters())
         self.assertEqual(counts["local6"], counts["global"])
-        self.assertEqual(counts["local6"], 37_938_985)
+        self.assertEqual(counts["local6"], 37_652_265)
 
     def test_far_fragments_are_additive_for_local_and_dense_but_not_global(self):
         a, b, union = fragments()

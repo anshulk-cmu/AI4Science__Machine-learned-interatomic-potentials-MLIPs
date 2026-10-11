@@ -5,7 +5,10 @@ the model and the tasks, and never builds a dataset or a dataloader.
 """
 
 import argparse
+import hashlib
+import json
 import os
+import re
 import sys
 import tempfile
 import types
@@ -28,8 +31,8 @@ except ImportError:
     sys.modules["fcntl"] = _stub
 
 PARAMS = {
-    "dense": {"total": 6_267_777, "active": 6_267_777},
-    "global": {"total": 37_938_985, "active": 6_285_097, "bank": 36_179_968,
+    "dense": {"total": 5_981_057, "active": 5_981_057},
+    "global": {"total": 37_652_265, "active": 5_998_377, "bank": 36_179_968,
                "mole_layers": 24, "router": 17_320},
 }
 
@@ -125,6 +128,82 @@ class ComposedConfigTests(unittest.TestCase):
         splits = (cfg.runner.train_dataloader.dataset.dataset_configs.omol.splits.train,
                   cfg.runner.eval_dataloader.dataset.dataset_configs.omol.splits.val)
         self.assertEqual([s.src for s in splits], ["/data/omol/train_4M", "/data/omol/val"])
+
+
+class PilotSettingsTests(unittest.TestCase):
+    def test_basis_and_neighbor_cap_are_pinned_in_every_variant(self):
+        for variant in ("dense", "global", "local6"):
+            with self.subTest(variant=variant):
+                backbone = compose(variant).runner.train_eval_unit.model.backbone
+                self.assertEqual(backbone.num_distance_basis, 64)
+                self.assertEqual(backbone.max_neighbors, 300)
+                cfg = compose(variant, "training.max_neighbors=77")
+                graph = cfg.runner.train_dataloader.dataset.dataset_configs.omol.a2g_args.max_neigh
+                self.assertEqual(cfg.runner.train_eval_unit.model.backbone.max_neighbors, graph)
+                self.assertEqual(graph, 77)
+
+    def test_checkpoints_kept(self):
+        self.assertEqual(compose("dense").runner.callbacks[0].max_saved_checkpoints, 3)
+        cfg = compose("dense", "training.max_saved_checkpoints=12")
+        self.assertEqual(cfg.runner.callbacks[0].max_saved_checkpoints, 12)
+
+    def test_fixed_lists_replace_the_random_draw(self):
+        t = "train_dataset.dataset_configs.omol.splits.train"
+        v = "val_dataset.dataset_configs.omol.splits.val"
+        cfg = compose("dense", f"{t}.sample_n=null", f"{t}.no_shuffle=true", f"{t}.metadata_path=/d/pilot/train.npz",
+                      f"{t}.subset_to=[{{metadata_key:index,op:in,rhv:/r/train.txt}}]",
+                      f"{v}.sample_n=null", f"{v}.no_shuffle=true", f"{v}.metadata_path=/d/pilot/val.npz",
+                      f"{v}.subset_to=[{{metadata_key:index,op:in,rhv:/r/val.txt}}]")
+        for loader, split, path in ((cfg.runner.train_dataloader, "train", "train"), (cfg.runner.eval_dataloader, "val", "val")):
+            s = loader.dataset.dataset_configs.omol.splits[split]
+            self.assertIsNone(s.sample_n)
+            self.assertIs(s.no_shuffle, True)
+            self.assertEqual(s.metadata_path, f"/d/pilot/{path}.npz")
+            self.assertEqual([dict(x) for x in s.subset_to],
+                             [{"metadata_key": "index", "op": "in", "rhv": f"/r/{path}.txt"}])
+        default = compose("dense").runner.train_dataloader.dataset.dataset_configs.omol.splits.train
+        self.assertEqual((default.sample_n, default.no_shuffle, default.metadata_path, list(default.subset_to)),
+                         (64, None, None, []))
+
+
+class PilotFilesTests(unittest.TestCase):
+    def test_sample_lists_match_their_hashes_and_are_valid(self):
+        info = json.loads((ROOT / "manifests" / "pilot_samples.json").read_text(encoding="utf-8"))["lists"]
+        self.assertEqual({k: (v["split"], v["count"]) for k, v in info.items()},
+                         {"pilot_train_200k.txt": ("train_4M", 200_000), "pilot_val_5k.txt": ("val", 5_000)})
+        for name, entry in info.items():
+            data = (ROOT / "manifests" / name).read_bytes()
+            self.assertNotIn(b"\r", data)
+            self.assertEqual(hashlib.sha256(data).hexdigest(), entry["sha256"])
+            rows = [int(x) for x in data.decode("ascii").split()]
+            self.assertEqual(len(rows), entry["count"])
+            self.assertEqual(rows, sorted(set(rows)))
+            self.assertGreaterEqual(rows[0], 0)
+            self.assertLess(rows[-1], entry["rows_in_split"])
+
+    def test_job_files_carry_the_agreed_settings(self):
+        expected = {"pilot_dense": ("v100-32", "8:00:00"), "pilot_global": ("v100-32", "8:00:00"),
+                    "pilot_local6": ("l40s-48", "14:00:00")}
+        for name, (gpu, limit) in expected.items():
+            text = (ROOT / "slurm" / f"{name}.job").read_text(encoding="utf-8")
+            self.assertIn("#SBATCH -A che260063p", text)
+            self.assertIn(f"#SBATCH --gpus={gpu}:1", text)
+            self.assertIn(f"#SBATCH -t {limit}", text)
+            self.assertIn("#SBATCH --array=0-2", text)
+            self.assertIn("export PILOT_STEPS=20000", text)
+            self.assertNotIn("PILOT_SEED", text)
+            self.assertNotIn("PILOT_TRAIN_SAMPLES", text)
+            self.assertIn("--mail-user=anshulk@andrew.cmu.edu", text)
+            self.assertTrue(text.rstrip().endswith(f"pilot.sh {name.split('_')[1]}"))
+
+    def test_pilot_script_checks_the_lists_before_training(self):
+        text = (ROOT / "slurm" / "pilot.sh").read_text(encoding="utf-8")
+        self.assertLess(text.index("stage verify_samples"), text.index("stage train "))
+        self.assertIn("SLURM_ARRAY_TASK_ID", text)
+        self.assertIn("PILOT_STEPS:-20000", text)
+        overrides = (ROOT / "slurm" / "pilot_data_overrides.sh").read_text(encoding="utf-8")
+        for key in ("sample_n=null", "no_shuffle=true", "metadata_path", "subset_to"):
+            self.assertEqual(len(re.findall(re.escape(key), overrides)), 2, key)
 
 
 class SchedulerTests(unittest.TestCase):

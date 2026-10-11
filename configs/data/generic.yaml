@@ -13,6 +13,11 @@ train_dataset:
         train:
           src: ${data.train_src}
           sample_n: 64  # Number of samples to include, null = use the full training split
+          # A fixed list of rows instead of a random draw: set sample_n=null, no_shuffle=true, metadata_path to an npz with an
+          # integer field 'index', and subset_to to [{metadata_key: index, op: in, rhv: <text file, one row per line>}]
+          metadata_path: null
+          subset_to: []
+          no_shuffle: null
       format: ase_db
       a2g_args:
         molecule_cell_size: 120.0
@@ -40,6 +45,9 @@ val_dataset:
         val:
           src: ${data.val_src}
           sample_n: 64  # Number of samples, null = use the full validation split
+          metadata_path: null  # see the train split above for the fixed-list settings
+          subset_to: []
+          no_shuffle: null
       format: ase_db
       a2g_args:
         molecule_cell_size: 120.0

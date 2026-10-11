@@ -1,2 +1,3 @@
 *.sh text eol=lf
 *.job text eol=lf
+manifests/*.txt text eol=lf

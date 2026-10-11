@@ -1,22 +1,21 @@
 #!/bin/bash
 #SBATCH -A che260063p
 #SBATCH -p GPU-shared
-#SBATCH -t 10:00:00
+#SBATCH -t 14:00:00
 #SBATCH -N 1
 #SBATCH --gpus=l40s-48:1
 #SBATCH --job-name=pilot_local6
-#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
+#SBATCH --array=0-2
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%A_%a.out
+#SBATCH --error=/ocean/projects/che260063p/shared/logs/slurm-%A_%a.err
 #SBATCH --mail-type=ALL,TIME_LIMIT_80
 #SBATCH --mail-user=anshulk@andrew.cmu.edu
-# made by make_sbatch.py from the Bridges-2 guide; estimated at most 10 SU
+# made by make_sbatch.py from the Bridges-2 guide; estimated at most 14 SU
 # files created here are owned by the Unix group in effect at submission (p. 7):
 # submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/logs' afterwards
 umask 002                      # files stay group-writable for the project team (guide B9)
 export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
 set -x
 cd /ocean/projects/che260063p/shared/logs
-export PILOT_STEPS=10000
-export PILOT_SEED=0
-export PILOT_TRAIN_SAMPLES=200000
-export PILOT_VAL_SAMPLES=5000
+export PILOT_STEPS=20000
 bash /ocean/projects/che260063p/shared/repo/AI4Science-MLIPs/slurm/pilot.sh local6
