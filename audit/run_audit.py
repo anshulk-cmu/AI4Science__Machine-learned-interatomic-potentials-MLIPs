@@ -12,6 +12,18 @@ FRAGMENTS = {"Al_a": "Al", "Al_b": "Al", "Ni_a": "Ni", "Ni_b": "Ni"}
 CASES = {"AlNi": ("Al_a", "Ni_a"), "AlAl": ("Al_a", "Al_b"), "NiNi": ("Ni_a", "Ni_b")}
 
 
+def finished_runs(out, per_run):
+    """Runs already saved in full, for resuming after a crash. Rows of an unfinished run are removed from the file."""
+    if not out.exists():
+        return set()
+    df = pd.read_csv(out)
+    counts = df.run.value_counts()
+    done = set(counts[counts == per_run].index)
+    if len(done) * per_run != len(df):
+        df[df.run.isin(done)].to_csv(out, index=False)
+    return done
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--family", required=True, choices=["uma", "orb", "mace"])
@@ -29,7 +41,7 @@ def main():
     ideal = {s: g.ideal_slab(s) for s in ("Al", "Ni")}
     out = ROOT / "results" / f"energies_{label}_{a.task}.csv"
     out.parent.mkdir(exist_ok=True)
-    done = set(pd.read_csv(out).run) if out.exists() else set()   # resume after a crash
+    done = finished_runs(out, len(CASES) * len(g.DISTANCES))
 
     for run in range(a.runs + 1):
         if run in done:

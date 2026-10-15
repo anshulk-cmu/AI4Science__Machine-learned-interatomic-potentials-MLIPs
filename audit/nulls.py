@@ -27,7 +27,7 @@ def main():
     rows = []
 
     def add(test, name, value, ref):
-        rows.append(dict(model=label, task=a.task, test=test, structure=name, energy=value, ref=ref))
+        rows.append(dict(model=label, task=a.task, dtype=a.dtype, test=test, structure=name, energy=value, ref=ref))
 
     for name, atoms in (("Al_slab", g.isolated(al)), ("AlNi_15", g.stacked(al, ni, 15))):
         ref = energy(atoms)
@@ -40,7 +40,7 @@ def main():
             moved.wrap()
             add("N3", name, energy(moved), ref)                    # shifted origin
     ref = energy(g.isolated(al, 20.0))
-    for pad in (12.0, 20.0, 40.0):
+    for pad in (12.0, 20.0, 40.0, 100.0, 230.0):
         add("N4", f"Al_pad{pad:g}", energy(g.isolated(al, pad)), ref)   # empty space above the slab
 
     out = ROOT / "results" / f"nulls_{label}_{a.task}.csv"

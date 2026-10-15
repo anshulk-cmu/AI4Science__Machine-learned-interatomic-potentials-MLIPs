@@ -1,0 +1,8 @@
+# @package job
+# Weights and Biases, offline by default (training/run.py sets WANDB_MODE=offline). The run files are written next to the
+# run under OMOL_RUN_DIR; upload them later with `wandb sync <run dir>/logs/wandb/offline-run-*`.
+logger:
+  _target_: fairchem.core.common.logger.WandBSingletonLogger.init_wandb
+  _partial_: true
+  entity: ${oc.env:WANDB_ENTITY,anshulk-cmu}
+  project: ${oc.env:WANDB_PROJECT,mlip-local-routing}

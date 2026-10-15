@@ -10,7 +10,9 @@ from torch import Tensor, nn
 @dataclass
 class RoutingNeighbors:
     # Directed neighbor edges: row 0 neighbor/sender, row 1 center/receiver.
-    # No self edges or duplicates. Distances must retain position gradients.
+    # Complete within the routing radius, no duplicate rows, no zero-distance self
+    # edges. A self edge at d > 0 is a periodic image and is allowed. Distances
+    # must retain position gradients.
     edge_index: Tensor
     distances: Tensor
 
@@ -37,6 +39,7 @@ def reference_neighbors(positions: Tensor, batch: Tensor, radius: float) -> Rout
 
     Build neighbors independently from the message graph, especially for Local-12.
     Only discrete pair selection is nondifferentiable; distances retain gradients.
+    It never makes self edges, since without periodic images none can exist.
     """
     if not math.isfinite(radius) or radius < 0:
         raise ValueError("radius must be finite and nonnegative")
@@ -52,8 +55,15 @@ def reference_neighbors(positions: Tensor, batch: Tensor, radius: float) -> Rout
 
 
 def local_composition(embeddings: Tensor, batch: Tensor, neighbors: RoutingNeighbors,
-                      radius: float = 6.0, power: int = 3) -> Tensor:
-    """Smooth sparse composition average with the central atom counted once."""
+                      radius: float = 6.0, power: int = 3, check_duplicates: bool = True) -> Tensor:
+    """Smooth sparse composition average with the central atom counted once.
+
+    A zero-distance self edge is rejected because the central atom is already
+    included. A self edge at d > 0 is a periodic image and adds its weight.
+    Rows with the same (receiver, sender, distance) are rejected as duplicates. Pass
+    check_duplicates=False for a periodic graph: two images of one atom pair can lie at
+    exactly the same distance (opposite cell shifts), and the row carries no cell offset.
+    """
     if not math.isfinite(radius) or radius < 0 or not isinstance(power, int) or power < 3:
         raise ValueError("radius must be finite/nonnegative and power an integer >=3")
     if radius == 0:
@@ -63,11 +73,18 @@ def local_composition(embeddings: Tensor, batch: Tensor, neighbors: RoutingNeigh
         raise ValueError("neighbor edge_index must be int64 [2,E]")
     if distances.shape != (edges.shape[1],):
         raise ValueError("neighbor distances must have shape [E]")
+    if distances.dtype != embeddings.dtype or distances.device != embeddings.device:
+        raise ValueError("neighbor distances and embeddings must have matching dtype/device")
     if edges.numel() and bool(((edges < 0) | (edges >= embeddings.shape[0])).any()):
         raise ValueError("neighbor index outside atom range")
     sender, receiver = edges
-    if bool((sender == receiver).any()):
-        raise ValueError("omit self edges: central atom is already included")
+    if bool(((sender == receiver) & (distances == 0)).any()):
+        raise ValueError("omit zero-distance self edges: central atom is already included")
+    # float64 holds int64 indices exactly below 2**53 and every float32/float64 distance.
+    if check_duplicates:
+        rows = torch.stack((receiver.double(), sender.double(), distances.detach().double()), dim=1)
+        if torch.unique(rows, dim=0).shape[0] != rows.shape[0]:
+            raise ValueError("duplicate neighbor edges")
     if bool((batch[sender] != batch[receiver]).any()):
         raise ValueError("routing neighbors cannot cross structure boundaries")
     if not bool(torch.isfinite(distances).all()) or bool((distances < 0).any()):
@@ -131,6 +148,9 @@ class CompositionRouter(nn.Module):
         else:
             if inputs.neighbors is None:
                 raise ValueError("local routing requires a geometry-helper neighbor list")
+            if (torch.is_grad_enabled() and positions.requires_grad
+                    and not inputs.neighbors.distances.requires_grad):
+                raise ValueError("neighbor distances must be computed from positions with autograd")
             composition = local_composition(emb, batch, inputs.neighbors, self.radius, self.power)
             scope = "atom"
         if self.context_dim:
@@ -152,8 +172,13 @@ def edge_coefficients(result: RoutingResult, edge_index: Tensor, batch: Tensor) 
     sender, receiver = edge_index
     if bool((batch[sender] != batch[receiver]).any()):
         raise ValueError("message edges cannot cross structure boundaries")
+    rows = result.coefficients.shape[:1]
     if result.scope == "atom":
+        if rows != (batch.numel(),):
+            raise ValueError("atom coefficients must have one row per atom")
         return result.coefficients[receiver]
     if result.scope == "structure":
+        if rows != ((int(batch.max()) + 1 if batch.numel() else 0),):
+            raise ValueError("structure coefficients must have one row per structure")
         return result.coefficients[batch[receiver]]
     raise ValueError("unknown routing scope")

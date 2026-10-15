@@ -25,6 +25,7 @@ SOURCES = {
 }
 SEED = 11785
 SMOKE_PER_SPLIT = 64
+MAX_NUM_ELEMENTS = 100  # backbone max_num_elements in configs/variant: valid Z is below it
 
 
 def sha256(path: Path) -> str:
@@ -110,6 +111,8 @@ def audit_split(name: str, split_dir: Path, seed: int, count: int, hash_file: Ca
             raise ValueError(f"{sample_id}: invalid atomic numbers")
         if np.any((numbers < 1) | (numbers > 118)):
             raise ValueError(f"{sample_id}: atomic number outside 1..118")
+        if np.any(numbers >= MAX_NUM_ELEMENTS):
+            raise ValueError(f"{sample_id}: atomic number >= model max_num_elements {MAX_NUM_ELEMENTS}")
         positions = finite_array(atoms.positions, (n, 3), "positions", sample_id)
         if "charge" not in info or "spin" not in info:
             raise ValueError(f"{sample_id}: raw charge/spin missing; FairChem would default to 0")
@@ -132,7 +135,7 @@ def audit_split(name: str, split_dir: Path, seed: int, count: int, hash_file: Ca
         converted_forces = converted.forces.cpu().numpy()
         if not np.array_equal(converted_numbers, numbers):
             raise ValueError(f"{sample_id}: FairChem atomic numbers differ")
-        # molecule_cell_size=120 centers an aperiodic molecule in a large box.
+        # molecule_cell_size=120 calls atoms.center(vacuum=120): 120 A of vacuum on each side.
         # The absolute coordinates change, but every atom must get the same shift.
         shifts = converted_positions - positions
         if not np.allclose(shifts, shifts[0], rtol=0, atol=1e-4):
@@ -164,7 +167,7 @@ def audit_split(name: str, split_dir: Path, seed: int, count: int, hash_file: Ca
         "samples": samples,
         "sample_checks": {
             "count": len(samples),
-            "atomic_numbers": "integer 1..118; raw and FairChem agree",
+            "atomic_numbers": f"integer 1..118 and below {MAX_NUM_ELEMENTS}; raw and FairChem agree",
             "positions": "finite, Nx3; FairChem differs only by uniform box-centering translation",
             "energy": "finite scalar; raw and FairChem agree",
             "forces": "finite Nx3; raw and FairChem agree",
@@ -187,13 +190,18 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=SEED)
     parser.add_argument("--smoke-per-split", type=int, default=SMOKE_PER_SPLIT)
     parser.add_argument("--skip-hashes", action="store_true", help="Fast sample precheck only; output status remains pending")
+    parser.add_argument("--no-archives", action="store_true", help="Audit extracted splits without the two .tar.gz archives")
     parser.add_argument("--source-revision", required=True, help="Hugging Face commit SHA of the official DATASET.md download instructions")
     args = parser.parse_args()
     data_root = args.data_root.resolve(strict=True)
     repo = Path(__file__).resolve().parents[1]
     fairchem = repo.parent / "fairchem"
     if data_root == repo or repo in data_root.parents or data_root == fairchem or fairchem in data_root.parents:
-        raise ValueError("Data must live outside mlip-project and fairchem Git repositories")
+        raise ValueError("Data must live outside this repository and the adjacent fairchem checkout")
+    archives = [] if args.no_archives else [data_root / "train_4M.tar.gz", data_root / "val.tar.gz"]
+    missing = [str(path) for path in archives if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(f"Missing archives {missing}; pass --no-archives to audit extracted splits only")
     if args.smoke_per_split < 1:
         raise ValueError("--smoke-per-split must be positive")
     if not re.fullmatch(r"[0-9a-fA-F]{40}", args.source_revision):
@@ -236,16 +244,18 @@ def main() -> None:
         ],
         "archives": [
             {"path": str(path), "size_bytes": path.stat().st_size, "sha256": hash_file(path) if hash_file else None}
-            for path in (data_root / "train_4M.tar.gz", data_root / "val.tar.gz")
-            if path.is_file()
+            for path in archives
         ],
     }
+    # Weak check: only the sampled IDs are compared, so zero overlap does not show the splits are disjoint.
     train_ids = {row["source_id"] for row in report["splits"][0]["samples"]}
     val_ids = {row["source_id"] for row in report["splits"][1]["samples"]}
     overlap = train_ids & val_ids
     if overlap:
         raise ValueError(f"Sampled source IDs overlap across official splits: {sorted(overlap)[:5]}")
     report["sampled_cross_split_id_overlap"] = 0
+    print(f"Weak sampled check: 0 of {len(train_ids)} train and {len(val_ids)} val sampled source IDs shared "
+          "(not a full split-disjointness test)")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.output.with_suffix(args.output.suffix + ".tmp")
     temporary.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

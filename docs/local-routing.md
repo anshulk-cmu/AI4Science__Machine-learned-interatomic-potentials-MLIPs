@@ -1,9 +1,8 @@
 # Local router
 
-**Standalone component with fairchem integration pending.**
-
-The router and a linear-expert reference are implemented. The SO(2) layer
-integration and OMol25 training runs remain to be done.
+The router and a linear-expert reference are implemented in `local_routing/`. They are integrated into fairchem 2.21.0
+as the Local-6 backbone (`training/local_moe.py`, `configs/variant/local6.yaml`; see `docs/TRAINING.md`). Local-6 has
+been trained for 30 steps on real OMol25 data on Bridges-2. Long training runs are still to be done.
 
 ## Interface
 
@@ -19,13 +18,29 @@ and task, total charge, and spin multiplicity `[B]`. Local also requires a
 Use compatible dtypes and devices throughout.
 
 Neighbor indices are `[2,E]`: row 0 sends, row 1 receives. Include each directed
-pair once, with no self edges. The composition calculation adds the central atom
+pair once per image, with no zero-distance self edges. A self edge at a distance
+above zero is a periodic image of the central atom and is allowed, as is the same
+pair at several distances. The composition calculation adds the central atom
 with weight one. Supply all neighbors within the routing radius, even if that
 radius exceeds the message cutoff. The receiver convention is agreed by the team.
 
+The neighbor-list contract: the list is complete within the routing radius and
+is not truncated by `max_neighbors`, the distances carry gradients to positions,
+and no two rows of (receiver, sender, distance) are identical. The router raises
+`ValueError` on duplicate rows, on detached distances when positions require
+gradients, and on distances whose dtype or device differ from the router's.
+`local_composition(..., check_duplicates=False)` skips the duplicate check. The fairchem backbone
+(`training/local_moe.py`) uses it, because a periodic graph can hold two images of one atom pair at exactly
+the same distance (opposite cell shifts) and the rows carry no cell offset.
+
 Distances must retain gradients to positions. `reference_neighbors` does this
-for small, non-periodic systems, using an O(N^2) search. The composition calculation
+for small, non-periodic systems, using an O(N^2) search. It never makes self
+edges, since a non-periodic system has no images. The composition calculation
 itself uses sparse indexed sums. Training will need the shared geometry helper.
+
+`include_self: true` in `configs/config_draft.yaml` means the central atom counts
+with weight one in its own average. It is unrelated to fairchem's `include_self`
+option, where version 1.0 divides by N+1.
 
 `edge_coefficients` maps atom or structure coefficients to receiving edges.
 `LinearExperts` implements one ordinary linear operation with a shared bias.
@@ -54,7 +69,10 @@ leaves normalization and hidden dimensions open. These are not measured 6M-model
 
 Pass the shared task/charge/spin encoder as `conditioner`, with signature
 `conditioner(task, charge, spin) -> [B, context_dim]`. No new encoding is defined
-here. Unconditioned tests require explicit `allow_unconditioned=True`.
+here. Unconditioned tests require explicit `allow_unconditioned=True`. Local
+coefficients of a fragment do not depend on distant atoms in the same structure,
+except through this structure-level context: a different total charge changes
+the coefficients of every atom.
 
 The repository pins fairchem 2.21.0 and PyTorch 2.8.0+cu128, while the draft's
 version/commit fields are null. Reconcile those fields when the shared backbone
@@ -76,24 +94,26 @@ The toy scalar is not a molecular potential.
 All 17 tests passed again on 8 October 2026, on macOS CPU with Python 3.12.14
 and PyTorch 2.8.0. PyTorch warned that NumPy was absent in the temporary test
 environment; these tests use tensor operations and do not require NumPy.
-CUDA, fairchem integration, full-model forces, and MD stability remain untested.
+MD stability remains untested. CUDA, the fairchem integration and full-model forces are tested by
+`tests/test_local_backbone.py`.
+
+`tests/test_local_routing_contracts.py` adds 27 tests: the neighbor-list and
+coefficient contracts above, the error paths, float32 paths, unequal structure
+sizes, interleaved batch ids, permuted edges, isolated atoms, envelope powers 4
+and 5, radius 0, and a pair at exactly the radius. Set `ROUTER_TEST_DEVICE=cuda`
+to run both files on a GPU; the default is `cpu`. All 44 tests passed on
+8 October 2026 on Windows CPU with Python 3.12.15 and PyTorch 2.8.0+cu128.
 
 ## Handoff and dates
 
-Yiwei is targeting a usable shared pipeline on 8 October: fixed pilot data,
-Dense training/validation, W&B, checkpoints, and model integration points.
-Local-6 integration depends on that code. His travel starts 9 October, so use
-the 8 October meeting to confirm the encoder, geometry helper, exact SO(2)
-modules, coefficient normalization, and any unfinished pipeline work.
+Local-6 is integrated and tested. The full suite has 101 tests (`python -m unittest discover -s tests`), run on 9 October
+2026 on Windows CPU (Python 3.12, PyTorch 2.8.0+cu128). The Linux CPU and CUDA runs were done earlier on Bridges-2.
 
-Anshul accepted these dates for Pragati:
+Dates for Pragati:
 
-- 8 October: agree on the interface and implementation approach.
 - 11 October: report progress and blockers.
-- 15 October: router merged; Local-6 runs a few batches; force checks complete.
-- 16–18 October: short pilot if integration and GPU access are ready.
+- 12 to 18 October: the Local-6 pilot, `slurm/pilot_local6.job` on an H100 (`h100-80`). It needs a working PSC login.
+  If that is still blocked, Anshul submits it.
 
-If Local-6 is not running by 15 October, the agreed midterm fallback is to report
-it as implemented but not trained. Dense and Global remain the midterm baseline.
-Describe exactly which components are implemented; this package alone does not
-establish a working Local-6 backbone.
+If Local-6 cannot be trained by the deadline, the agreed midterm fallback is to report it as implemented but not
+trained. Dense and Global remain the midterm baseline.

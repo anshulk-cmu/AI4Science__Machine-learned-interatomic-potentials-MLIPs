@@ -1,8 +1,9 @@
 # @package _global_
 # Full OMol-compatible ASE DB splits, using FairChem's native dataset stack.
 data:
-  train_src: ../omol25-data/train_4M  # Directory of train data
-  val_src: ../omol25-data/val  # Directory of val data
+  root: ${oc.env:OMOL_DATA_ROOT,../omol25-data}  # Relative paths resolve from the repository root
+  train_src: ${data.root}/train_4M  # Directory of train data
+  val_src: ${data.root}/val  # Directory of val data
 
 train_dataset:
   _target_: fairchem.core.datasets.mt_concat_dataset.create_concat_dataset
@@ -12,6 +13,11 @@ train_dataset:
         train:
           src: ${data.train_src}
           sample_n: 64  # Number of samples to include, null = use the full training split
+          # A fixed list of rows instead of a random draw: set sample_n=null, no_shuffle=true, metadata_path to an npz with an
+          # integer field 'index', and subset_to to [{metadata_key: index, op: in, rhv: <text file, one row per line>}]
+          metadata_path: null
+          subset_to: []
+          no_shuffle: null
       format: ase_db
       a2g_args:
         molecule_cell_size: 120.0
@@ -21,7 +27,7 @@ train_dataset:
         r_data_keys: [spin, charge]
         r_edges: true
         radius: ${training.cutoff}
-        max_neigh: ${training.max_atoms}
+        max_neigh: ${training.max_neighbors}
       key_mapping:
         energy: omol_energy
         forces: omol_forces
@@ -39,6 +45,9 @@ val_dataset:
         val:
           src: ${data.val_src}
           sample_n: 64  # Number of samples, null = use the full validation split
+          metadata_path: null  # see the train split above for the fixed-list settings
+          subset_to: []
+          no_shuffle: null
       format: ase_db
       a2g_args:
         molecule_cell_size: 120.0
@@ -48,7 +57,7 @@ val_dataset:
         r_data_keys: [spin, charge]
         r_edges: true
         radius: ${training.cutoff}
-        max_neigh: ${training.max_atoms}
+        max_neigh: ${training.max_neighbors}
       key_mapping:
         energy: omol_energy
         forces: omol_forces

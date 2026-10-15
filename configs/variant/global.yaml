@@ -14,8 +14,9 @@ backbone:
   lmax: 2
   mmax: 2
   cutoff: ${training.cutoff}
+  max_neighbors: ${training.max_neighbors}
   max_num_elements: 100
-  num_distance_basis: 512
+  num_distance_basis: 64
   distance_function: gaussian
   grid_resolution: null
   norm_type: rms_norm_sh

@@ -23,6 +23,21 @@ def load():
     return df
 
 
+def check_dtypes(df):
+    """One dtype per (model, task) in the energy files, and the same one in its null tests when they record it."""
+    dtypes = df.groupby(["model", "task"])["dtype"].unique()
+    for key, v in dtypes.items():
+        if len(v) != 1:
+            raise ValueError(f"{key}: energy files mix dtypes {sorted(v)}")
+    for p in sorted(RES.glob("nulls_*.csv")):
+        n = pd.read_csv(p)
+        key = (n.model[0], n.task[0])
+        if "dtype" not in n:
+            print(f"warning: {p.name} has no dtype column, so its precision is not checked")
+        elif key in dtypes and set(n["dtype"]) != {dtypes[key][0]}:
+            raise ValueError(f"{key}: null tests ran in {sorted(set(n['dtype']))}, energies in {dtypes[key][0]}")
+
+
 def tolerances():
     """tau = 5 sigma_E per (model, task), from the null experiments, with a floor of 1e-3 meV."""
     out = {}
@@ -41,8 +56,11 @@ def interval(x):
 
 
 def classify(x, tau):
+    x = np.asarray(x, dtype="float64")
+    if len(x) < 3 or np.isnan(x).any():
+        raise ValueError(f"classify needs at least 3 runs and no NaN, got {len(x)} values")
     mean, lo, hi = interval(x)
-    same_sign = (np.sign(x) == np.sign(mean)).sum() >= len(x) - 1
+    same_sign = (np.sign(x) == np.sign(mean)).sum() >= -(-95 * len(x) // 100)   # ceil(0.95 n) in integers
     if (lo > tau or hi < -tau) and same_sign:
         return "VIOLATION"
     return "CONSISTENT" if (lo >= -tau and hi <= tau) else "INCONCLUSIVE"
@@ -99,6 +117,7 @@ def plot(summary):
 
 def main():
     df, tau = load(), tolerances()
+    check_dtypes(df)
     summary = summarize(df, tau)
     summary.to_csv(RES / "summary.csv", index=False)
     flatness(df, tau).to_csv(RES / "flatness.csv", index=False)

@@ -1,18 +1,29 @@
 """One loader per model family. load() returns (energy function in eV, graph cutoff in angstrom)."""
 import os
+import sys
+from pathlib import Path
 
 import torch
+
+ROOT = Path(__file__).resolve().parents[1]
 
 SPIN = {"omat": 0, "omol": 1}            # the default of each task; charge is 0 for both
 
 
 def _energy(calc, info=None):
-    def energy(atoms):
+    """energy(atoms) in eV; energy.forces(atoms) in eV/angstrom."""
+    def prepared(atoms):
         atoms = atoms.copy()
         if info:
             atoms.info.update(info)
+        calc.reset()                         # ASE would return the cached result for identical atoms
         atoms.calc = calc
-        return float(atoms.get_potential_energy())
+        return atoms
+
+    def energy(atoms):
+        return float(prepared(atoms).get_potential_energy())
+
+    energy.forces = lambda atoms: prepared(atoms).get_forces()
     return energy
 
 
@@ -20,12 +31,14 @@ def _find(module, name):
     """First positive number stored under this attribute name in any submodule."""
     for m in module.modules():
         v = getattr(m, name, None)
-        if isinstance(v, (int, float)) and v > 0:
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
             return float(v)
     raise RuntimeError(f"no {name} found in the model")
 
 
 def _uma(model, task, dtype, version):
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))        # a checkpoint of ours names classes in training/ and local_routing/
     from fairchem.core import FAIRChemCalculator, pretrained_mlip
     from fairchem.core.units.mlip_unit.api.inference import InferenceSettings
     settings = "default"
@@ -41,7 +54,9 @@ def _uma(model, task, dtype, version):
                 m.model_version = version
     calc = FAIRChemCalculator(unit, task_name=task)
     info = {"charge": 0, "spin": SPIN[task]}
-    return _energy(calc, info), _find(unit.model, "cutoff")   # P1 confirms where the model lives
+    energy = _energy(calc, info)
+    energy.unit = unit                       # lets a test reach the router
+    return energy, _find(unit.model, "cutoff")   # P1 confirms where the model lives
 
 
 def _orb(dtype):
