@@ -35,8 +35,10 @@ are next (12 to 18 October). The midterm report is due 23 October.
 - **Next: the pilot runs.** Dense, Global and Local-6, one job file each in `slurm/`. The settings (steps, seeds,
   fixed sample lists, normalizer, size matching, neighbor cap, `num_distance_basis`) are waiting on the team's
   answers by mail. Until then the job files hold placeholders.
-- **Not done:** trained quality comparison and the size-consistency benchmark on the pilot checkpoints. Element, Local-12 and
-  Local+Global are later work (decided 2026-10-11); the midterm trains Dense, Global and Local-6.
+- **Done: size consistency along training** (2026-10-15). All 99 saved checkpoints of the nine pilots, Al + Ni slabs at gaps of 8 and 100 A.
+  Dense and Local-6 stay at the float64 floor (below 4e-6 meV) at every checkpoint. Global is 10 to 69 meV off at step 0 and 2.4 to 6.6 eV off
+  at step 50,000, the same at both gaps. Read `docs/size-consistency-training.md`.
+- **Not done:** Element, Local-12 and Local+Global are later work (decided 2026-10-11); the midterm trains Dense, Global and Local-6.
 
 ## Repository layout
 
