@@ -149,7 +149,9 @@ def main():
         from audit.models import load
         energy, cutoff = load("uma", str(args.checkpoint.resolve()), "omol", args.dtype)
         metadata["cutoff_A"] = cutoff
-        metadata["model_class"] = type(energy.unit.model).__module__ + "." + type(energy.unit.model).__name__
+        # unit.model is an AveragedModel wrapper; the backbone class names the variant
+        metadata["backbone_class"] = next((type(m.backbone).__module__ + "." + type(m.backbone).__name__
+                                           for m in energy.unit.model.modules() if hasattr(m, "backbone")), None)
         metadata["routing_modules"] = sorted({type(m).__module__ + "." + type(m).__name__
                                               for m in energy.unit.model.modules()
                                               if hasattr(m, "set_MOLE_coefficients")})

@@ -91,9 +91,11 @@ class MolecularAuditTests(unittest.TestCase):
 
     def test_cli_records_outputs_and_failure(self):
         from audit import molecular
-        class FakeModel:
+        class ToyBackbone:
+            pass
+        class FakeModel:                     # like AveragedModel around HydraModel, which holds the backbone
             def modules(self):
-                return []
+                return [self, types.SimpleNamespace(backbone=ToyBackbone())]
         model = PairPotential()
         model.unit = types.SimpleNamespace(model=FakeModel())
         loader = types.ModuleType("audit.models")
@@ -111,6 +113,7 @@ class MolecularAuditTests(unittest.TestCase):
                 metadata = json.loads((root / "output/metadata.json").read_text(encoding="utf-8"))
                 self.assertEqual(metadata["status"], "complete")
                 self.assertEqual(len(metadata["checkpoint_sha256"]), 64)
+                self.assertTrue(metadata["backbone_class"].endswith(".ToyBackbone"))
                 self.assertTrue((root / "output/locality.csv").exists())
                 with (root / "output/finite_difference.csv").open(encoding="utf-8") as stream:
                     fd = list(csv.DictReader(stream))
