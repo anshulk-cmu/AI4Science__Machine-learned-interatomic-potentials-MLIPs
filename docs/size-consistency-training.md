@@ -199,7 +199,7 @@ The train loss is the mean of the logged train loss over the 500 steps before th
 
 ### 4.5 Global router output
 
-For Global we recorded the 8 expert mixing weights of the router for the Al slab, the Ni slab and the union at each gap. These are the values in `global_mole_tensors.expert_mixing_coefficients` after each forward pass. They sum to 1. A uniform router would give 0.125 to each expert. The table shows the L1 distance between the Al and Ni weight vectors, and the L1 distance between the union and the midpoint (w_Al + w_Ni)/2. Source: `results/size_consistency_training_router.csv`.
+For Global we recorded the 8 expert mixing weights of the router for the Al slab, the Ni slab and the union at each gap. These are the values in `global_mole_tensors.expert_mixing_coefficients` after each forward pass. They sum to 1.04, not 1: fairchem's softmax norm adds 0.005 to every weight (`_softmax` in `fairchem/core/models/uma/nn/mole.py`; checked on all 132 rows of the CSV). A uniform router would give 0.13 to each expert. The table shows the L1 distance between the Al and Ni weight vectors, and the L1 distance between the union and the midpoint (w_Al + w_Ni)/2. Source: `results/size_consistency_training_router.csv`.
 
 | Step | s0 L1(Al, Ni) | s1 L1(Al, Ni) | s2 L1(Al, Ni) | s0 L1(union, mid) | s1 L1(union, mid) | s2 L1(union, mid) |
 |---:|---:|---:|---:|---:|---:|---:|
