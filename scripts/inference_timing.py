@@ -327,7 +327,7 @@ def plot(a):
     for (ax1, ax2), df in zip(axes, frames):
         df = df[df.seed == df.seed.min()]
         conds = list(dict.fromkeys(df.condition))
-        labels = [f"{c}\n{int(df[df.condition == c].atoms_per_batch.iloc[0])} at." for c in conds]
+        labels = [f"{c}\n{round(df[df.condition == c].atoms_per_batch.iloc[0])} atoms" for c in conds]
         x = np.arange(len(conds))
         for j, (v, c) in enumerate(colors.items()):
             for mode, ls, mk in (("energy_forces", "-", "o"), ("energy", "--", "s")):
@@ -343,7 +343,7 @@ def plot(a):
         ax2.set_ylabel("peak GPU memory allocated (GiB)")
         for ax in (ax1, ax2):
             ax.set_xticks(x, labels, fontsize=8)
-            ax.set_title(f"{gpu}, seed 0, float32, batch on the GPU", fontsize=9)
+            ax.set_title(f"{gpu}, seed 0, float32 (IQR bars are smaller than the markers)", fontsize=9)
             ax.grid(alpha=0.3)
         ax1.legend(fontsize=7, ncol=2)
     fig.tight_layout()
