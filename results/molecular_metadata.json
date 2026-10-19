@@ -1,0 +1,317 @@
+[
+  {
+    "label": "dense_s0_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_dense_s0_49041937/train/202610-1117-0510-e3d7/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "b6eacbffa9654152f5a2cb773e5da218ce441167bac7c43d1c47e877e2198151",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_dense_s0_49041937/train/202610-1117-0510-e3d7/canonical_config.yaml",
+    "run_config_sha256": "eacc9b3026fec61e532f116bcae8e01e69a0c1b375c158a9ad26a67ee3d92bd5",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "fairchem.core.models.uma.escn_md.eSCNMDBackbone",
+    "routing_modules": [
+      "fairchem.core.models.uma.escn_md.eSCNMDBackbone"
+    ]
+  },
+  {
+    "label": "dense_s1_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_dense_s1_49041938/train/202610-1117-0510-0c81/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "c991b8cd30f38d8a6d45f9183ebee900fd76fca9fcc72fb85f8d245a1007fef8",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_dense_s1_49041938/train/202610-1117-0510-0c81/canonical_config.yaml",
+    "run_config_sha256": "2c04b8a1801741bd2bcd199ab03e6f0c6545ac31f71dd7a6a6ad78836756981d",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "fairchem.core.models.uma.escn_md.eSCNMDBackbone",
+    "routing_modules": [
+      "fairchem.core.models.uma.escn_md.eSCNMDBackbone"
+    ]
+  },
+  {
+    "label": "dense_s2_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_dense_s2_49041928/train/202610-1117-0510-9241/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "8378e23fa77563ac07da1ca827b1423e9a9923571f8d199a283c0cc97adb4e4a",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_dense_s2_49041928/train/202610-1117-0510-9241/canonical_config.yaml",
+    "run_config_sha256": "8b7f795330e2da1f131ad306f9b88d874ab96ed2aa18ca926b04f4a790210930",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "fairchem.core.models.uma.escn_md.eSCNMDBackbone",
+    "routing_modules": [
+      "fairchem.core.models.uma.escn_md.eSCNMDBackbone"
+    ]
+  },
+  {
+    "label": "global_s0_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_global_s0_49041939/train/202610-1117-0510-f91a/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "86e40268df054e1d950f03a83ff1b40d2e2b9f0ec0d4cf0b65a88618bb39f443",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_global_s0_49041939/train/202610-1117-0510-f91a/canonical_config.yaml",
+    "run_config_sha256": "eee772385f6eccc318ec5fa04dd286e9b1f23deb4ac24c30d74b84b85ff49872",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "fairchem.core.models.uma.escn_moe.eSCNMDMoeBackbone",
+    "routing_modules": [
+      "fairchem.core.models.uma.escn_moe.eSCNMDMoeBackbone"
+    ]
+  },
+  {
+    "label": "global_s1_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_global_s1_49041940/train/202610-1117-0510-8762/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "f8dd2f0066a497ca944a83aa5384b49cd91bdae8d340eb2065689a41d64e719f",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_global_s1_49041940/train/202610-1117-0510-8762/canonical_config.yaml",
+    "run_config_sha256": "7a481fcb455ced48ad6c3e5b6219a153dcba43d6c3c47740d767468bb2fa19d4",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "fairchem.core.models.uma.escn_moe.eSCNMDMoeBackbone",
+    "routing_modules": [
+      "fairchem.core.models.uma.escn_moe.eSCNMDMoeBackbone"
+    ]
+  },
+  {
+    "label": "global_s2_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_global_s2_49041929/train/202610-1117-0510-2bd1/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "1a288fa28970e29fa355dc3f0c4e0b6030c1d7c771b83e73d6b1f499231789ff",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_global_s2_49041929/train/202610-1117-0510-2bd1/canonical_config.yaml",
+    "run_config_sha256": "099e9835a708ea5dbbc0f0f3f38b0875eeb7d4fe16e26a8854e868bd0cf0a8de",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "fairchem.core.models.uma.escn_moe.eSCNMDMoeBackbone",
+    "routing_modules": [
+      "fairchem.core.models.uma.escn_moe.eSCNMDMoeBackbone"
+    ]
+  },
+  {
+    "label": "local6_s0_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_local6_s0_49041936/train/202610-1117-0509-eed4/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "54b3c889ea9035966310eccf81e3626f6aa1b6485651c1479662a5cf821a6514",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_local6_s0_49041936/train/202610-1117-0509-eed4/canonical_config.yaml",
+    "run_config_sha256": "e8b550462613a5b645fd072a4b2e02b98636a3a1ec20ab86e1a16fde14f5934e",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "training.local_moe.eSCNMDLocalMoeBackbone",
+    "routing_modules": [
+      "training.local_moe.eSCNMDLocalMoeBackbone"
+    ]
+  },
+  {
+    "label": "local6_s1_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_local6_s1_49041974/train/202610-1117-0804-505d/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "a2ab4d9512a9710974cccddbe54e975f05aea7e24ea06c53a1100f3f388ed641",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_local6_s1_49041974/train/202610-1117-0804-505d/canonical_config.yaml",
+    "run_config_sha256": "8b2026669903e321f95cb14728cc67b7105d60c45252546d7f47cff9441d9277",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "training.local_moe.eSCNMDLocalMoeBackbone",
+    "routing_modules": [
+      "training.local_moe.eSCNMDLocalMoeBackbone"
+    ]
+  },
+  {
+    "label": "local6_s2_step50000",
+    "status": "complete",
+    "task": "omol",
+    "charge": 0,
+    "spin": 1,
+    "dtype": "float64",
+    "gaps_A": [
+      8,
+      12,
+      20,
+      40
+    ],
+    "fd_steps_A": [
+      0.001,
+      0.0003
+    ],
+    "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_local6_s2_49041927/train/202610-1117-0804-9357/checkpoints/final/inference_ckpt.pt",
+    "checkpoint_sha256": "535f117226e43721ca647098497516c2791934b07f063f049c1bd8f94767df5a",
+    "run_config": "/ocean/projects/che260063p/shared/runs/pilot_local6_s2_49041927/train/202610-1117-0804-9357/canonical_config.yaml",
+    "run_config_sha256": "6e4515d0fef47d92c4a73a5f4c5da98939bf2b6269a5b628f148fc766f6d717f",
+    "evaluation_commit": null,
+    "working_tree_status": null,
+    "versions": {
+      "numpy": "2.4.6",
+      "ase": "3.29.0",
+      "torch": "2.8.0+cu128",
+      "fairchem-core": "2.21.0"
+    },
+    "cutoff_A": 6.0,
+    "backbone_class": "training.local_moe.eSCNMDLocalMoeBackbone",
+    "routing_modules": [
+      "training.local_moe.eSCNMDLocalMoeBackbone"
+    ]
+  }
+]
