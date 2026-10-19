@@ -307,7 +307,8 @@ def analyze(a):
     import pandas as pd
     from scipy import stats
     src = Path(a.in_dir)
-    res = ROOT / "results"
+    res = Path(a.res_dir)
+    (res / "figures").mkdir(parents=True, exist_ok=True)
     merged = {}
     for kind in ("router", "experts", "ablation"):
         files = sorted(src.glob(f"router_check_*_s*_{kind}.csv"))
@@ -329,13 +330,31 @@ def analyze(a):
                                   trained_mean=base.loc[x.index, metric].mean(), ablated_mean=x[metric].mean(),
                                   delta_mean=x.delta.mean(), delta_sd=x.delta.std(ddof=1),
                                   delta_rel_mean=(x.delta / base.loc[x.index, metric]).mean(),
-                                  paired_t=t.statistic if t else float("nan"), paired_p=t.pvalue if t else float("nan")))
+                                  test="paired t, ablated vs trained, seeds as pairs",
+                                  t=t.statistic if t else float("nan"), p=t.pvalue if t else float("nan")))
             g, l = d[d.variant == "global"].delta, d[d.variant == "local6"].delta
             w = stats.ttest_ind(g, l, equal_var=False)
             tests.append(dict(condition=cond, metric=metric, variant="global minus local6 (delta)", n=len(g) + len(l),
-                              delta_mean=g.mean() - l.mean(), paired_t=w.statistic, paired_p=w.pvalue))
+                              delta_mean=g.mean() - l.mean(), test="Welch t on the deltas", t=w.statistic, p=w.pvalue))
     pd.DataFrame(tests).to_csv(res / "router_check_tests.csv", index=False, float_format="%.6g")
     print(f"router_check_tests.csv: {len(tests)} rows")
+    # Global against Local-6 of the same seed (same initial weights): the router output per structure
+    pairs = []
+    for seed in sorted(abl.seed.unique()):
+        z = {v: np.load(next(src.glob(f"router_check_{v}_s{seed}_per_structure.npz"))) for v in ("global", "local6")}
+        assert (z["global"]["rows"] == z["local6"]["rows"]).all()
+        keys = set(z["global"].files) & set(z["local6"].files)
+        for key in sorted((k for k in keys if k.startswith("p_struct_")), key=lambda k: int(k[9:])):
+            g, l = z["global"][key].astype(np.float64), z["local6"][key].astype(np.float64)
+            gm, lm = g.mean(0), l.mean(0)
+            corr = [np.corrcoef(g[:, k], l[:, k])[0, 1] for k in range(K)]
+            pairs.append(dict(seed=seed, step=int(key[9:]), l1_mean_vectors=np.abs(gm - lm).sum(),
+                              cos_mean_vectors=gm @ lm / np.linalg.norm(gm) / np.linalg.norm(lm),
+                              corr_across_structures_mean=np.mean(corr), corr_across_structures_min=np.min(corr),
+                              top3_global=" ".join(map(str, np.argsort(-gm)[:3])),
+                              top3_local6=" ".join(map(str, np.argsort(-lm)[:3]))))
+    pd.DataFrame(pairs).to_csv(res / "router_check_global_vs_local6.csv", index=False, float_format="%.6g")
+    print(f"router_check_global_vs_local6.csv: {len(pairs)} rows")
     figure(merged, res / "figures" / "router_check.png")
 
 
@@ -346,7 +365,7 @@ def figure(m, path):
     colors = {"global": "#C44E52", "local6": "#55A868"}
     names = {"global": "Global (per structure)", "local6": "Local-6 (per atom)"}
     r, abl = m["router"], m["ablation"]
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4.2))
+    fig, axes = plt.subplots(1, 4, figsize=(18, 4.2))
     for ax, col, label in ((axes[0], "entropy_mean", "mean entropy of p (nats)"),
                            (axes[1], "l1_mean", "mean L1 distance of p from uniform")):
         for v, c in colors.items():
@@ -361,21 +380,21 @@ def figure(m, path):
     axes[0].axhline(math.log(K), color="gray", ls="--", lw=1, label="uniform, ln 8")
     axes[0].legend(fontsize=7)
     axes[1].axhline(0, color="gray", ls="--", lw=1)
-    ax = axes[2]
     conds = [c for c in CONDITIONS if c != "trained"]
-    base = abl[abl.condition == "trained"].set_index("run").force_mae
-    for j, v in enumerate(colors):
-        for run, s in abl[abl.variant == v].groupby("run"):
-            s = s.set_index("condition").reindex(conds)
-            xs = np.arange(len(conds)) + (j - 0.5) * 0.25
-            ax.plot(xs, 100 * (s.force_mae.values / base[run] - 1), color=colors[v], lw=0.8, alpha=0.7, marker="o", ms=4)
-        ax.plot([], [], color=colors[v], marker="o", label=names[v].split(" (")[0])
-    ax.axhline(0, color="gray", ls="--", lw=1)
-    ax.set_xticks(range(len(conds)), conds)
-    ax.set_ylabel("force MAE change vs trained router (percent)")
-    ax.set_title("ablation, final checkpoint, one line per seed", fontsize=9)
-    ax.legend(fontsize=7)
-    ax.grid(alpha=0.3)
+    for ax, metric, label in ((axes[2], "force_mae", "force MAE"), (axes[3], "energy_mae_per_atom", "energy MAE per atom")):
+        base = abl[abl.condition == "trained"].set_index("run")[metric]
+        for j, v in enumerate(colors):
+            for run, s in abl[abl.variant == v].groupby("run"):
+                s = s.set_index("condition").reindex(conds)
+                xs = np.arange(len(conds)) + (j - 0.5) * 0.25
+                ax.plot(xs, 100 * (s[metric].values / base[run] - 1), color=colors[v], lw=0.8, alpha=0.7, marker="o", ms=4)
+            ax.plot([], [], color=colors[v], marker="o", label=names[v].split(" (")[0])
+        ax.axhline(0, color="gray", ls="--", lw=1)
+        ax.set_xticks(range(len(conds)), conds)
+        ax.set_ylabel(f"{label} change vs trained router (percent)")
+        ax.set_title("fixed router, final checkpoint, one line per seed", fontsize=9)
+        ax.legend(fontsize=7)
+        ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(path, dpi=150)
     print(f"wrote {path}")
@@ -396,6 +415,7 @@ def main():
     p.set_defaults(fn=run)
     p = sub.add_parser("analyze")
     p.add_argument("--in-dir", required=True)
+    p.add_argument("--res-dir", default=str(ROOT / "results"))
     p.set_defaults(fn=analyze)
     a = ap.parse_args()
     if a.cmd == "run":
