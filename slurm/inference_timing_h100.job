@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH -A che260063p
+#SBATCH -p GPU-shared
+#SBATCH -t 1:00:00
+#SBATCH -N 1
+#SBATCH --gpus=h100-80:1
+#SBATCH --job-name=inference_timing_h100
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
+#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-user=anshulk@andrew.cmu.edu
+# Dense, Global and Local-6, seeds 0 to 2, on one H100-80 (slurm/inference_timing.sh); at most 2 SU (1 h x 2 SU per H100 GPU-hour)
+# files created here are owned by the Unix group in effect at submission (p. 7); the shared folder has setgid
+umask 002                      # files stay group-writable for the project team (guide B9)
+export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
+set -x
+cd /ocean/projects/che260063p/shared/logs
+bash /ocean/projects/che260063p/shared/repo_timing/AI4Science-MLIPs/slurm/inference_timing.sh h100
