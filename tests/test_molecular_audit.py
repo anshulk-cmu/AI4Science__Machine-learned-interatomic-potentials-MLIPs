@@ -89,6 +89,25 @@ class MolecularAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid"):
             predict(model, fragments("H2O", "CH4", 8)[0])
 
+    def test_loader_recomputes_identical_atoms(self):
+        """The repeat columns need a fresh calculation; plain ASE returns its cached result."""
+        from ase.calculators.calculator import Calculator, all_changes
+        from audit.models import _energy
+
+        class Counter(Calculator):
+            implemented_properties = ["energy", "forces"]
+
+            def calculate(self, atoms=None, properties=None, system_changes=all_changes):
+                super().calculate(atoms, properties, system_changes)
+                self.calls = getattr(self, "calls", 0) + 1
+                self.results = dict(energy=float(self.calls), forces=np.zeros((len(atoms), 3)))
+
+        water = fragments("H2O", "CH4", 8)[0]
+        water.calc = Counter()
+        self.assertEqual(water.get_potential_energy(), water.get_potential_energy())
+        energy = _energy(Counter(), {"charge": 0, "spin": 1})
+        self.assertNotEqual(energy(water), energy(water))
+
     def test_cli_records_outputs_and_failure(self):
         from audit import molecular
         class ToyBackbone:
