@@ -1,0 +1,29 @@
+#!/bin/bash
+#SBATCH -A che260063p
+#SBATCH -p GPU-shared
+#SBATCH -t 48:00:00
+#SBATCH -N 1
+#SBATCH --gpus=v100-32:1
+#SBATCH --job-name=frozen_global
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
+#SBATCH --error=/ocean/projects/che260063p/shared/logs/slurm-%j.err
+#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-user=anshulk@andrew.cmu.edu
+# Frozen-router run (docs/frozen-router.md): Global with alpha = 0.13 for every expert, one seed, the pilot recipe.
+# One task, no array: the seed is set here, not taken from SLURM_ARRAY_TASK_ID. Estimated at most 48 SU (the 48 h cap);
+# the Global pilots took about 11 to 13 h, so about 11 to 13 SU.
+# The login shell sets SBATCH_EXPORT=NONE, so a variable exported before sbatch never arrives here. The defaults
+# below are the long run; submit with --export=NAME=value,... for every variable (a test overrides them that way),
+# then read settings.txt in the run folder.
+umask 002                      # files stay group-writable for the project team (guide B9)
+export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
+set -x
+cd /ocean/projects/che260063p/shared/logs
+export PILOT_REPO=${PILOT_REPO:-/ocean/projects/che260063p/shared/repo_frozen/AI4Science-MLIPs}
+export PILOT_SEED=${PILOT_SEED:-0}
+export PILOT_STEPS=${PILOT_STEPS:-50000}
+export PILOT_EVAL_EVERY=${PILOT_EVAL_EVERY:-5000}
+export PILOT_CKPT_EVERY=${PILOT_CKPT_EVERY:-5000}
+export PILOT_RUN_PREFIX=${PILOT_RUN_PREFIX:-frozen}
+export PILOT_RUN_TAG=${PILOT_RUN_TAG:-global}     # run folder frozen_global_s<seed>_<jobid>; settings.txt still says variant=global_frozen
+bash "$PILOT_REPO/slurm/pilot.sh" global_frozen

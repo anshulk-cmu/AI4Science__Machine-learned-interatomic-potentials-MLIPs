@@ -1,6 +1,6 @@
 #!/bin/bash
 # One pilot run: train a variant on the real OMol25 data, then check the size consistency of its final checkpoint.
-# Usage: pilot.sh dense|global|local6
+# Usage: pilot.sh dense|global|local6|global_frozen   (global_frozen: Global with a constant router, docs/frozen-router.md)
 # Settings come from environment variables; the job files set them (agreed by the team on 2026-10-11):
 #   PILOT_RUN_PREFIX (pilot; use another prefix for a test)  PILOT_STEPS (50000)  PILOT_SEED (the Slurm array task id, 0 to 2, else 0)  PILOT_EVAL_EVERY, PILOT_CKPT_EVERY (steps/10)
 # Data: the fixed lists manifests/pilot_train_200k.txt and pilot_val_5k.txt, the same for every variant and seed. The job
@@ -13,7 +13,7 @@ umask 002
 export PYTHONNOUSERSITE=1
 set -uo pipefail
 VARIANT=${1:?usage: pilot.sh dense|global|local6}
-case "$VARIANT" in dense|global) MIN_MIB=31000 ;; local6) MIN_MIB=44000 ;; *) echo "unknown variant $VARIANT"; exit 2 ;; esac
+case "$VARIANT" in dense|global|global_frozen) MIN_MIB=31000 ;; local6) MIN_MIB=44000 ;; *) echo "unknown variant $VARIANT"; exit 2 ;; esac
 ROOT=/ocean/projects/che260063p/shared
 REPO=${PILOT_REPO:-$ROOT/repo/AI4Science-MLIPs}
 PY=$ROOT/envs/mlip/bin/python
@@ -23,7 +23,7 @@ TRAIN_N=${PILOT_TRAIN_SAMPLES:-}
 VAL_N=${PILOT_VAL_SAMPLES:-}
 EVAL_EVERY=${PILOT_EVAL_EVERY:-$(( STEPS / 10 > 0 ? STEPS / 10 : 1 ))}
 CKPT_EVERY=${PILOT_CKPT_EVERY:-$EVAL_EVERY}
-RUN=$ROOT/runs/${PILOT_RUN_PREFIX:-pilot}_${VARIANT}_s${SEED}_${SLURM_JOB_ID:-manual}
+RUN=$ROOT/runs/${PILOT_RUN_PREFIX:-pilot}_${PILOT_RUN_TAG:-$VARIANT}_s${SEED}_${SLURM_JOB_ID:-manual}   # PILOT_RUN_TAG: folder name only
 LOGS=$RUN/logs
 SUMMARY=$RUN/summary.txt
 export OMOL_DATA_ROOT=$ROOT/data/omol25 OMOL_CACHE_DIR=$ROOT/cache
@@ -85,6 +85,10 @@ grep -a -E 'Traceback|Error' "$LOGS/train.log" | head -3 | tee -a "$SUMMARY"
 CKPT=$(ls "$RUN"/train/*/checkpoints/final/inference_ckpt.pt 2>/dev/null | head -1)
 if [ -n "$CKPT" ]; then
     note "final checkpoint: $CKPT"
+    if [ "$VARIANT" = global_frozen ]; then
+        stage router_frozen $PY -u -B scripts/check_frozen_router.py "$(dirname "$(dirname "$CKPT")")/step_0/inference_ckpt.pt" "$CKPT"
+        grep -a -E 'PASS|FAIL' "$LOGS/router_frozen.log" | tee -a "$SUMMARY"
+    fi
     stage size_consistency $PY -u -B audit/check_checkpoint.py "$CKPT"
     grep -a -E 'Delta|FAILED|Error' "$LOGS/size_consistency.log" | sed 's#.*/checkpoints#checkpoints#' | tee -a "$SUMMARY"
 else

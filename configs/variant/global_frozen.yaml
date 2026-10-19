@@ -1,0 +1,9 @@
+# Global with a frozen router (docs/frozen-router.md): everything as in global.yaml, but alpha = 0.13 for each of
+# the 8 experts, for every structure and the whole run (softmax of equal logits plus fairchem's 0.005, sum 1.04).
+defaults:
+  - global
+  - _self_
+
+backbone:
+  model: training.frozen_moe.eSCNMDFrozenMoeBackbone
+  fixed_alpha: 0.13
