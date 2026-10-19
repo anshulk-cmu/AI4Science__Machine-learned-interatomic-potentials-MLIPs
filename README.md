@@ -38,6 +38,10 @@ are next (12 to 18 October). The midterm report is due 23 October.
 - **Done: size consistency along training** (2026-10-15). All 99 saved checkpoints of the nine pilots, Al + Ni slabs at gaps of 8 and 100 A.
   Dense and Local-6 stay at the float64 floor (below 4e-6 meV) at every checkpoint. Global is 10 to 69 meV off at step 0 and 2.4 to 6.6 eV off
   at step 50,000, the same at both gaps. Read `docs/size-consistency-training.md`.
+- **Done: molecular evaluation of the final pilot checkpoints** (2026-10-18, PR #4 by Pragati). Three far-apart neutral singlet pairs
+  (H2O + CH4, NH3 + CO2, H2O + H2O) at gaps of 8 to 40 A, and finite-difference force checks. Dense and Local-6 are additive to the
+  float64 floor. Global is 0.29 to 38 meV off for the two mixed pairs, the same at every gap, and exactly additive for H2O + H2O.
+  Forces match the energy gradient in all three variants. Read `docs/molecular-evaluation.md`.
 - **Not done:** Element, Local-12 and Local+Global are later work (decided 2026-10-11); the midterm trains Dense, Global and Local-6.
 
 ## Repository layout
