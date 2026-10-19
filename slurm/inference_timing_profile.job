@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH -A che260063p
+#SBATCH -p GPU-shared
+#SBATCH -t 0:30:00
+#SBATCH -N 1
+#SBATCH --gpus=v100-32:1
+#SBATCH --job-name=inference_timing_profile
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
+#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-user=anshulk@andrew.cmu.edu
+# Diagnostic: top CUDA kernels of the seed 0 checkpoints on the 100-atom bin (inference_timing.py profile); at most 0.5 SU
+umask 002                      # files stay group-writable for the project team (guide B9)
+export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
+set -uo pipefail
+ROOT=/ocean/projects/che260063p/shared
+OUT=$ROOT/runs/inference_timing_profile_$SLURM_JOB_ID
+export FAIRCHEM_CACHE_DIR=$ROOT/cache/fairchem WARP_CACHE_PATH=$ROOT/cache/warp
+mkdir -p "$OUT"
+cp -r $ROOT/repo_timing/AI4Science-MLIPs/{scripts,training,local_routing,configs,manifests} "$OUT/"
+cd "$OUT"
+nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
+RC=0
+for run in pilot_dense_s0_49041937 pilot_global_s0_49041939 pilot_local6_s0_49041936; do
+    echo "######## $run"
+    $ROOT/envs/mlip/bin/python -u -B scripts/inference_timing.py profile --ckpt $ROOT/runs/$run/train/*/checkpoints/final/inference_ckpt.pt || RC=1
+done
+exit $RC
