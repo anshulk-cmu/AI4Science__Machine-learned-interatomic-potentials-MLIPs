@@ -1,4 +1,5 @@
 """Exercise measurement code with known local and deliberately nonlocal potentials."""
+import csv
 import unittest
 import tempfile
 import json
@@ -111,7 +112,11 @@ class MolecularAuditTests(unittest.TestCase):
                 self.assertEqual(metadata["status"], "complete")
                 self.assertEqual(len(metadata["checkpoint_sha256"]), 64)
                 self.assertTrue((root / "output/locality.csv").exists())
-                self.assertTrue((root / "output/finite_difference.csv").exists())
+                with (root / "output/finite_difference.csv").open(encoding="utf-8") as stream:
+                    fd = list(csv.DictReader(stream))
+                # every distinct molecule once: 3 + 5 + 4 + 3 atoms, 3 axes, 2 default steps
+                self.assertEqual(sorted({r["molecule"] for r in fd}), ["CH4", "CO2", "H2O", "NH3"])
+                self.assertEqual(len(fd), 15 * 3 * 2)
                 with self.assertRaises(FileExistsError):
                     molecular.main()
                 args[args.index("--output")+1] = str(root / "failed")

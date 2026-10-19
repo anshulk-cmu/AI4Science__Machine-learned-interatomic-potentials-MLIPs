@@ -163,11 +163,12 @@ def main():
                                  **locality(energy, a, b, pair, cutoff)))
                 geometries.append(dict(pair=name, gap_A=gap, numbers=pair.numbers.tolist(),
                                        positions_A=pair.positions.tolist(), cell_A=pair.cell.array.tolist()))
-            # Isolated water/ammonia checks exercise geometry-dependent routing in bonded systems.
-            a, _, _ = fragments(name_a, name_b, args.gaps[0])
+        # Each isolated molecule once: geometry-dependent routing acts inside bonded molecules.
+        for name in dict.fromkeys(n for p in PAIRS for n in p):
+            atoms = fragments(name, name, args.gaps[0])[0]
             for step in args.fd_steps:
-                fd.extend(dict(label=args.label, molecule=name_a, pair=name, **r)
-                          for r in finite_difference(energy, a, step))
+                fd.extend(dict(label=args.label, molecule=name, **r)
+                          for r in finite_difference(energy, atoms, step))
         write_csv(args.output / "locality.csv", rows)
         write_csv(args.output / "finite_difference.csv", fd)
         (args.output / "geometries.json").write_text(json.dumps(geometries, indent=2) + "\n")
