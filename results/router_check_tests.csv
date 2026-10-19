@@ -1,0 +1,19 @@
+condition,metric,variant,n,trained_mean,ablated_mean,delta_mean,delta_sd,delta_rel_mean,test,t,p
+uniform,energy_mae_per_atom,global,3,0.0130887,0.0473736,0.0342848,0.0203054,2.61977,"paired t, ablated vs trained, seeds as pairs",2.92449,0.0997365
+uniform,energy_mae_per_atom,local6,3,0.0130163,0.0390182,0.0260019,0.0194529,1.99393,"paired t, ablated vs trained, seeds as pairs",2.31516,0.146619
+uniform,energy_mae_per_atom,global minus local6 (delta),6,,,0.00828292,,,Welch t on the deltas,0.510189,0.63683
+uniform,force_mae,global,3,0.0372027,0.0599225,0.0227198,0.0153717,0.612028,"paired t, ablated vs trained, seeds as pairs",2.56002,0.124681
+uniform,force_mae,local6,3,0.0371908,0.0782433,0.0410525,0.0322374,1.10647,"paired t, ablated vs trained, seeds as pairs",2.20567,0.158177
+uniform,force_mae,global minus local6 (delta),6,,,-0.0183327,,,Welch t on the deltas,-0.88908,0.442251
+eighth,energy_mae_per_atom,global,3,0.0130887,0.0703522,0.0572635,0.0213398,4.3776,"paired t, ablated vs trained, seeds as pairs",4.64781,0.0433068
+eighth,energy_mae_per_atom,local6,3,0.0130163,0.0620631,0.0490469,0.0213581,3.76496,"paired t, ablated vs trained, seeds as pairs",3.9775,0.0577847
+eighth,energy_mae_per_atom,global minus local6 (delta),6,,,0.00821662,,,Welch t on the deltas,0.471371,0.661936
+eighth,force_mae,global,3,0.0372027,0.0623327,0.02513,0.0153347,0.676841,"paired t, ablated vs trained, seeds as pairs",2.83842,0.104943
+eighth,force_mae,local6,3,0.0371908,0.0803851,0.0431943,0.0295783,1.16394,"paired t, ablated vs trained, seeds as pairs",2.52938,0.127165
+eighth,force_mae,global minus local6 (delta),6,,,-0.0180643,,,Welch t on the deltas,-0.939106,0.416899
+mean,energy_mae_per_atom,global,3,0.0130887,0.020207,0.0071183,0.00135864,0.546519,"paired t, ablated vs trained, seeds as pairs",9.07474,0.0119264
+mean,energy_mae_per_atom,local6,3,0.0130163,0.0182563,0.00524004,0.00058466,0.402132,"paired t, ablated vs trained, seeds as pairs",15.5236,0.00412404
+mean,energy_mae_per_atom,global minus local6 (delta),6,,,0.00187826,,,Welch t on the deltas,2.19949,0.124538
+mean,force_mae,global,3,0.0372027,0.039718,0.00251527,0.000296277,0.0676373,"paired t, ablated vs trained, seeds as pairs",14.7044,0.00459309
+mean,force_mae,local6,3,0.0371908,0.0420461,0.00485534,0.0011371,0.130529,"paired t, ablated vs trained, seeds as pairs",7.39578,0.0177958
+mean,force_mae,global minus local6 (delta),6,,,-0.00234007,,,Welch t on the deltas,-3.44929,0.0622883

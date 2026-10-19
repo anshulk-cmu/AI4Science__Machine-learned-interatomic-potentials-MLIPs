@@ -1,0 +1,18 @@
+#!/bin/bash
+#SBATCH -A che260063p
+#SBATCH -p GPU-shared
+#SBATCH -t 1:30:00
+#SBATCH -N 1
+#SBATCH --gpus=l40s-48:1
+#SBATCH --array=3-5
+#SBATCH --job-name=router_check_local6
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%A_%a.out
+#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-user=anshulk@andrew.cmu.edu
+# three tasks, Local-6 seeds 0 to 2 (array ids 3 to 5 of slurm/router_check.sh); at most 4.5 SU (3 x 1.5 h x 1 SU per L40S GPU-hour)
+# files created here are owned by the Unix group in effect at submission (p. 7); the shared folder has setgid
+umask 002                      # files stay group-writable for the project team (guide B9)
+export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
+set -x
+cd /ocean/projects/che260063p/shared/logs
+bash /ocean/projects/che260063p/shared/repo_router/AI4Science-MLIPs/slurm/router_check.sh $SLURM_ARRAY_TASK_ID
