@@ -156,6 +156,25 @@ class MolecularAuditTests(unittest.TestCase):
                 self.assertEqual(metadata["status"], "complete")
                 self.assertIsNone(metadata["evaluation_commit"])
 
+    def test_plot_colours_by_variant_and_writes_figure(self):
+        from audit import plot_molecular
+        style = plot_molecular.styles({"dense_s0", "dense_s1", "global_s0"})
+        self.assertEqual(style["dense_s0"][0], style["dense_s1"][0])
+        self.assertNotEqual(style["dense_s0"][1], style["dense_s1"][1])
+        self.assertNotEqual(style["dense_s0"][0], style["global_s0"][0])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "locality.csv"
+            with path.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(["label", "pair", "gap_A", "delta_eV", "max_dforce_a_eV_A", "max_dforce_b_eV_A"])
+                for label, delta in (("dense_s0", 0.0), ("global_s0", 0.03)):
+                    for gap in (8, 40):
+                        writer.writerow([label, "NH3+CO2", gap, delta, 1e-15, delta])
+            figure = Path(tmp) / "out" / "locality.png"
+            with mock.patch.object(sys, "argv", ["plot", str(path), "--output", str(figure)]):
+                plot_molecular.main()
+            self.assertGreater(figure.stat().st_size, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
