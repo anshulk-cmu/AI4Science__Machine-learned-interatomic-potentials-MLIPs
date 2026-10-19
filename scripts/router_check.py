@@ -391,7 +391,7 @@ def figure(m, path):
             ax.plot([], [], color=colors[v], marker="o", label=names[v].split(" (")[0])
         ax.axhline(0, color="gray", ls="--", lw=1)
         ax.set_xticks(range(len(conds)), conds)
-        ax.set_ylabel(f"{label} change vs trained router (percent)")
+        ax.set_ylabel(f"{label}, change vs trained (percent)")
         ax.set_title("fixed router, final checkpoint, one line per seed", fontsize=9)
         ax.legend(fontsize=7)
         ax.grid(alpha=0.3)
