@@ -8,7 +8,11 @@ been evaluated with it yet.
 ## What runs
 
 Three fixed neutral singlet pairs: water + methane, ammonia + carbon dioxide, and
-water + water. The last pair is a same-composition control. Each pair is evaluated
+water + water. The molecules come from ASE's built-in G2 set (`ase.build.molecule`),
+so no data file is needed. All four are closed-shell, and the union and each part get
+charge 0 and spin multiplicity 1. The last pair is a same-composition control: the
+Global router averages the element embeddings over the structure, and that average
+is the same for two waters as for one, so Global must also be additive there. Each pair is evaluated
 at bounding-plane gaps of 8, 12, 20 and 40 Å. The script checks the actual minimum
 cross-fragment distance against the loaded model cutoff. Systems are nonperiodic;
 isolated and combined evaluations use the same cell and fragment coordinates.
@@ -20,8 +24,8 @@ For each gap, save:
 - Maximum force change on each fragment, in eV/Å.
 - Repeated energy and force differences on identical inputs, as a numerical-noise diagnostic.
 
-Central finite differences check every force component on isolated water and
-ammonia, at steps 0.001 and 0.0003 Å. These exercise geometry-dependent routing
+Central finite differences check every force component on each isolated molecule
+(H2O, CH4, NH3 and CO2, once each), at steps 0.001 and 0.0003 Å. These exercise geometry-dependent routing
 within bonded molecules. Inspect step convergence; repeated-call noise alone does
 not establish a finite-difference tolerance. No automatic pass threshold is imposed.
 
@@ -31,21 +35,34 @@ prove locality for all inputs. Runtime, memory, and MD drift are separate work.
 
 ## Run
 
-Use the team's Linux/CUDA environment with fairchem-core 2.21.0. From the repo root:
+Use the team's environment with fairchem-core 2.21.0 and a CUDA GPU. From the repo root,
+for one pilot run on Bridges-2:
 
 ```sh
-python -m audit.molecular /path/to/final/inference_checkpoint.pt \
-  --run-config /path/to/resolved_config.yaml \
-  --label local6_seed0_step50000 \
-  --output /path/to/evaluation/local6_seed0
+RUN=/ocean/projects/che260063p/shared/runs/pilot_local6_s0_49041936
+/ocean/projects/che260063p/shared/envs/mlip/bin/python -m audit.molecular \
+  $RUN/train/*/checkpoints/final/inference_ckpt.pt \
+  --run-config $RUN/train/*/canonical_config.yaml \
+  --label local6_s0_step50000 \
+  --output /path/to/evaluation/pilot_local6_s0
 ```
+
+`canonical_config.yaml` is the resolved config that fairchem saves for each run.
+`slurm/molecular_eval.job` runs all nine seeded pilots in one job and also writes the
+combined CSVs and the figure (results below).
 
 Repeat with Dense and Global checkpoints, then with the other seeds. Keep the
 same pairs, gaps, precision and finite-difference steps. Start with one checkpoint
 per variant to check loading. The output directory must not already exist.
 `--dtype float32` is available if float64 does not fit; do not silently compare
-mixed precisions. The existing loader uses CUDA and resets the ASE calculator
-cache on each call. The real checkpoint-loading path remains untested locally.
+mixed precisions. Use float64 for the finite differences. The rounding error of a
+central difference is about eps |E| / h, with eps the relative precision. The total
+energy of water is about -2080 eV. In float32 (eps = 6e-8) and h = 0.001 Å this
+can reach 0.1 eV/Å, which hides any real force error; in float64 (eps = 1.1e-16) it
+is about 2e-10 eV/Å. This is an estimate, not a measurement: where fairchem adds the
+float64 element references decides the true float32 error. The existing loader uses
+CUDA and resets the ASE calculator cache on each call, so the repeat columns are
+fresh calculations (`test_loader_recomputes_identical_atoms`).
 
 Outputs:
 
@@ -54,10 +71,11 @@ Outputs:
 | `locality.csv` | One row per pair and gap, with explicit units |
 | `finite_difference.csv` | Predicted and numerical forces, and absolute differences |
 | `geometries.json` | Exact combined geometries and cells |
-| `metadata.json` | Checkpoint/config hashes, copied config text, evaluator commit and dirty status, package versions, loaded routing class, completion status |
+| `metadata.json` | Checkpoint/config hashes, copied config text, evaluator commit and dirty status, package versions, backbone class (`eSCNMDBackbone` Dense, `eSCNMDMoeBackbone` Global, `eSCNMDLocalMoeBackbone` Local-6), completion status |
 
-A failure sets the metadata status to `failed` and exits with an error. Check the
-loaded routing class against the run config and confirm the checkpoint training
+A failure sets the metadata status to `failed` and exits with an error. Outside a git
+checkout (the Bridges-2 copy has no `.git`) the evaluator commit is `null`. Check the
+backbone class against the run config and confirm the checkpoint training
 step from the run records. A filename or user-supplied label is not verification
 of the model variant or training step. Keep outputs outside the tracked tree until
 reviewed; do not commit checkpoints or private paths/configs without checking them.
@@ -83,7 +101,7 @@ when its radius exceeds the message cutoff.
 
 ## Evaluator tests
 
-Only NumPy and ASE are needed for the measurement tests:
+The tests need NumPy and ASE, torch for the loader cache test and matplotlib for the plot test:
 
 ```sh
 python -m unittest discover -s tests -p 'test_molecular_audit.py' -v
