@@ -2,6 +2,7 @@
 import unittest
 import tempfile
 import json
+import subprocess
 import sys
 import types
 from pathlib import Path
@@ -118,6 +119,15 @@ class MolecularAuditTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "test load failure"):
                     molecular.main()
                 self.assertEqual(json.loads((root / "failed/metadata.json").read_text())["status"], "failed")
+                # the Bridges-2 copy of the repository has no .git
+                args[args.index("--output")+1] = str(root / "nogit")
+                loader.load = lambda *args: (model, 3.0)
+                with mock.patch.object(molecular.subprocess, "check_output",
+                                       side_effect=subprocess.CalledProcessError(128, "git")):
+                    molecular.main()
+                metadata = json.loads((root / "nogit/metadata.json").read_text())
+                self.assertEqual(metadata["status"], "complete")
+                self.assertIsNone(metadata["evaluation_commit"])
 
 
 if __name__ == "__main__":

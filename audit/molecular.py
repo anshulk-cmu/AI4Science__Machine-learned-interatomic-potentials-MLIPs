@@ -106,6 +106,14 @@ def sha256(path):
     return digest.hexdigest()
 
 
+def git(*args):
+    """Output of a git command in the repository, or None: the Bridges-2 copy made by syncrepo has no .git."""
+    try:
+        return subprocess.check_output(["git", *args], cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("checkpoint", type=Path, help="local fairchem inference checkpoint")
@@ -129,8 +137,8 @@ def main():
                     checkpoint=str(args.checkpoint.resolve()), checkpoint_sha256=sha256(args.checkpoint),
                     run_config=str(args.run_config.resolve()), run_config_sha256=sha256(args.run_config),
                     resolved_config_text=args.run_config.read_text(),
-                    evaluation_commit=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
-                    working_tree_status=subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True),
+                    evaluation_commit=(git("rev-parse", "HEAD") or "").strip() or None,
+                    working_tree_status=git("status", "--porcelain"),
                     versions={p: version(p) for p in ("numpy", "ase", "torch", "fairchem-core")})
     meta_path = args.output / "metadata.json"
     def save():
