@@ -102,6 +102,18 @@ class FrozenRouterTests(unittest.TestCase):
         self.assertIn("dense|global|global_frozen) MIN_MIB=31000", pilot)
         self.assertLess(pilot.index("stage router_frozen"), pilot.index("stage size_consistency"))
 
+    def test_val_curve_parser_labels_each_validation_with_its_step(self):
+        import compare_val_curves
+        log = Path(tempfile.mkdtemp()) / "train.log"
+        lines = ["{'train/loss': 0.5, 'train/step': 4999, 'train/lr': 1e-4}",
+                 "  val/loss: 0.1863", "  val/omol.val,omol_energy,per_atom_mae: 0.0503", "  val/omol.val,omol_forces,mae: 0.1099",
+                 "{'train/loss': 0.4, 'train/step': 9999}",
+                 "  val/omol.val,omol_energy,per_atom_mae: 0.0305", "  val/omol.val,omol_forces,mae: 0.0745",
+                 "  val/omol.val,omol_energy,per_atom_mae: 0.0300", "  val/omol.val,omol_forces,mae: 0.0740"]
+        log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        self.assertEqual(compare_val_curves.curve(log), {5000: {"energy": 0.0503, "force": 0.1099},
+                                                         10000: {"energy": 0.0300, "force": 0.0740}})
+
     def test_router_parameters_are_frozen_flags(self):
         # requires_grad False is what keeps DDP from waiting for gradients that never come
         params = router(build("global_frozen"))
