@@ -280,6 +280,40 @@ def write(path, rows):
     print(f"wrote {len(rows)} rows to {path}", flush=True)
 
 
+def profile(a):
+    """Top CUDA kernels of one checkpoint on one size bin: energy under no_grad, energy with autograd recording
+    (no backward), and energy plus forces. A diagnostic for why one mode is slower than another."""
+    import torch
+    conds, _ = inputs(a.src, a.rows, [a.target], 0, a.max_atoms)
+    unit, settings = load_unit(a.ckpt)
+    model, backbone = unit.model, unit.model.module.backbone
+    batch = conds[f"bin{a.target}"][0]
+    unit.predict(batch, undo_element_references=False)
+    d = batch.to(unit.device)
+    for key, val in d:
+        if torch.is_tensor(val) and val.is_floating_point():
+            d[key] = val.to(settings.base_precision_dtype)
+
+    def energy():
+        with forces_off(backbone), torch.no_grad():
+            model(d.clone())
+
+    def energy_grad():
+        with forces_off(backbone), torch.enable_grad():
+            model(d.clone())
+
+    def energy_forces():
+        model(d.clone())
+
+    for name, fn in (("energy", energy), ("energy_grad", energy_grad), ("energy_forces", energy_forces)):
+        t = timed(lambda: None, lambda _: fn(), 3, 20, torch.cuda.synchronize)
+        with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA]) as p:
+            fn()
+            torch.cuda.synchronize()
+        print(f"\n== {name}: median {np.median(t) * 1e3:.2f} ms over 20 calls", flush=True)
+        print(p.key_averages().table(sort_by="cuda_time_total", row_limit=12, max_name_column_width=60), flush=True)
+
+
 # ---------- plot and tables ----------
 
 def plot(a):
@@ -371,6 +405,13 @@ def main():
     p.add_argument("--warmup", type=int, default=5)
     p.add_argument("--repeats", type=int, default=25)
     p.set_defaults(fn=run)
+    p = sub.add_parser("profile")
+    p.add_argument("--ckpt", required=True)
+    p.add_argument("--target", type=int, default=100)
+    p.add_argument("--src", default=f"{SHARED}/data/omol25/val")
+    p.add_argument("--rows", default=str(ROOT / "manifests" / "pilot_val_5k.txt"))
+    p.add_argument("--max-atoms", type=int, default=450)
+    p.set_defaults(fn=profile)
     p = sub.add_parser("plot")
     p.add_argument("csv", nargs="+")
     p.set_defaults(fn=plot)
