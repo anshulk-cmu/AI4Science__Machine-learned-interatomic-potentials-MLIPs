@@ -92,7 +92,7 @@ def finite_difference(energy, atoms, step):
 
 
 def write_csv(path, rows):
-    with path.open("w", newline="") as stream:
+    with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
@@ -136,13 +136,13 @@ def main():
                     dtype=args.dtype, gaps_A=args.gaps, fd_steps_A=args.fd_steps,
                     checkpoint=str(args.checkpoint.resolve()), checkpoint_sha256=sha256(args.checkpoint),
                     run_config=str(args.run_config.resolve()), run_config_sha256=sha256(args.run_config),
-                    resolved_config_text=args.run_config.read_text(),
+                    resolved_config_text=args.run_config.read_text(encoding="utf-8"),
                     evaluation_commit=(git("rev-parse", "HEAD") or "").strip() or None,
                     working_tree_status=git("status", "--porcelain"),
                     versions={p: version(p) for p in ("numpy", "ase", "torch", "fairchem-core")})
     meta_path = args.output / "metadata.json"
     def save():
-        meta_path.write_text(json.dumps(metadata, indent=2) + "\n")
+        meta_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     save()
     try:
         # Existing loader resets the ASE cache and uses standard, unmerged inference.
@@ -171,7 +171,7 @@ def main():
                           for r in finite_difference(energy, atoms, step))
         write_csv(args.output / "locality.csv", rows)
         write_csv(args.output / "finite_difference.csv", fd)
-        (args.output / "geometries.json").write_text(json.dumps(geometries, indent=2) + "\n")
+        (args.output / "geometries.json").write_text(json.dumps(geometries, indent=2) + "\n", encoding="utf-8")
         metadata["status"] = "complete"
         save()
         print(f"Wrote {len(rows)} locality rows and {len(fd)} force checks to {args.output}")

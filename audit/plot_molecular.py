@@ -14,7 +14,7 @@ def main():
     import matplotlib.pyplot as plt
     rows = []
     for path in args.csvs:
-        with path.open() as stream:
+        with path.open(encoding="utf-8") as stream:
             rows.extend(csv.DictReader(stream))
     pairs = sorted({r["pair"] for r in rows})
     if not pairs:
