@@ -1,0 +1,11 @@
+# Scaled Dense (docs/scaled-dense.md): everything as in dense.yaml, but the 24 SO(2) linear weights that MoLE replaces
+# follow W_eff = a * sum_k W_k of global_frozen (a = 0.13, K = 8): they start at a * sqrt(K) = 0.368 times U(-k, k)
+# and get their own AdamW group with lr * K * a = 1.04 lr, weight decay / 1.04 and eps / a (training/dense_scaled.py).
+defaults:
+  - dense
+  - _self_
+
+backbone:
+  model: training.dense_scaled.eSCNMDScaledBackbone
+  frozen_alpha: 0.13
+  frozen_experts: 8
