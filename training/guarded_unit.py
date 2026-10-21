@@ -14,6 +14,8 @@ import torch
 
 from fairchem.core.units.mlip_unit.mlip_unit import MLIPTrainEvalUnit
 
+from training.dense_scaled import lr_scaled
+
 
 def is_oom(exc: BaseException) -> bool:
     """True for torch.OutOfMemoryError and for the RuntimeError text CUDA raises, for example 'CUDA driver error: out of memory'."""
@@ -36,6 +38,8 @@ def memory_note() -> str:
 
 class GuardedTrainEvalUnit(MLIPTrainEvalUnit):
     def __init__(self, *args, gc_every: int = 50, max_oom_retries: int = 2, **kwargs):
+        # own AdamW group for parameters tagged by training/dense_scaled.py; untagged models get the same optimizer
+        kwargs["optimizer_fn"] = lr_scaled(kwargs["optimizer_fn"])
         super().__init__(*args, **kwargs)
         self.gc_every = gc_every
         self.max_oom_retries = max_oom_retries

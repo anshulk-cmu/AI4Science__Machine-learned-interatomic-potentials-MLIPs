@@ -1,0 +1,29 @@
+#!/bin/bash
+#SBATCH -A che260063p
+#SBATCH -p GPU-shared
+#SBATCH -t 48:00:00
+#SBATCH -N 1
+#SBATCH --gpus=v100-32:1
+#SBATCH --job-name=dense_scaled
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
+#SBATCH --error=/ocean/projects/che260063p/shared/logs/slurm-%j.err
+#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-user=anshulk@andrew.cmu.edu
+# Scaled-Dense control (docs/scaled-dense.md): Dense with the SO(2) linear weights at the initial scale and step size of
+# global_frozen, one seed, the pilot recipe. One task, no array: the seed is set here, not taken from SLURM_ARRAY_TASK_ID.
+# Cost: estimated at most 48 SU (the 48 h cap); the Dense pilots took about 11 h, so about 11 SU.
+# The login shell sets SBATCH_EXPORT=NONE, so a variable exported before sbatch never arrives here. The defaults
+# below are the long run; submit with --export=NAME=value,... for every variable (a test overrides them that way),
+# then read settings.txt in the run folder.
+umask 002                      # files stay group-writable for the project team (guide B9)
+export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
+set -x
+cd /ocean/projects/che260063p/shared/logs
+export PILOT_REPO=${PILOT_REPO:-/ocean/projects/che260063p/shared/repo_dscaled/AI4Science-MLIPs}
+export PILOT_SEED=${PILOT_SEED:-0}
+export PILOT_STEPS=${PILOT_STEPS:-50000}
+export PILOT_EVAL_EVERY=${PILOT_EVAL_EVERY:-5000}
+export PILOT_CKPT_EVERY=${PILOT_CKPT_EVERY:-5000}
+export PILOT_RUN_PREFIX=${PILOT_RUN_PREFIX:-dense}
+export PILOT_RUN_TAG=${PILOT_RUN_TAG:-scaled}     # run folder dense_scaled_s<seed>_<jobid>; settings.txt says variant=dense_scaled
+bash "$PILOT_REPO/slurm/pilot.sh" dense_scaled
