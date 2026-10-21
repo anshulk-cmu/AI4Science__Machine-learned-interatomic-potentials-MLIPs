@@ -1,80 +1,82 @@
 # Local Composition Routing for Mixture-of-Experts Interatomic Potentials
 
-Local-composition routing for mixture-of-experts interatomic potentials, benchmarked against UMA on OMol25.
+Course project for CMU 11-785 Introduction to Deep Learning, Fall 2026 (AI4Science track, machine-learned interatomic potentials).
+Team 6: Anshul Kumar, Pragati Bhattad, Yiwei Xia. Status: midterm submission (23 October 2026).
 
-Course project for CMU 11-785 Introduction to Deep Learning, Fall 2026, AI4Science track (machine-learned interatomic potentials).
+## Summary
 
-## Idea
+A good interatomic potential gives two far-apart, non-interacting molecules a total energy equal to the sum of their separate energies.
+This property is called size consistency. UMA, a widely used foundation model for molecules and materials, does not have it. Its
+mixture-of-experts layers choose their weights from the average element composition of the whole structure, with no distance cutoff,
+so a molecule placed anywhere changes the predicted energy of every other molecule.
 
-UMA routes its Mixture of Linear Experts (MoLE) with an average element embedding taken over the whole structure, with no distance cutoff. For two fragments of different composition, this average differs from that of either fragment, so the energy is not additive when the fragments are far apart (size consistency). We propose restricting the routing average to a smooth, bounded neighborhood around each atom, and test whether this keeps the accuracy that routing adds.
+We propose local composition routing: the router sees a smooth, bounded average over the neighbors of each atom instead of the whole
+structure. Our main model, Local-6, uses a 6 angstrom radius. The question of the project is whether Local-6 keeps the accuracy that
+routing adds over a model without experts, while being size consistent. We audit released models without training, and we train
+Dense, Global (UMA-style routing), Local-6, and two controls on a fixed subset of OMol25 with the `fairchem` code.
 
-## Plan
+## Results at the midterm
 
-- Backbone: UMA's eSEN-based architecture, via the `fairchem` implementation. Only the router changes between configurations.
-- Data: OMol25, official splits.
-- Configurations: Dense (no experts), Global (UMA-style routing over the whole structure), Element (routing by the atom's own element), Local-6 and Local-12 (routing from the neighborhood within 6 or 12 angstrom), and Local+Global.
-- Measures: energy and force error, the additivity residual on neutral singlet fragment pairs, spurious host-atom forces, and dissociation curves.
+All trained results use 3 seeds, 50,000 steps, the same fixed training and validation lists, and the same backbone (about 6 million
+active parameters, cutoff 6 angstrom). Errors are on 5,000 validation structures from OMol25. Numbers are means over the 3 seeds; full
+per-seed values, intervals and tests are in `docs/` and in the report appendix.
 
-## Status (2026-10-09)
+| Model | Force MAE (eV/A) | Energy MAE per atom (eV) | Additivity error of the final checkpoints (Al + Ni slabs) |
+|---|---:|---:|---|
+| Dense (no experts) | 0.0388 | 0.0142 | 3e-6 meV (zero) |
+| Global (UMA-style routing) | 0.0372 | 0.0131 | -5.1, -6.6 and +2.4 eV for seeds 0, 1, 2 |
+| Local-6 | 0.0372 | 0.0130 | 2e-6 to 3e-6 meV (zero) |
+| Frozen (Global with a constant router) | 0.0375 | 0.0131 | 3e-6 meV (zero) |
 
-The proposal is submitted. The audit, the Local-6 model and the Bridges-2 setup are done. The pilot training runs
-are next (12 to 18 October). The midterm report is due 23 October.
+- **Audit of released models (RQ1).** MACE gives an additivity error of zero within the noise floor. ORB-v3 and all UMA models do not, by 0.5 eV to hundreds of eV for two metal slabs, and the error does not shrink with distance. Our protocol is fully specified and differs from the published one; we compare with the published values in kind, not digit by digit. See `status-wip/README.md` and `audit/README.md`.
+- **Accuracy (RQ2).** Global and Local-6 reduce the force error by about 4 percent against Dense (Welch p = 0.0014 and 0.0013). We detect no difference between Global and Local-6 (p = 0.95). The retention share of the Global gain kept by Local-6 is 1.01 for force (one-sided 95 percent lower bound 0.84) and 1.06 for energy (bound 0.72, and about 0.50 if the seed spread is treated with a Student-t distribution). All bounds come from 3 seeds.
+- **Size consistency through training (RQ3).** Dense and Local-6 stay at the float64 floor at all 99 saved checkpoints. Global is 10 to 69 meV off before training and 2.4 to 6.6 eV off after 50,000 steps, the same at gaps of 8 and 100 angstrom. See `docs/size-consistency-training.md`. The same pattern holds for far-apart molecule pairs (`docs/molecular-evaluation.md`).
+- **Cost (RQ4).** At inference, with energy and forces on the same GPU, Local-6 is 3.3 to 3.5 times slower than Global (627 against 2,201 atoms per second on a V100; 1,736 against 5,708 on an H100). Global is 1.2 to 1.3 times slower than Dense. See `docs/inference-timing.md`. The nine pilots cost 135 GPU service units; the whole project about 195 of 2,950.
+- **Mechanism (RQ5).** The trained router is far from uniform, but the experts differ mostly by their random start, and training moved them together (`docs/router-check.md`). A model with a constant router keeps 84 percent of the force gain of Global and 97 percent of the energy gain (`docs/frozen-router.md`), and its force error is 0.7 percent higher than Global in all 3 seeds (p = 0.18). We conclude that most of the gain over Dense does not come from learned routing. A Dense control with the matching start scale and step size is running (`docs/scaled-dense.md`); its result will be added there.
 
-- **Done: the audit of released models.** We tested whether MACE, ORB-v3, UMA-S-1.1, UMA-S-1.2 and UMA-M-1.1 give an
-  energy for two far-apart metal slabs that equals the sum of the parts. MACE does, exactly. ORB-v3 and all UMA
-  models do not, by 0.5 eV to hundreds of eV, and the error does not shrink with distance. A forcing test shows that
-  the whole-structure router average is the whole cause in UMA-S-1.1; UMA-S-1.2 has a second whole-structure term,
-  charge balancing. Read `status-wip/README.md`.
-- **Done: Local-6 inside fairchem.** `training/local_moe.py` and `configs/variant/local6.yaml` run Local-6 in the real
-  model, with the same parameters as Global (37,652,265; Dense has 5,981,057). The router component is in
-  `local_routing/`. All 107 tests pass (Windows CPU, and Linux on CPU and GPU). Read `docs/local-routing.md`.
-- **Done: Bridges-2 setup.** Shared environment, OMol25 `train_4M` and validation data, job files, and 30-step test
-  jobs of all three variants. On the saved checkpoints of two far-apart Al and Ni slabs, Dense and Local-6 give an
-  energy error of about 3e-6 meV (zero) and Global gives about -31 meV. This is a pipeline check after 30 steps, not
-  a quality result. Read `docs/TRAINING.md`.
-- **Next: the pilot runs.** Dense, Global and Local-6, one job file each in `slurm/`. The settings (steps, seeds,
-  fixed sample lists, normalizer, size matching, neighbor cap, `num_distance_basis`) are waiting on the team's
-  answers by mail. Until then the job files hold placeholders.
-- **Done: size consistency along training** (2026-10-15). All 99 saved checkpoints of the nine pilots, Al + Ni slabs at gaps of 8 and 100 A.
-  Dense and Local-6 stay at the float64 floor (below 4e-6 meV) at every checkpoint. Global is 10 to 69 meV off at step 0 and 2.4 to 6.6 eV off
-  at step 50,000, the same at both gaps. Read `docs/size-consistency-training.md`.
-- **Done: molecular evaluation of the final pilot checkpoints** (2026-10-18, PR #4 by Pragati). Three far-apart neutral singlet pairs
-  (H2O + CH4, NH3 + CO2, H2O + H2O) at gaps of 8 to 40 A, and finite-difference force checks. Dense and Local-6 are additive to the
-  float64 floor. Global is 0.29 to 38 meV off for the two mixed pairs, the same at every gap, and exactly additive for H2O + H2O.
-  Forces match the energy gradient in all three variants. Read `docs/molecular-evaluation.md`.
-- **Not done:** Element, Local-12 and Local+Global are later work (decided 2026-10-11); the midterm trains Dense, Global and Local-6.
+## Limitations
+
+- Three seeds per model; the proposal planned five. Intervals and bounds with 3 seeds are approximate.
+- One validation set of 5,000 structures, which are larger on average than the training structures (102 against 55 atoms).
+- Short training: about 1/800 to 1/870 of an official run, on a 200,000-structure subset of the 4M training split. The target normalizer (1.433569) is a placeholder taken from an official run.
+- Size consistency along training uses one ideal Al + Ni geometry; the audit of released models uses 21 geometries.
+- Global and Local-6 were trained on different GPU types (V100 and H100), so their training times are not comparable. The inference timings use the same GPU type for all models, on shared nodes.
+- Element, Local-12 and Local+Global routing are not trained yet. The additivity test covers neutral singlet pairs only; we train on all charges and spins.
 
 ## Repository layout
 
 | Folder or file | What it holds |
 |---|---|
-| `status-wip/` | Reports only: the write-up, the final tables and the plots |
-| `audit/` | The audit code (slab test, null tests, neon probe `neon_probe.py`, forcing test `f1_forcing.py`, W&B upload `log_wandb.py`), with its own README and the exact commands |
-| `results/` | Raw per-run energies, null tests, neon and forcing-test results, and cloud-run logs behind every number |
+| `status-wip/` | Reports on the audit: write-up, final tables and plots |
+| `audit/` | Audit code (slab test, null tests, neon probe, forcing test, molecular additivity and force checks `molecular.py`), with its own README and the exact commands |
 | `local_routing/` | Local composition, router interface, receiving-atom adapter and reference linear experts |
-| `tests/` | Component tests for routing, derivatives and expert execution, and tests of the audit code and the training configuration |
-| `docs/local-routing.md` | Router interface, test results and integration steps |
-| `configs/config_draft.yaml` | Yiwei's draft shared configuration; unresolved settings remain open |
-| `configs/` (other files) | Training configuration: `train.yaml`, the data config in `data/`, the Dense, Global and Local-6 variants in `variant/`, element references in `element_refs/` |
-| `training/` | Version-checked entry point for the fairchem training CLI, the Local-6 backbone (`local_moe.py`), the out-of-memory guard and the step-based scheduler |
-| `slurm/` | Bridges-2 job files and scripts: environment, data download, smoke tests, and the pilot jobs |
-| `docs/TRAINING.md` | How to set up and run training |
-| `scripts/` | OMol25 data preparation notes and the data audit script |
-| `manifests/` | The OMol25 data manifest written by the data audit |
-| `requirements.txt` | Environment for UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8) |
-| `requirements-training.txt` | Extra packages for training, installed after `requirements.txt` |
-| `requirements-mace.txt` | Separate environment for MACE, which cannot share one with fairchem |
+| `training/` | Entry point for the fairchem training CLI, the Local-6 backbone (`local_moe.py`), the frozen-router and scaled-Dense variants, the out-of-memory guard and the step-based scheduler |
+| `configs/` | Training configuration: `train.yaml`, data configuration, the variants `dense`, `global`, `local6`, `global_frozen`, `dense_scaled`, element references |
+| `slurm/` | Bridges-2 job files and scripts: environment, data download, smoke tests, pilots, size consistency, router check, timing, molecular evaluation |
+| `scripts/` | Data preparation and audit, pilot sample lists, size consistency along training, router check, inference timing, curve comparison |
+| `manifests/` | The OMol25 data manifest and the fixed training and validation lists with their hashes |
+| `results/` | Raw and summary result files (CSV) and figures behind every number in the reports |
+| `tests/` | Unit tests (147): routing, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
+| `docs/` | Detailed reports: `TRAINING.md` (setup and run), `local-routing.md`, `size-consistency-training.md`, `router-check.md`, `frozen-router.md`, `scaled-dense.md`, `molecular-evaluation.md`, `inference-timing.md` |
+| `requirements.txt`, `requirements-training.txt`, `requirements-mace.txt` | Environments: UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8); extra training packages; a separate environment for MACE |
 
-## Setup
+Model weights, checkpoints, the OMol25 data and the run folders are not in the repository. They live on the Bridges-2 file system of the
+project; see `docs/TRAINING.md` for the paths and for how the data is prepared.
 
-Create the environments from the two requirements files. The steps are in the header of each file. The UMA weights are
-gated on Hugging Face, so log in and accept the license first. Never commit a token.
+## Reproducing the results
 
-## Who does what
+1. Create the environments from the requirements files; the steps are in the header of each file. The UMA weights are gated on Hugging Face: log in and accept the license first. Never commit a token.
+2. Run the tests: `python -m unittest discover -s tests`. All 147 tests pass on Windows (CPU). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
+3. The audit, the pilots and every follow-up experiment have a job file in `slurm/` and a report in `docs/` or `audit/` that gives the exact commands, the job identifiers, the settings and the files that hold the results. Start with `docs/TRAINING.md`.
+4. A run writes `settings.txt` and `summary.txt`; check that `settings.txt` shows the steps, the seed, the variant and the sample list hashes you expect before you trust the run.
 
-- Anshul Kumar: the audit, the Bridges-2 setup, the Local-6 integration into fairchem, the Global pilot run, and the size-consistency benchmark.
-- Pragati Bhattad: the router interface and local composition. Anshul submits the Local-6 pilot runs; Pragati can also submit them.
-- Yiwei Xia: the OMol25 training pipeline, the Dense pilot run, and the statistics.
+## Contributions
+
+The list follows the commit and pull request history of this repository.
+
+- **Anshul Kumar:** the audit of released models and its benchmark code; the Bridges-2 setup; the integration of the local router into the training code; the nine pilots and their analysis; size consistency along training, the router check, the frozen-router and scaled-Dense runs, and the inference timing; review and merge of the molecular checks.
+- **Pragati Bhattad:** the standalone local composition router with component tests (`local_routing/`); the molecular additivity and force checks of the final checkpoints (`audit/molecular.py`).
+- **Yiwei Xia:** the first training pipeline for Dense and Global on OMol25 (configuration, data manifest and audit, training notes); an independent statistical analysis of the pilots (means, Student-t intervals, retention, Welch tests, exact seed resampling).
 
 ## Team
 
@@ -83,3 +85,15 @@ gated on Hugging Face, so log in and accept the license first. Never commit a to
 | Anshul Kumar | anshulk@andrew.cmu.edu | [anshulk-cmu](https://github.com/anshulk-cmu) |
 | Pragati Bhattad | pbhattad@andrew.cmu.edu | [aptenosys](https://github.com/aptenosys) |
 | Yiwei Xia | yiweixia@andrew.cmu.edu | [sdfIvy](https://github.com/sdfIvy) |
+
+## References
+
+- Wood et al. (2025). UMA: A Family of Universal Models for Atoms. NeurIPS 38. arXiv:2506.23971.
+- Levine et al. (2025). The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models. arXiv:2505.08762.
+- Batatia et al. (2025). Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields. arXiv:2510.25380.
+- Liu et al. (2026). Mixture of Experts Architectures for Machine Learning Interatomic Potentials. npj Artificial Intelligence. arXiv:2603.07977.
+- Pople, Binkley and Seeger (1976). Theoretical models incorporating electron correlation. Int. J. Quantum Chem. 10(S10), 1-19.
+- Batatia et al. (2022). MACE: Higher order equivariant message passing neural networks. NeurIPS 35. arXiv:2206.07697.
+- Rhodes et al. (2025). Orb-v3: atomistic simulation at scale. arXiv:2504.06231.
+
+The report has the full reference list with the claim that each source supports.
