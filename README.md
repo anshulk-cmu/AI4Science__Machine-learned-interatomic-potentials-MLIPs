@@ -27,12 +27,13 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 | Global (UMA-style routing) | 0.0372 | 0.0131 | -5.1, -6.6 and +2.4 eV for seeds 0, 1, 2 |
 | Local-6 | 0.0372 | 0.0130 | 2e-6 to 3e-6 meV (zero) |
 | Frozen (Global with a constant router) | 0.0375 | 0.0131 | 3e-6 meV (zero) |
+| Scaled Dense (Dense with the start scale and step size of Frozen) | 0.0376 | 0.0135 | 2e-6 to 3e-6 meV (zero) |
 
 - **Audit of released models (RQ1).** MACE gives an additivity error of zero within the noise floor. ORB-v3 and all UMA models do not, by 0.5 eV to hundreds of eV for two metal slabs, and the error does not shrink with distance. Our protocol is fully specified and differs from the published one; we compare with the published values in kind, not digit by digit. See `status-wip/README.md` and `audit/README.md`.
 - **Accuracy (RQ2).** Global and Local-6 reduce the force error by about 4 percent against Dense (Welch p = 0.0014 and 0.0013). We detect no difference between Global and Local-6 (p = 0.95). The retention share of the Global gain kept by Local-6 is 1.01 for force (one-sided 95 percent lower bound 0.84) and 1.06 for energy (bound 0.72, and about 0.50 if the seed spread is treated with a Student-t distribution). All bounds come from 3 seeds.
 - **Size consistency through training (RQ3).** Dense and Local-6 stay at the float64 floor at all 99 saved checkpoints. Global is 10 to 69 meV off before training and 2.4 to 6.6 eV off after 50,000 steps, the same at gaps of 8 and 100 angstrom. See `docs/size-consistency-training.md`. The same pattern holds for far-apart molecule pairs (`docs/molecular-evaluation.md`).
 - **Cost (RQ4).** At inference, with energy and forces on the same GPU, Local-6 is 3.3 to 3.5 times slower than Global (627 against 2,201 atoms per second on a V100; 1,736 against 5,708 on an H100). Global is 1.2 to 1.3 times slower than Dense. See `docs/inference-timing.md`. The nine pilots cost 135 GPU service units; the whole project about 195 of 2,950.
-- **Mechanism (RQ5).** The trained router is far from uniform, but the experts differ mostly by their random start, and training moved them together (`docs/router-check.md`). A model with a constant router keeps 84 percent of the force gain of Global and 97 percent of the energy gain (`docs/frozen-router.md`), and its force error is 0.7 percent higher than Global in all 3 seeds (p = 0.18). We conclude that most of the gain over Dense does not come from learned routing. A Dense control with the matching start scale and step size is running (`docs/scaled-dense.md`); its result will be added there.
+- **Mechanism (RQ5).** The trained router is far from uniform, but the experts differ mostly by their random start, and training moved them together (`docs/router-check.md`). A model with a constant router keeps 84 percent of the force gain of Global and 97 percent of the energy gain (`docs/frozen-router.md`); its force error is 0.7 percent higher than Global in all 3 seeds (p = 0.18). A plain Dense model with the start scale and step size that a constant router implies (no experts, no router, 5,981,057 parameters) keeps 74 percent of the force gain and 60 percent of the energy gain (`docs/scaled-dense.md`). We detect no difference between the two controls. We conclude that a large part of the gain over Dense can be reproduced without experts or routing, by start scale and step size alone. Global and Local-6 stay about 1.1 percent lower in force error than the scaled Dense, which is not significant with 3 seeds, so we cannot say that learned routing adds nothing. The two controls differ in two details that we did not test on a small model: the shape of the initial weights and gradient clipping.
 
 ## Limitations
 
@@ -56,7 +57,7 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 | `scripts/` | Data preparation and audit, pilot sample lists, size consistency along training, router check, inference timing, curve comparison, the pilot statistics (`pilot_statistics.py`, input `results/pilot_final_metrics.csv`) and the report figures and tables (`make_midterm_figures.py`, `audit_summary_table.py`) |
 | `manifests/` | The OMol25 data manifest and the fixed training and validation lists with their hashes |
 | `results/` | Raw and summary result files (CSV) and figures behind every number in the reports |
-| `tests/` | Unit tests (151): routing, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
+| `tests/` | Unit tests (152): routing, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
 | `docs/` | Detailed reports: `TRAINING.md` (setup and run), `local-routing.md`, `size-consistency-training.md`, `router-check.md`, `frozen-router.md`, `scaled-dense.md`, `molecular-evaluation.md`, `inference-timing.md` |
 | `requirements.txt`, `requirements-training.txt`, `requirements-mace.txt` | Environments: UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8); extra training packages; a separate environment for MACE |
 
@@ -66,7 +67,7 @@ project; see `docs/TRAINING.md` for the paths and for how the data is prepared.
 ## Reproducing the results
 
 1. Create the environments from the requirements files; the steps are in the header of each file. The UMA weights are gated on Hugging Face: log in and accept the license first. Never commit a token.
-2. Run the tests: `python -m unittest discover -s tests`. All 151 tests pass on Windows (CPU). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
+2. Run the tests: `python -m unittest discover -s tests`. All 152 tests pass on Windows (CPU). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
 3. The audit, the pilots and every follow-up experiment have a job file in `slurm/` and a report in `docs/` or `audit/` that gives the exact commands, the job identifiers, the settings and the files that hold the results. Start with `docs/TRAINING.md`.
 4. A run writes `settings.txt` and `summary.txt`; check that `settings.txt` shows the steps, the seed, the variant and the sample list hashes you expect before you trust the run.
 

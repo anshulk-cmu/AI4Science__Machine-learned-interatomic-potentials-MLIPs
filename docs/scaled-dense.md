@@ -311,7 +311,32 @@ Then check three things:
 - Short training. 50,000 steps are about 1/760 of the official eSEN run.
 - The different random draws. For the same seed, the scaled Dense model shares every untagged initial weight with Dense. With the frozen model it shares most backbone weights, because fairchem builds the Dense backbone first and adds the experts afterwards. On the tiny model, 54 of the 64 shared tensors were equal; the `fc_m0` biases and the energy head differed, because the expert draws come before them (measured). The 24 weights themselves are different draws. So a seed-for-seed comparison with the frozen model compares different initial functions.
 
-## 11. Files
+## 11. Results (2026-10-22)
+
+All three jobs finished (jobs 49533514, 49535801 and 49535804; 7 h 53 min, 7 h 05 min and 7 h 05 min on one V100-32 each, on one shared node). All stages passed, there were 0 out-of-memory events, and no batch was skipped. The additivity error of the final checkpoints is 2.79e-06, 1.86e-06 and 2.79e-06 meV at gaps of 8 and 100 angstrom.
+
+Final validation errors, seeds 0, 1 and 2 (full precision from the offline W&B files; the same values are in `results/pilot_final_metrics.csv`):
+
+| Quantity | Seed 0 | Seed 1 | Seed 2 | Mean |
+|---|---:|---:|---:|---:|
+| Force MAE (eV/A) | 0.037449 | 0.037828 | 0.037551 | 0.037609 |
+| Energy MAE per atom (eV) | 0.013448 | 0.013451 | 0.013721 | 0.013540 |
+| Validation loss | 0.06165 | 0.06210 | 0.06224 | 0.06200 |
+
+Measured, from `python scripts/pilot_statistics.py` (3 seeds, Welch tests, nothing corrected for multiple tests):
+
+- Against Dense, the scaled Dense error is 3.06 percent lower in force (p = 0.0040) and 4.70 percent lower in energy (p = 0.0057).
+- The scaled Dense keeps 0.745 of the force gain of Global (per seed 0.743, 0.683, 0.783; one-sided 95 percent lower bound 0.590 with normal draws, 0.616 with the exact resample, 0.439 with Student-t draws). It keeps 0.597 of the energy gain (per seed 0.657, 1.152, 0.372; lower bounds 0.382, 0.410 and 0.223).
+- Against the frozen model, the scaled Dense is 0.41 percent higher in force (p = 0.31) and 3.2 percent higher in energy (p = 0.11). We detect no difference. This is not evidence of equivalence.
+- Against Global, the scaled Dense is higher by 0.000407 eV/A in force (p = 0.079) and 0.000451 eV in energy (p = 0.23). Against Local-6, it is higher by 0.000418 eV/A (p = 0.066) and 0.000523 eV (p = 0.037).
+
+Interpreted:
+
+- A Dense model with the start scale and step size that a constant router implies, and with no experts and no router, reproduces a large part of the gain of Global and Local-6 over Dense. For force the part is about three quarters. For energy it is about 60 percent, with a wide spread between seeds and a lower bound below one half.
+- Global and Local-6 stay about 1.1 percent lower in force error than the scaled Dense. This is not significant with 3 seeds, so we cannot say that learned routing adds nothing.
+- The scaled Dense and the frozen model differ in two details that the small-model check did not test: the shape of the initial weights (one scaled uniform draw against a sum of 8) and gradient clipping. The comparison of the two is therefore approximate.
+
+## 12. Files
 
 - `configs/variant/dense_scaled.yaml`: the variant.
 - `training/dense_scaled.py`: the backbone and the optimizer-group wrapper.

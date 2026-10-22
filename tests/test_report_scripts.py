@@ -17,7 +17,7 @@ class PilotStatistics(unittest.TestCase):
 
     def test_inputs_are_complete(self):
         counts = self.df.groupby("variant").seed.apply(list)
-        for model in ("dense", "global", "local6", "frozen"):
+        for model in ("dense", "global", "local6", "frozen", "dense_scaled"):
             self.assertEqual(counts[model], [0, 1, 2])
 
     def test_means_and_retention_match_the_report(self):
@@ -25,6 +25,12 @@ class PilotStatistics(unittest.TestCase):
         self.assertAlmostEqual(force("dense").mean(), 0.038795, places=6)
         self.assertAlmostEqual(ps.retention(force("dense").mean(), force("global").mean(), force("local6").mean()), 1.0075, places=4)
         self.assertAlmostEqual(ps.retention(force("dense").mean(), force("global").mean(), force("frozen").mean()), 0.8422, places=4)
+
+    def test_scaled_dense_control_matches_the_report(self):
+        force = lambda m: ps.values(self.df, m, "force_mae_eV_per_A")  # noqa: E731
+        self.assertAlmostEqual(force("dense_scaled").mean(), 0.037609, places=6)
+        r = ps.retention(force("dense").mean(), force("global").mean(), force("dense_scaled").mean())
+        self.assertAlmostEqual(r, 0.7447, places=4)
 
     def test_lower_bounds_match_the_report(self):
         b = ps.bounds(self.df, "force_mae_eV_per_A", "local6", 200_000)
