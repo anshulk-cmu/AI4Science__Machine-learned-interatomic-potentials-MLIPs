@@ -21,8 +21,8 @@ OI = {"blue": "#0072B2", "vermillion": "#D55E00", "green": "#009E73", "orange": 
 STYLE = {"dense": ("Dense", OI["blue"], "o", "-"), "global": ("Global", OI["vermillion"], "s", "-"),
          "local6": ("Local-6", OI["green"], "^", "-"), "frozen": ("Frozen", OI["orange"], "D", "--"),
          "dense_scaled": ("Scaled Dense", OI["purple"], "v", "--")}
-plt.rcParams.update({"font.size": 8.3, "axes.labelsize": 8.3, "xtick.labelsize": 7.8, "ytick.labelsize": 7.8,
-                     "legend.fontsize": 7.8, "axes.spines.top": False, "axes.spines.right": False, "pdf.fonttype": 42})
+plt.rcParams.update({"font.size": 7.6, "axes.labelsize": 7.6, "xtick.labelsize": 7.2, "ytick.labelsize": 7.2,
+                     "legend.fontsize": 7.2, "axes.spines.top": False, "axes.spines.right": False, "pdf.fonttype": 42})
 
 
 def band(ax, df, col, scale=1.0, start=0, ref=None):
@@ -40,7 +40,7 @@ def main(out):
     cur = pd.read_csv(ROOT / "results" / "pilot_validation_curves.csv")
     fin = pd.read_csv(ROOT / "results" / "pilot_final_metrics.csv")
     dense = cur[cur.variant == "dense"].pivot(index="step", columns="seed", values="val_force_mae_eV_per_A").mean(axis=1)
-    fig, ax = plt.subplots(2, 2, figsize=(5.5, 3.55))
+    fig, ax = plt.subplots(2, 2, figsize=(4.6, 2.9))
     band(ax[0, 0], cur, "train_loss_mean_preceding_500_steps")
     ax[0, 0].set(ylabel="training loss", title="(a) training loss")
     band(ax[0, 1], cur, "val_force_mae_eV_per_A")
@@ -57,12 +57,12 @@ def main(out):
         ax[1, 1].errorbar(i, y.mean(), yerr=h, color=c, capsize=2.5, lw=1.1, zorder=2)
         ax[1, 1].plot(np.full(3, i) + np.array([-0.12, 0, 0.12]), y, ls="none", marker=mk, ms=3, color=c, alpha=0.7, zorder=3)
     ax[1, 1].set(ylabel=r"force MAE (eV/$\AA$)", title="(d) step 50,000, 95% interval")
-    ax[1, 1].set_xticks(range(5)); ax[1, 1].set_xticklabels(["Dense", "Global", "Local\n-6", "Frozen", "Scaled\nDense"], fontsize=7.2)
+    ax[1, 1].set_xticks(range(5)); ax[1, 1].set_xticklabels(["Dense", "Global", "Local\n-6", "Frozen", "Scaled\nDense"], fontsize=6.6)
     ax[1, 1].set_xlim(-0.6, 4.6)
     h, l = ax[0, 0].get_legend_handles_labels()
     fig.legend(h, l, ncol=5, loc="lower center", frameon=False, columnspacing=1.2, handlelength=2.2, bbox_to_anchor=(0.5, -0.005))
     for a in ax.flat:
-        a.title.set_fontsize(8.3)
+        a.title.set_fontsize(7.6)
     fig.tight_layout(rect=(0, 0.06, 1, 1), h_pad=0.9, w_pad=0.8)
     fig.savefig(out)
 
