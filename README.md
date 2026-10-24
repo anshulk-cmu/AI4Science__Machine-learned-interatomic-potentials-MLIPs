@@ -1,7 +1,7 @@
 # Local Composition Routing for Mixture-of-Experts Interatomic Potentials
 
 Course project for CMU 11-785 Introduction to Deep Learning, Fall 2026 (AI4Science track, machine-learned interatomic potentials).
-Team 6: Anshul Kumar, Pragati Bhattad, Yiwei Xia. Status: midterm submission (23 October 2026).
+Team 6: Anshul Kumar, Pragati Bhattad, Yiwei Xia. Status: midterm report submitted (23 October 2026).
 
 ## Summary
 
