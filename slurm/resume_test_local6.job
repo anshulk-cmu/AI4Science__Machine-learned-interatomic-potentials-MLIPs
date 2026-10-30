@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH -A che260063p
+#SBATCH -p GPU-shared
+#SBATCH -t 2:00:00
+#SBATCH -N 1
+#SBATCH --gpus=h100-80:1
+#SBATCH --job-name=resume_test_local6
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
+#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-user=anshulk@andrew.cmu.edu
+# made by make_sbatch.py from the Bridges-2 guide; estimated at most 4 SU
+# files created here are owned by the Unix group in effect at submission (p. 7):
+# submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/logs' afterwards
+umask 002                      # files stay group-writable for the project team (guide B9)
+export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
+set -x
+cd /ocean/projects/che260063p/shared/logs
+bash /ocean/projects/che260063p/shared/runs/resume_test/code/slurm/resume_test.sh local6 L1 L2 LB:term:250 LB; RC=$?
+cd /ocean/projects/che260063p/shared/runs/resume_test/code && /ocean/projects/che260063p/shared/envs/mlip/bin/python -u -B scripts/resume_compare.py /ocean/projects/che260063p/shared/runs/resume_test --refs L1 L2 --tests LB --steps 400 --out /ocean/projects/che260063p/shared/runs/resume_test/results/local6; RC=$((RC | $?))
+exit $RC

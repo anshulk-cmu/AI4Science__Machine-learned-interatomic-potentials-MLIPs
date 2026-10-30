@@ -1,0 +1,155 @@
+{
+  "factor": 3.0,
+  "floor": 1e-06,
+  "runs": {
+    "EB": [
+      {
+        "check": "steps 0 to N-1 all present once, after merging segments",
+        "pass": true,
+        "value": "400 steps, segments start at [0, 300]"
+      },
+      {
+        "check": "run was resumed (two or more segments)",
+        "pass": true,
+        "value": [
+          0,
+          300
+        ]
+      },
+      {
+        "check": "batch_sha256 equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "epoch equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "step_in_epoch equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "structures equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "atoms equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "learning rate equal at every step (relative difference <= 1e-12)",
+        "pass": true,
+        "value": 0.0
+      },
+      {
+        "check": "train loss, steps 300 to 399, max relative difference",
+        "value": 1.0231606408996989e-06,
+        "noise": 6.387683393448936e-07,
+        "limit": 1.916305018034681e-06,
+        "pass": true
+      },
+      {
+        "check": "train loss, continued in memory against resumed from disk, steps 300 to 321",
+        "value": 1.1899709822748117e-07,
+        "noise": 6.320229119011762e-07,
+        "limit": 1.8960687357035285e-06,
+        "pass": true
+      },
+      {
+        "check": "final model_state_dict, relative L2 difference",
+        "value": 3.718553704308608e-07,
+        "noise": 2.3988991193761265e-07,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "final ema_state_dict, relative L2 difference",
+        "value": 8.302226060202797e-08,
+        "noise": 5.86040064071701e-08,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "val/loss, relative difference",
+        "value": 9.670015037665501e-08,
+        "noise": 5.3902348282974855e-08,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "val/omol.val,omol_energy,mae, relative difference",
+        "value": 6.946742006661938e-08,
+        "noise": 1.583406241013465e-08,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "val/omol.val,omol_energy,per_atom_mae, relative difference",
+        "value": 4.9974261564897676e-08,
+        "noise": 2.4285605850313287e-08,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "val/omol.val,omol_forces,mae, relative difference",
+        "value": 1.0121956166995421e-07,
+        "noise": 6.139546814315228e-08,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "EB: epoch 0 batches all distinct",
+        "pass": true,
+        "value": "270 batches"
+      },
+      {
+        "check": "EB: epoch 1 batches are epoch 0 batches",
+        "pass": true,
+        "value": "130 batches"
+      },
+      {
+        "check": "EB: epoch 1 order differs from epoch 0",
+        "pass": true,
+        "value": ""
+      }
+    ],
+    "references": [
+      {
+        "check": "E1: epoch 0 batches all distinct",
+        "pass": true,
+        "value": "270 batches"
+      },
+      {
+        "check": "E1: epoch 1 batches are epoch 0 batches",
+        "pass": true,
+        "value": "130 batches"
+      },
+      {
+        "check": "E1: epoch 1 order differs from epoch 0",
+        "pass": true,
+        "value": ""
+      },
+      {
+        "check": "E2: epoch 0 batches all distinct",
+        "pass": true,
+        "value": "270 batches"
+      },
+      {
+        "check": "E2: epoch 1 batches are epoch 0 batches",
+        "pass": true,
+        "value": "130 batches"
+      },
+      {
+        "check": "E2: epoch 1 order differs from epoch 0",
+        "pass": true,
+        "value": ""
+      }
+    ]
+  },
+  "verdict": "PASS"
+}

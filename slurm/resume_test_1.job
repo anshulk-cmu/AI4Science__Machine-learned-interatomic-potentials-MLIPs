@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH -A che260063p
+#SBATCH -p GPU-small
+#SBATCH -t 1:30:00
+#SBATCH -N 1
+#SBATCH --gpus=v100-32:1
+#SBATCH --job-name=resume_test_1
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
+#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-user=anshulk@andrew.cmu.edu
+# made by make_sbatch.py from the Bridges-2 guide; estimated at most 1.5 SU
+# -p changed by hand from GPU-shared to GPU-small (one V100-32 node, 8 h QoS limit): on 2026-10-29 sbatch --test-only gave
+# GPU-shared a start 12 h later and GPU-small an immediate start. GPU-small is not in the guide's partition tables; check the charge with job_info.
+# files created here are owned by the Unix group in effect at submission (p. 7):
+# submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/logs' afterwards
+umask 002                      # files stay group-writable for the project team (guide B9)
+export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
+set -x
+cd /ocean/projects/che260063p/shared/logs
+bash /ocean/projects/che260063p/shared/runs/resume_test/code/slurm/resume_test.sh dense A1 B:term:250 C:kill:250 E1:small EB:kill:320:small

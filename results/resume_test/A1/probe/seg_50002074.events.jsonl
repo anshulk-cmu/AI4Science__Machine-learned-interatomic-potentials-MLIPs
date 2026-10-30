@@ -1,0 +1,2 @@
+{"event": "train_start", "step": 0, "epoch": 0, "step_in_epoch": 0}
+{"event": "eval", "step": 400, "epoch": 1, "step_in_epoch": 0, "val/omol.val,omol_energy,mae": 8.265215599121476, "val/omol.val,omol_energy,per_atom_mae": 0.11460478801212334, "val/omol.val,omol_forces,mae": 0.4598699195748927, "val/loss": 0.7191035678815524, "val/atoms_per_second": 5301.990563306718, "val/epoch": 0.0}
