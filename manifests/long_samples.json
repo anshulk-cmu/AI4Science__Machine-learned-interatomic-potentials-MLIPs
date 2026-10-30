@@ -1,0 +1,25 @@
+{
+  "method": "numpy.random.default_rng(seed).choice(rows not in the base list, n, replace=False), then sorted; the long list is that draw joined with the base list",
+  "lists": {
+    "long_train_1200k.txt": {
+      "split": "train_4M",
+      "rows_in_split": 3986754,
+      "count": 1200000,
+      "seed": 11787,
+      "contains": "pilot_train_200k.txt",
+      "first": 0,
+      "last": 3986751,
+      "sha256": "c5a1690331676a870433b2bd851c248a9014ed54c3380ab9896473b8210f63d6"
+    },
+    "select_val_5k.txt": {
+      "split": "val",
+      "rows_in_split": 2762021,
+      "count": 5000,
+      "seed": 11788,
+      "disjoint_from": "pilot_val_5k.txt",
+      "first": 695,
+      "last": 2761657,
+      "sha256": "6174e428ac33ca8c134c4fac61797387e71f5ff1ffbb84d93d469c4b1fca3209"
+    }
+  }
+}

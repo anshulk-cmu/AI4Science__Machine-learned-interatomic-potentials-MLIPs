@@ -1,0 +1,23 @@
+2026-10-29 01:33:52 prep long data: repo /ocean/projects/che260063p/shared/runs/data_lists/code, 16 workers, lists long_train_1200k.txt and select_val_5k.txt
+2026-10-29 01:33:52 START redraw
+2026-10-29 01:34:00 END   redraw exit 0 (log: /ocean/projects/che260063p/shared/runs/prep_long_50003944/logs/redraw.log)
+2026-10-29 01:34:00 PASS  redraw on this node gives the same long_train_1200k.txt (c5a1690331676a870433b2bd851c248a9014ed54c3380ab9896473b8210f63d6)
+2026-10-29 01:34:00 PASS  redraw on this node gives the same select_val_5k.txt (6174e428ac33ca8c134c4fac61797387e71f5ff1ffbb84d93d469c4b1fca3209)
+2026-10-29 01:34:00 START verify_samples
+2026-10-29 01:38:16 END   verify_samples exit 0 (log: /ocean/projects/che260063p/shared/runs/prep_long_50003944/logs/verify_samples.log)
+PASS  long_train_1200k.txt: list sha256 equals manifest
+PASS  long_train_1200k.txt: list size equals manifest
+PASS  long_train_1200k.txt: dataset rows equal list
+PASS  long_train_1200k.txt: split size equals manifest
+PASS  select_val_5k.txt: list sha256 equals manifest
+PASS  select_val_5k.txt: list size equals manifest
+PASS  select_val_5k.txt: dataset rows equal list
+PASS  select_val_5k.txt: split size equals manifest
+RESULT: all checks passed
+2026-10-29 01:38:16 START stats_long
+2026-10-29 01:42:05 END   stats_long exit 0 (log: /ocean/projects/che260063p/shared/runs/prep_long_50003944/logs/stats_long.log)
+2026-10-29 01:42:05 START stats_select
+2026-10-29 01:45:17 END   stats_select exit 0 (log: /ocean/projects/che260063p/shared/runs/prep_long_50003944/logs/stats_select.log)
+2026-10-29 01:45:17 START compare
+2026-10-29 01:47:45 END   compare exit 0 (log: /ocean/projects/che260063p/shared/runs/prep_long_50003944/logs/compare.log)
+2026-10-29 01:47:45 RESULT: all stages passed

@@ -1,0 +1,140 @@
+{
+  "lists": {
+    "pilot_train": {
+      "structures": 200000,
+      "atoms_mean": 55.09908,
+      "atoms_p5_p50_p95": [
+        9.0,
+        43.0,
+        141.0
+      ],
+      "atoms_max": 350,
+      "data_ids": {
+        "ani2x": 0.05306,
+        "biomolecules": 0.201155,
+        "elytes": 0.20226,
+        "geom_orca6": 0.04974,
+        "metal_complexes": 0.19978,
+        "orbnet_denali": 0.013335,
+        "reactivity": 0.197195,
+        "rgd": 0.01857,
+        "spice": 0.01102,
+        "trans1x": 0.053885
+      }
+    },
+    "long": {
+      "structures": 1200000,
+      "atoms_mean": 54.9249325,
+      "atoms_p5_p50_p95": [
+        9.0,
+        42.0,
+        141.0
+      ],
+      "atoms_max": 350,
+      "data_ids": {
+        "ani2x": 0.05390166666666667,
+        "biomolecules": 0.20087333333333332,
+        "elytes": 0.20067,
+        "geom_orca6": 0.0498475,
+        "metal_complexes": 0.20065666666666668,
+        "orbnet_denali": 0.0127625,
+        "reactivity": 0.1978375,
+        "rgd": 0.018715,
+        "spice": 0.01128,
+        "trans1x": 0.053455833333333334
+      }
+    },
+    "report": {
+      "structures": 5000,
+      "atoms_mean": 102.0906,
+      "atoms_p5_p50_p95": [
+        17.0,
+        95.0,
+        223.0
+      ],
+      "atoms_max": 349,
+      "data_ids": {
+        "ani2x": 0.001,
+        "biomolecules": 0.2166,
+        "elytes": 0.6176,
+        "geom_orca6": 0.002,
+        "metal_complexes": 0.0674,
+        "orbnet_denali": 0.0088,
+        "reactivity": 0.0842,
+        "spice": 0.0024
+      }
+    },
+    "select": {
+      "structures": 5000,
+      "atoms_mean": 102.7918,
+      "atoms_p5_p50_p95": [
+        18.0,
+        96.0,
+        222.05000000000018
+      ],
+      "atoms_max": 348,
+      "data_ids": {
+        "ani2x": 0.0006,
+        "biomolecules": 0.2244,
+        "elytes": 0.612,
+        "geom_orca6": 0.0012,
+        "metal_complexes": 0.0704,
+        "orbnet_denali": 0.0084,
+        "reactivity": 0.0794,
+        "spice": 0.0036
+      }
+    },
+    "long_new": {
+      "structures": 1000000,
+      "atoms_mean": 54.890103,
+      "atoms_p5_p50_p95": [
+        9.0,
+        42.0,
+        141.0
+      ],
+      "atoms_max": 350,
+      "data_ids": {
+        "ani2x": 0.05407,
+        "biomolecules": 0.200817,
+        "elytes": 0.200352,
+        "geom_orca6": 0.049869,
+        "metal_complexes": 0.200832,
+        "orbnet_denali": 0.012648,
+        "reactivity": 0.197966,
+        "rgd": 0.018744,
+        "spice": 0.011332,
+        "trans1x": 0.05337
+      }
+    }
+  },
+  "long_new vs pilot_train": {
+    "ks_atoms_per_structure": 0.002837999999999896,
+    "largest_data_ids_share_gap": 0.001907999999999993
+  },
+  "long vs pilot_train": {
+    "ks_atoms_per_structure": 0.0023649999999999505,
+    "largest_data_ids_share_gap": 0.001590000000000008
+  },
+  "select vs report": {
+    "ks_atoms_per_structure": 0.011800000000000005,
+    "largest_data_ids_share_gap": 0.007800000000000001
+  },
+  "select vs report, overlap": {
+    "select rows whose composition is in the report set": 229,
+    "report rows whose composition is in the selection set": 241,
+    "distinct compositions": {
+      "select": 4871,
+      "report": 4851,
+      "shared": 146
+    },
+    "distinct source systems": {
+      "select": 4993,
+      "report": 4994,
+      "shared": 13
+    },
+    "source systems shared with the training rows of sids_long_1200k.txt": {
+      "report": 0,
+      "select": 0
+    }
+  }
+}
