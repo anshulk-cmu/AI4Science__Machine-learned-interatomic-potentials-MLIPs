@@ -86,3 +86,36 @@ def load(family, model, task="notask", dtype="float64", version=None):
     if family == "orb":
         return _orb(dtype)
     return _mace(model, dtype)
+
+
+def load_prediction_average(paths, task="omol", dtype="float64", device="cuda"):
+    """Audit adapter for equal prediction averages; K models remain resident on the device."""
+    import numpy as np
+    from fairchem.core.datasets.atomic_data import AtomicData, atomicdata_list_to_batch
+    from training.checkpoints import predictor, PredictionAverage, load_checkpoint, same_config
+    paths = list(paths)
+    if not paths:
+        raise ValueError("at least one checkpoint is required")
+    reference = load_checkpoint(paths[0])
+    for path in paths[1:]:
+        other = load_checkpoint(path)
+        if not same_config(reference.model_config, other.model_config) or not same_config(reference.tasks_config, other.tasks_config):
+            raise ValueError("ensemble model and task configurations must match")
+    del reference
+    units = [predictor(path, device, dtype) for path in paths]
+    average = PredictionAverage(units)
+
+    def predict(atoms):
+        atoms = atoms.copy()
+        atoms.info.update(charge=0, spin=SPIN[task])
+        data = AtomicData.from_ase(atoms, task_name=task, r_edges=False,
+                                  r_data_keys=["charge", "spin"], r_forces=False, r_stress=False,
+                                  molecule_cell_size=120.0 if atoms.cell.volume == 0 else None, target_dtype=getattr(torch, dtype))
+        return average.predict(atomicdata_list_to_batch([data]))
+
+    def energy(atoms):
+        return float(predict(atoms)["energy"].reshape(-1)[0])
+
+    energy.forces = lambda atoms: np.asarray(predict(atoms)["forces"])
+    energy.routing_radius = max(float(getattr(m, "routing_radius", 0.0)) for u in units for m in u.model.modules())
+    return energy, max(_find(u.model, "cutoff") for u in units)
