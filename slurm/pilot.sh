@@ -13,7 +13,8 @@ umask 002
 export PYTHONNOUSERSITE=1
 set -uo pipefail
 VARIANT=${1:?usage: pilot.sh dense|global|local6}
-case "$VARIANT" in dense_scaled|dense|global|global_frozen) MIN_MIB=31000 ;; local6) MIN_MIB=44000 ;; *) echo "unknown variant $VARIANT"; exit 2 ;; esac
+# Local-12 reserves an 80 GB GPU until its smoke run measures peak memory.
+case "$VARIANT" in dense_scaled|dense|global|global_frozen) MIN_MIB=31000 ;; local6) MIN_MIB=44000 ;; local12) MIN_MIB=79000 ;; *) echo "unknown variant $VARIANT"; exit 2 ;; esac
 ROOT=/ocean/projects/che260063p/shared
 REPO=${PILOT_REPO:-$ROOT/repo/AI4Science-MLIPs}
 PY=$ROOT/envs/mlip/bin/python
@@ -58,7 +59,7 @@ note "pilot $VARIANT: steps $STEPS, seed $SEED, $DATA_NOTE, eval and checkpoint 
 GPU_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
 note "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1), $GPU_MIB MiB"
 if [ "${GPU_MIB:-0}" -lt "$MIN_MIB" ]; then
-    note "RESULT: this GPU is too small for $VARIANT (need at least $MIN_MIB MiB: v100-32 for Dense and Global, h100-80 or l40s-48 for Local-6)"
+    note "RESULT: this GPU is too small for $VARIANT (need at least $MIN_MIB MiB: v100-32 for Dense and Global, h100-80 or l40s-48 for Local-6; h100-80 for Local-12)"
     exit 1
 fi
 

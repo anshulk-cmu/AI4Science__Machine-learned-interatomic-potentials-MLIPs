@@ -69,11 +69,18 @@ def stacked(lower, upper, gap):
     return pair
 
 
-def assert_disconnected(pair, cutoff, margin=1.0):
-    """Stop if any atom of one fragment is near the other (periodic images included)."""
+def disconnected(pair, cutoff, margin=1.0):
+    """Check all cross-fragment pairs, including periodic images, with a safety margin."""
+    if not np.isfinite(cutoff) or cutoff <= 0 or not np.isfinite(margin) or margin < 0:
+        raise ValueError("cutoff must be positive and margin nonnegative, both finite")
     i, j = neighbor_list("ij", pair, cutoff + margin)
     n = pair.info["n_lower"]
-    if ((i < n) != (j < n)).any():
+    return not bool(((i < n) != (j < n)).any())
+
+
+def assert_disconnected(pair, cutoff, margin=1.0):
+    """Stop if any atom of one fragment is near the other (periodic images included)."""
+    if not disconnected(pair, cutoff, margin):
         raise RuntimeError("fragments are connected within the model cutoff")
 
 
