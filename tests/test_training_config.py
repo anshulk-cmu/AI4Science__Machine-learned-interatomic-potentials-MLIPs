@@ -34,6 +34,10 @@ PARAMS = {
     "dense": {"total": 5_981_057, "active": 5_981_057},
     "global": {"total": 37_652_265, "active": 5_998_377, "bank": 36_179_968,
                "mole_layers": 24, "router": 17_320},
+    "element": {"total": 37_652_265, "active": 5_998_377, "bank": 36_179_968,
+                "mole_layers": 24, "router": 17_320},
+    "local_global": {"total": 37_654_313, "active": 6_000_425, "bank": 36_179_968,
+                     "mole_layers": 24, "router": 19_368},
 }
 
 
@@ -132,7 +136,7 @@ class ComposedConfigTests(unittest.TestCase):
 
 class PilotSettingsTests(unittest.TestCase):
     def test_basis_and_neighbor_cap_are_pinned_in_every_variant(self):
-        for variant in ("dense", "global", "local6"):
+        for variant in ("dense", "global", "local6", "element", "local_global"):
             with self.subTest(variant=variant):
                 backbone = compose(variant).runner.train_eval_unit.model.backbone
                 self.assertEqual(backbone.num_distance_basis, 64)

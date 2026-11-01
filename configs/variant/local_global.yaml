@@ -1,0 +1,7 @@
+# Join the local and global compositions, with all other settings inherited from Local-6.
+defaults:
+  - local6
+  - _self_
+
+backbone:
+  model: training.local_global_moe.eSCNMDLocalGlobalMoeBackbone

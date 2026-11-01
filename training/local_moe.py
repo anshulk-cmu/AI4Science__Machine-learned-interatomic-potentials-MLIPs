@@ -77,6 +77,13 @@ class eSCNMDLocalMoeBackbone(eSCNMDMoeBackbone):
         self._routing_graph = graph
         return graph
 
+    def _composition_features(self, embeddings, batch, neighbors, nsystems):
+        # Periodic images can share sender, receiver and distance. Trust fairchem's graph.
+        return local_composition(
+            embeddings, batch, neighbors, self.routing_radius, self.routing_power,
+            check_duplicates=False,
+        )
+
     def set_MOLE_sizes(self, nsystems, batch_full, edge_index):
         atomic_numbers, batch, csd_mixed_emb = self._routing_inputs
         graph = self._routing_graph
@@ -85,11 +92,8 @@ class eSCNMDLocalMoeBackbone(eSCNMDMoeBackbone):
             raise NotImplementedError("local routing does not support graph parallelism")
         with torch.autocast(device_type=atomic_numbers.device.type, enabled=False):
             neighbors = RoutingNeighbors(graph["edge_index"], graph["edge_distance"])
-            # fairchem's periodic graph can hold two images of one pair at the same distance, which the
-            # duplicate-row check would reject (the rows carry no cell offset); the graph is trusted here
-            composition = local_composition(
-                self.composition_embedding(atomic_numbers), batch, neighbors,
-                self.routing_radius, self.routing_power, check_duplicates=False,
+            composition = self._composition_features(
+                self.composition_embedding(atomic_numbers), batch, neighbors, nsystems,
             )
             raw = self.routing_mlp(torch.cat((composition, csd_mixed_emb[batch]), dim=-1))
             coefficients = self.mole_expert_coefficient_norm(self.mole_dropout(raw))

@@ -42,7 +42,7 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 - Short training: about 1/800 to 1/870 of an official run, on a 200,000-structure subset of the 4M training split. The target normalizer (1.433569) is a placeholder taken from an official run.
 - Size consistency along training uses one ideal Al + Ni geometry; the audit of released models uses 21 geometries.
 - Global and Local-6 were trained on different GPU types (V100 and H100), so their training times are not comparable. The inference timings use the same GPU type for all models, on shared nodes.
-- Element, Local-12 and Local+Global routing are not trained yet. The additivity test covers neutral singlet pairs only; we train on all charges and spins.
+- Element, Local-12 and Local+Global routing are not trained yet. Element and Local+Global have configs and backbone tests; see [the Element router notes](docs/element-router.md) and [the Local+Global notes](docs/local-global-router.md) for their pending training acceptance. The additivity test covers neutral singlet pairs only; we train on all charges and spins.
 
 ## Repository layout
 
@@ -65,6 +65,22 @@ Model weights, checkpoints, the OMol25 data and the run folders are not in the r
 project; see `docs/TRAINING.md` for the paths and for how the data is prepared.
 
 ## Reproducing the results
+
+Collect final validation metrics from new local run folders with
+`scripts/collect_final_metrics.py`; see [the collection guide](docs/final-metrics.md)
+for the 5-seed/8-variant checks, W&B/log sources, resume manifests and merging the
+existing pilot CSV. Long-run metrics must go into a separate table.
+
+Analyze the collected table with
+`python scripts/pilot_statistics.py results/final_metrics.csv --require-final`.
+The script supports 8 variants and 5 seeds, with dynamic Student-t degrees of
+freedom and weighted exact resampling; see [the statistics guide](docs/final-statistics.md).
+Omit `--require-final` to reproduce the existing three-seed pilot statistics.
+
+Plot the final table with
+`python scripts/make_accuracy_figure.py results/figures/final_accuracy.pdf --metrics results/final_metrics.csv --metrics-only --require-final`.
+See [the figure guide](docs/final-figures.md) for training curves, descriptive
+long-run plots and `make_ensemble_figure.py` report-set comparisons.
 
 1. Create the environments from the requirements files; the steps are in the header of each file. The UMA weights are gated on Hugging Face: log in and accept the license first. Never commit a token.
 2. Run the tests: `python -m unittest discover -s tests`. All 152 tests pass on Windows (CPU). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.

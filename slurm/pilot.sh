@@ -1,19 +1,21 @@
 #!/bin/bash
 # One pilot run: train a variant on the real OMol25 data, then check the size consistency of its final checkpoint.
-# Usage: pilot.sh dense|global|local6|global_frozen|dense_scaled   (global_frozen: docs/frozen-router.md; dense_scaled: docs/scaled-dense.md)
+# Usage: pilot.sh dense|global|local6|element|local_global|global_frozen|dense_scaled
+# Variant notes: docs/element-router.md, docs/local-global-router.md, docs/frozen-router.md, docs/scaled-dense.md.
 # Settings come from environment variables; the job files set them (agreed by the team on 2026-10-11):
 #   PILOT_RUN_PREFIX (pilot; use another prefix for a test)  PILOT_STEPS (50000)  PILOT_SEED (the Slurm array task id, 0 to 2, else 0)  PILOT_EVAL_EVERY, PILOT_CKPT_EVERY (steps/10)
 # Data: the fixed lists manifests/pilot_train_200k.txt and pilot_val_5k.txt, the same for every variant and seed. The job
 # stops before training if the datasets do not hold exactly those rows. Run slurm/prep_pilot_data.job once before the pilots.
 # For a short test with a random sample instead, set PILOT_TRAIN_SAMPLES and PILOT_VAL_SAMPLES.
 # Every stage writes its full output under $RUN/logs and a line to $RUN/summary.txt; the job exits 1 if a stage failed.
-# GPU: Dense and Global on a V100 with 32 GB (v100-32) or larger, Local-6 on an H100 (h100-80, the team's choice for memory headroom)
+# GPU: Dense and Global on a V100 with 32 GB (v100-32) or larger, Local-6, Element and Local+Global on an H100 (h100-80)
 # or an L40S (l40s-48).
 umask 002
 export PYTHONNOUSERSITE=1
 set -uo pipefail
-VARIANT=${1:?usage: pilot.sh dense|global|local6}
-case "$VARIANT" in dense_scaled|dense|global|global_frozen) MIN_MIB=31000 ;; local6) MIN_MIB=44000 ;; *) echo "unknown variant $VARIANT"; exit 2 ;; esac
+VARIANT=${1:?usage: pilot.sh dense|global|local6|element|local_global|global_frozen|dense_scaled}
+# Element and Local+Global use Local-6's per-edge experts. Keep its memory guard until measured.
+case "$VARIANT" in dense_scaled|dense|global|global_frozen) MIN_MIB=31000 ;; local6|element|local_global) MIN_MIB=44000 ;; *) echo "unknown variant $VARIANT"; exit 2 ;; esac
 ROOT=/ocean/projects/che260063p/shared
 REPO=${PILOT_REPO:-$ROOT/repo/AI4Science-MLIPs}
 PY=$ROOT/envs/mlip/bin/python
@@ -58,7 +60,7 @@ note "pilot $VARIANT: steps $STEPS, seed $SEED, $DATA_NOTE, eval and checkpoint 
 GPU_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
 note "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1), $GPU_MIB MiB"
 if [ "${GPU_MIB:-0}" -lt "$MIN_MIB" ]; then
-    note "RESULT: this GPU is too small for $VARIANT (need at least $MIN_MIB MiB: v100-32 for Dense and Global, h100-80 or l40s-48 for Local-6)"
+    note "RESULT: this GPU is too small for $VARIANT (need at least $MIN_MIB MiB: v100-32 for Dense and Global, h100-80 or l40s-48 for Local-6, Element and Local+Global)"
     exit 1
 fi
 

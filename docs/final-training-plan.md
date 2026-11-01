@@ -233,13 +233,13 @@ All of C1 to C5 can be built and tested now on the 99 pilot checkpoints. They do
 **E1. Final-metrics table from the new runs.** Owner: Yiwei. A script that reads the last validation values of each run from its log or its W&B file and writes one CSV row for each run. Use the same columns as `results/pilot_final_metrics.csv`. Add the check that each variant has exactly 5 rows.
 
 **E2. Statistics for 5 seeds and 8 variants.** Owner: Yiwei.
-- `scripts/pilot_statistics.py` assumes 3 seeds in several places (the number 3 in the exact resample, `sqrt(3)`, and 2 degrees of freedom).
-- Make the seed count a value read from the data. For 5 seeds the exact resample has 5 to the power 9 (1,953,125) combinations. The Student-t method uses 4 degrees of freedom.
+- Implemented in `scripts/pilot_statistics.py`: infer the seed count from the data, check equal seed sets, and support all eight variants. See [the statistics guide](final-statistics.md) for usage and assumptions.
+- For 5 seeds the full exact resample has 5 to the power 15 (30,517,578,125) combinations. Multinomial weights compress these into 126 to the power 3 (2,000,376) group triples without changing the bootstrap distribution. The Student-t method uses 4 degrees of freedom.
 - Add all variants to the list. Compute the retention share against Dense and Global for Element, Local-12, Local+Global, Frozen and Scaled Dense.
 - Keep the decision rule fixed before the results: Local-6 passes if the 5 percent lower bound of retention is at least 0.5 (the proposal threshold).
 - Test: the new code gives the same numbers as the old code on the existing 3-seed file.
 
-**E3. Figures.** Owner: Yiwei. `scripts/make_accuracy_figure.py` has the 3-seed values fixed (`t.ppf(0.975, 2)`, `sqrt(3)`, three offset points). Make them depend on the seed count. Draw 8 variants with the Okabe-Ito palette (add 3 more colours that are easy to tell apart). Add a figure for the long runs and one for the ensemble result.
+**E3. Figures.** Owner: Yiwei. Implemented: `scripts/make_accuracy_figure.py` infers seed counts, supports all eight variants with the Okabe-Ito palette, accepts explicit curve/final-metric CSVs, and offers endpoint-only and descriptive long-run figures. `scripts/make_ensemble_figure.py` compares report-set final, selected-best and ensemble evaluations. See [the figure guide](final-figures.md) for commands and the ensemble CSV contract. Real new-run and ensemble figures still require their measured inputs.
 
 **E4. Accuracy by charge and spin group.** Owner: Yiwei. The ACCESS justification promised results for neutral closed-shell, charged and open-shell structures. No script exists for this. Add one that groups the report-set errors by these classes. Low priority. Do it after E1 to E3.
 
