@@ -36,6 +36,11 @@ def _find(module, name):
     raise RuntimeError(f"no {name} found in the model")
 
 
+def interaction_radius(energy, cutoff):
+    """Finite graph radius only; Global routing still has no finite locality guarantee."""
+    return max(cutoff, getattr(energy, "routing_radius", 0.0))
+
+
 def _uma(model, task, dtype, version):
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))        # a checkpoint of ours names classes in training/ and local_routing/
@@ -56,6 +61,8 @@ def _uma(model, task, dtype, version):
     info = {"charge": 0, "spin": SPIN[task]}
     energy = _energy(calc, info)
     energy.unit = unit                       # lets a test reach the router
+    energy.routing_radius = max((float(getattr(m, "routing_radius", 0.0))
+                                 for m in unit.model.modules()), default=0.0)
     return energy, _find(unit.model, "cutoff")   # P1 confirms where the model lives
 
 

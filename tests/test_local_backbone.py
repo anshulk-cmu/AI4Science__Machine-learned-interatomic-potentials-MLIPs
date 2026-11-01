@@ -108,13 +108,14 @@ class LocalBackboneTests(unittest.TestCase):
         from fairchem.core._cli import get_hydra_config_from_yaml
 
         counts = {}
-        for variant in ("global", "local6"):
+        for variant in ("global", "local6", "local12"):
             GlobalHydra.instance().clear()
             cfg = get_hydra_config_from_yaml(str(ROOT / "configs" / "train.yaml"),
                                              [f"variant={variant}", f"job.run_dir={tempfile.mkdtemp()}"])
             GlobalHydra.instance().clear()
             counts[variant] = sum(p.numel() for p in hydra.utils.instantiate(cfg.runner.train_eval_unit.model).parameters())
         self.assertEqual(counts["local6"], counts["global"])
+        self.assertEqual(counts["local12"], counts["global"])
         self.assertEqual(counts["local6"], 37_652_265)
 
     def test_far_fragments_are_additive_for_local_and_dense_but_not_global(self):
@@ -251,7 +252,7 @@ class LocalBackboneTests(unittest.TestCase):
 
     def test_unsupported_settings_raise(self):
         # Hydra wraps the constructor error, so match on the message
-        for override, message in (("routing_radius=7.0", "routing radius above the message cutoff"),
+        for override, message in (("routing_radius=-1.0", "routing radius must be finite and nonnegative"),
                                   ("use_composition_embedding=false", "needs experts and use_composition_embedding"),
                                   ("composition_dropout=0.1", "composition_dropout is not defined")):
             with self.assertRaisesRegex(Exception, message):

@@ -54,6 +54,7 @@ def locality(energy, a, b, pair, cutoff):
     minimum = np.linalg.norm(a.positions[:, None] - b.positions[None, :], axis=-1).min()
     if minimum <= cutoff:
         raise ValueError("fragments are connected within the cutoff")
+    radius = max(cutoff, getattr(energy, "routing_radius", 0.0))
     ea, fa = predict(energy, a)
     eb, fb = predict(energy, b)
     ep, fp = predict(energy, pair)
@@ -61,7 +62,8 @@ def locality(energy, a, b, pair, cutoff):
     eb2, fb2 = predict(energy, b)
     ep2, fp2 = predict(energy, pair)
     change = np.linalg.norm(fp - np.concatenate((fa, fb)), axis=1)
-    return dict(min_distance_A=float(minimum), e_a_eV=ea, e_b_eV=eb, e_pair_eV=ep,
+    return dict(interaction_radius_A=radius, routing_disconnected=bool(minimum > radius + 1.0),
+                min_distance_A=float(minimum), e_a_eV=ea, e_b_eV=eb, e_pair_eV=ep,
                 delta_eV=ep-ea-eb,
                 max_dforce_a_eV_A=float(change[:len(a)].max()),
                 max_dforce_b_eV_A=float(change[len(a):].max()),
@@ -120,7 +122,7 @@ def main():
     ap.add_argument("--run-config", type=Path, required=True, help="resolved config from this training run")
     ap.add_argument("--label", required=True, help="e.g. local6_seed0_step50000")
     ap.add_argument("--output", type=Path, required=True, help="new output directory; never overwritten")
-    ap.add_argument("--gaps", type=float, nargs="+", default=[8, 12, 20, 40])
+    ap.add_argument("--gaps", type=float, nargs="+", default=[8, 10, 15, 25, 100])
     ap.add_argument("--fd-steps", type=float, nargs="+", default=[0.001, 0.0003])
     ap.add_argument("--dtype", choices=["float32", "float64"], default="float64")
     args = ap.parse_args()
@@ -149,6 +151,7 @@ def main():
         from audit.models import load
         energy, cutoff = load("uma", str(args.checkpoint.resolve()), "omol", args.dtype)
         metadata["cutoff_A"] = cutoff
+        metadata["routing_radius_A"] = getattr(energy, "routing_radius", 0.0)
         # unit.model is an AveragedModel wrapper; the backbone class names the variant
         metadata["backbone_class"] = next((type(m.backbone).__module__ + "." + type(m.backbone).__name__
                                            for m in energy.unit.model.modules() if hasattr(m, "backbone")), None)

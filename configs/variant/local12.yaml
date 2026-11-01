@@ -1,0 +1,7 @@
+# Only the router sees the 6--12 A shell. Message edges remain at training.cutoff (6 A).
+defaults:
+  - local6
+  - _self_
+
+backbone:
+  routing_radius: 12.0
