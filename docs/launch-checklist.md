@@ -23,7 +23,7 @@ The long-run scripts have no default for these values. They stop with exit 2 if 
 | Input | Option of `submit_chain.sh` | Your value | Rule |
 |---|---|---|---|
 | Total steps of one long run | `--steps` | `<N>` | The same for all variants of one table (plan, risk 6). |
-| Seeds | `--seed` (one per chain) | `<seeds>` | Decision D9. |
+| Seeds | `--seed` (one per chain) | `<seeds>` | Decision D9. Use 0 to k-1 for k seeds (the collector needs them). |
 | Hours per segment | `--hours` | `<H>` | 1 to 48. One segment is one Slurm job. |
 | Number of segments | `--segments` | `<K>` | See the formula below. |
 | Validation spacing | `--eval-every` | `<E>` | At most `<N>`. |
@@ -102,6 +102,16 @@ bash $C local12 --steps <N> --seed <S> --segments <K> --hours <H> --eval-every <
 - Without `--dry-run` it submits K jobs. Segment k+1 waits for segment k with `afterany`.
 - It refuses a second chain for the same run while jobs of the first are queued. It refuses a run with a FAILED marker.
 - The GPU follows the variant: v100-32 for Dense, Scaled Dense, Global, Frozen; h100-80 for Local-6, Element, Local+Global, Local-12.
+- Use the seeds 0 to k-1 for k long runs of a variant. `collect_final_metrics.py --expected-seeds k` accepts only these seeds.
+- When `--eval-every` divides `--steps`, the last step is validated twice: once by the spacing and once at the end of the epoch that the step limit cuts short (`docs/TRAINING.md`). In the pilots, one validation of the 5,000 report rows took at most about 6 min (Dense), 6.6 min (Global) and 9.8 min (Local-6 on an L40S). Plan for this time in the last segment.
+
+To stop a chain: cancelling one segment does not stop the chain. The next segment waits with `afterany`, so it starts as soon as the cancelled one ends. Cancel every job of the run by its name, which is the run folder name (`chains.txt` lists the ids):
+
+```bash
+scancel -n long_<variant>_s<S>_<N>
+```
+
+A segment cancelled while it trains ends without its END line. Its log and W&B file stay listed in `segments.txt`, and a new chain resumes from the last complete checkpoint. A training process killed long before the stop by time (exit 137, for example out of memory) writes FAILED.
 
 What each segment does (`slurm/long_run.sh`):
 
@@ -180,4 +190,7 @@ python scripts/checkpoint_tools.py select --run-dir <long run folder> --variant 
 ```
 
 - `collect_final_metrics.py` reads `segments.txt` of a long run by itself. If the W&B file of an interrupted segment is damaged, add `--source log`.
+- `--expected-seeds k` requires exactly the seeds 0 to k-1 of every variant in the table.
+- Runs stopped at the training stop have no final checkpoint and no final validation. Both tools refuse them by default. Add `--allow-unfinished` to `collect_final_metrics.py` and to `checkpoint_tools.py select`: they then use the latest complete validation or the step checkpoints that exist, and every output row and the summary get `partial` and `reached_step`. Report these runs as shorter training, in a separate table. A table made this way cannot be merged later.
+- W&B keeps a link `latest-run` next to each `offline-run-*` folder. A copy made with `scp -r` follows symbolic links (OpenSSH scp manual), and a tar archive unpacked on Windows can also turn the link into a real folder. The copy then holds the same `.wandb` file twice, and the collector stops with "multiple W&B histories" for a Wave 1 or pilot folder. Long runs are not affected, because `segments.txt` names the files. To avoid it, copy with `tar` on Linux, which keeps links, or delete the copied `latest-run` folders. To fix it without a new copy, add `--source log`, or name the file in a run manifest (`"wandb": ["train/.../run-<id>.wandb"]`).
 - Run the checkpoint tools and the size checks in Slurm jobs, not on a login node.

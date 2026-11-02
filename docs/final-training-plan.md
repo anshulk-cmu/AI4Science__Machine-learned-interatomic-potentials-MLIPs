@@ -222,9 +222,11 @@ All of C1 to C5 can be built and tested now on the 99 pilot checkpoints. They do
 ### D. Size-consistency tools
 
 **D1. Guard and gaps for any routing radius.** Owner: Pragati.
-- `audit/check_checkpoint.py` uses the gaps 8 and 100 A by default. The guard in `audit/geometry.py` uses the message cutoff (6 A).
-- For Local-12 the guard must use the larger of the message cutoff and the routing radius. The gaps must be 8, 10, 15, 25 and 100 A.
-- Test: the guard stops a pair that is closer than the routing radius plus 1 A.
+- Done (updated 2 Nov to match the code). `audit/check_checkpoint.py` uses the gaps 8, 10, 15, 25 and 100 A by default.
+- The guard stops a pair that is closer than the message cutoff (6 A) plus 1 A. This is a hard stop.
+- The routing radius only labels a pair. A pair is `routing-connected` if it is closer than the larger of the message cutoff and the routing radius, plus 1 A; else it is `disconnected`. The label is about graph distance only. It does not say that the energy is additive (Global and Local+Global are labelled `disconnected` but are not additive).
+- So Local-12 is measured at 8 and 10 A (labelled `routing-connected`), as the prediction needs.
+- Test: `tests/test_routing_guard.py`.
 
 **D2. Size consistency along training for new variants.** Owner: Pragati. `scripts/size_consistency_along_training.py` must accept the new variants. Run it on a thinned set of checkpoints (for example every 50,000 steps), to save GPU time.
 

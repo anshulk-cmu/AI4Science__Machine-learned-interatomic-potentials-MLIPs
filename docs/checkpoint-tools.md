@@ -52,7 +52,7 @@ Use all selected paths for the final K=5 evaluation. Check the weight-averaged c
 
 The end-to-end CPU check used K=3, four selection structures and four separate report structures from the first validation shard. It exercised selection, EMA weight averaging, reload and all four report methods. This is a software check, not a comparison of ensemble accuracy or the planned K=5 experiment. The shard checksum matched the repository data manifest.
 
-On a water–methane pair at gaps of 8, 15 and 100 Å, the largest absolute additivity residual was 2.3e-13 eV. Both averaging methods agreed with energy finite differences within 5e-7 eV/Å (displacement 1e-4 Å). Inputs, checkpoint hashes and metrics are in `results/checkpoint_smoke.json`.
+On a water and methane pair at gaps of 8, 15 and 100 Å, the largest absolute additivity residual was 2.3e-13 eV. Both averaging methods agreed with energy finite differences within 5e-7 eV/Å (displacement 1e-4 Å). Inputs, checkpoint hashes and metrics are in `results/checkpoint_smoke.json`.
 
 All 190 branch tests passed. A separate integration check with Yiwei's unmerged Element and Local+Global changes passed 268 tests after resolving the shared backbone and Slurm variant-list edits.
 

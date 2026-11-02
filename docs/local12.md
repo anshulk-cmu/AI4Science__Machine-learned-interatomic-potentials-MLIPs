@@ -8,15 +8,22 @@ This choice keeps graph construction next to the force calculation and avoids ch
 
 ## Checks
 
-CPU tests cover the 6–12 Å shell, periodic images, precomputed message edges, force finite differences, force-loss backpropagation and distant-fragment additivity. Existing Local-6 tests also pass. The new configuration uses `variant=local12`.
+CPU tests cover the shell from 6 to 12 Å, periodic images, precomputed message edges, force finite differences, force-loss backpropagation and distant-fragment additivity. Existing Local-6 tests also pass. The new configuration uses `variant=local12`.
 
-The audit gaps are 8, 10, 15, 25 and 100 Å. The guard uses `max(message cutoff, routing radius)` plus a 1 Å margin. At 8 and 10 Å, Local-12 measurements are marked `routing-connected`; they are not failures of size consistency. At 15 Å and above both graphs disconnect. Global and Local+Global have no finite routing radius that guarantees additivity.
+The audit gaps are 8, 10, 15, 25 and 100 Å. The guard stops a pair whose fragments are closer than the message cutoff (6 Å) plus a 1 Å margin. The larger of the message cutoff and the routing radius, plus 1 Å, only labels a pair: `routing-connected` or `disconnected`. The label is about graph distance only; it does not say that the energy is additive. At 8 and 10 Å, Local-12 measurements are marked `routing-connected`; they are not failures of size consistency. At 15 Å and above both graphs disconnect. Global and Local+Global have no finite routing radius that guarantees additivity.
 
 `size_consistency_along_training.py --every-steps 50000` limits intermediate checks and always includes the last checkpoint. The CSV records the radius, disconnection status and whether additivity is expected.
 
-## Cluster check still needed
+## Cluster check
 
-**Measured on Bridges-2 (job 50116348, 2026-11-01, `slurm/smoke_new_variants.job`).** 200 steps through `slurm/pilot.sh` on the fixed pilot lists, one H100. Data check PASS, no OOM event, one validation, final checkpoint, all stages passed. Peak GPU memory 37,801 MiB (nvidia-smi every 5 s, 200 steps and one validation). Median 0.921 s per step, mean 1.059 (steps 20 to 199). Delta 0.379 meV at 8 A and 0.0343 meV at 10 A (routing-connected), 2.8e-06 meV at 15, 25 and 100 A. The peak is over 200 steps only, so the 80 GB guard stays.
+Measured on Bridges-2 (job 50116348, 2026-11-01, `slurm/smoke_new_variants.job`): 200 steps through `slurm/pilot.sh` on the fixed pilot lists, one H100.
 
+| Quantity | Value |
+|---|---|
+| Data check, OOM events, final checkpoint | 8 of 8 PASS, 0, written; all stages passed |
+| Peak GPU memory (nvidia-smi every 5 s, 200 steps and one validation) | 37,801 MiB |
+| Seconds per step, steps 20 to 199 (fairchem step timer) | median 0.921, mean 1.059 |
+| Delta at 8 / 10 Å (`routing-connected`) | 0.379 / 0.0343 meV |
+| Delta at 15 / 25 / 100 Å (`disconnected`) | 2.8e-06 meV each |
 
-The 200-step GPU smoke run, peak memory and throughput are not measured yet. `pilot.sh` reserves an 80 GB GPU for Local-12 (79,000 MiB guard). This is a provisional allocation, not a measured minimum. Anshul submits the smoke run after review. No jobs were submitted as part of this change.
+The peak covers 200 steps only. Local-6 peaked at 26 to 29 GiB in short tests and at 43 to 45 GiB over 50,000 steps. So `pilot.sh` keeps the 79,000 MiB guard, and Local-12 runs on an H100 only.
