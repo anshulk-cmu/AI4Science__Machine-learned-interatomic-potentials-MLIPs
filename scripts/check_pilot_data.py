@@ -59,13 +59,24 @@ def stub_fcntl():
         sys.modules["fcntl"] = stub
 
 
+def load_samples(paths):
+    """The 'lists' of one or more sample manifests, joined; a long run trains on one manifest's list and validates on another's."""
+    samples = {}
+    for path in paths or [MANIFESTS / "pilot_samples.json"]:
+        lists = json.loads(Path(path).read_text(encoding="utf-8"))["lists"]
+        if samples.keys() & lists.keys():
+            raise ValueError(f"{path} repeats a list: {sorted(samples.keys() & lists.keys())}")
+        samples.update(lists)
+    return samples
+
+
 def verify(args):
     import hydra
     from hydra.core.global_hydra import GlobalHydra
     stub_fcntl()
     from fairchem.core._cli import get_hydra_config_from_yaml
 
-    samples = json.loads(Path(args.samples).read_text(encoding="utf-8"))["lists"]
+    samples = load_samples(args.samples)
     GlobalHydra.instance().clear()
     cfg = get_hydra_config_from_yaml(str(ROOT / "configs" / "train.yaml"), list(args.overrides))
     ok = True
@@ -187,7 +198,7 @@ def main():
     p.add_argument("--data-root", default=os.environ.get("OMOL_DATA_ROOT"))
     p.set_defaults(fn=prep)
     p = sub.add_parser("verify")
-    p.add_argument("--samples", default=str(MANIFESTS / "pilot_samples.json"))
+    p.add_argument("--samples", action="append", help="sample manifest, repeatable (default manifests/pilot_samples.json)")
     p.add_argument("--train-rows", default=str(MANIFESTS / "pilot_train_200k.txt"))
     p.add_argument("--val-rows", default=str(MANIFESTS / "pilot_val_5k.txt"))
     p.add_argument("overrides", nargs="*", help="Hydra overrides, the same as the training run uses")

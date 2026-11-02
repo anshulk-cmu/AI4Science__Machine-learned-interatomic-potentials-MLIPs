@@ -262,8 +262,22 @@ def source_paths(run, spec, key):
     return paths
 
 
+def segment_record(run):
+    """Ordered sources of a chained long run: slurm/long_run.sh appends 'log PATH' and 'wandb PATH' lines to segments.txt."""
+    record = run / "segments.txt"
+    spec = {}
+    if record.exists():
+        for line in record.read_text(encoding="utf-8").splitlines():
+            kind, _, path = line.partition(" ")
+            if kind not in ("log", "wandb") or not path:
+                raise CollectionError(f"{record}: malformed line {line!r}")
+            spec.setdefault("logs" if kind == "log" else "wandb", []).append(path)
+    return spec
+
+
 def collect_run(spec, steps, source="auto"):
     run = Path(spec["path"]).resolve()
+    spec = {**segment_record(run), **spec}      # explicit manifest lists win
     meta = metadata(run)
     if meta["steps"] != steps:
         raise CollectionError(f"{run}: configured for {meta['steps']} steps, requested report is {steps}")
