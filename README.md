@@ -42,7 +42,7 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 - Short training: about 1/800 to 1/870 of an official run, on a 200,000-structure subset of the 4M training split. The target normalizer (1.433569) is a placeholder taken from an official run.
 - Size consistency along training uses one ideal Al + Ni geometry; the audit of released models uses 21 geometries.
 - Global and Local-6 were trained on different GPU types (V100 and H100), so their training times are not comparable. The inference timings use the same GPU type for all models, on shared nodes.
-- Element, Local-12 and Local+Global routing are not trained yet. Element and Local+Global have configs and backbone tests; see [the Element router notes](docs/element-router.md) and [the Local+Global notes](docs/local-global-router.md) for their pending training acceptance. The additivity test covers neutral singlet pairs only; we train on all charges and spins.
+- Element, Local-12 and Local+Global routing are not trained yet. All three have configs and backbone tests; see [the Element router notes](docs/element-router.md), [the Local-12 notes](docs/local12.md) and [the Local+Global notes](docs/local-global-router.md) for their pending training acceptance. The additivity test covers neutral singlet pairs only; we train on all charges and spins.
 
 ## Repository layout
 
@@ -51,14 +51,14 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 | `status-wip/` | Reports on the audit: write-up, final tables and plots |
 | `audit/` | Audit code (slab test, null tests, neon probe, forcing test, molecular additivity and force checks `molecular.py`), with its own README and the exact commands |
 | `local_routing/` | Local composition, router interface, receiving-atom adapter and reference linear experts |
-| `training/` | Entry point for the fairchem training CLI, the Local-6 backbone (`local_moe.py`), the frozen-router and scaled-Dense variants, the out-of-memory guard and the step-based scheduler |
-| `configs/` | Training configuration: `train.yaml`, data configuration, the variants `dense`, `global`, `local6`, `global_frozen`, `dense_scaled`, element references |
-| `slurm/` | Bridges-2 job files and scripts: environment, data download, smoke tests, pilots, size consistency, router check, timing, molecular evaluation |
+| `training/` | Entry point for the fairchem training CLI, the Local-6, Local-12 and Element backbone (`local_moe.py`), the Local+Global backbone (`local_global_moe.py`), checkpoint selection and averaging (`checkpoints.py`), the frozen-router and scaled-Dense variants, the out-of-memory guard and the step-based scheduler |
+| `configs/` | Training configuration: `train.yaml`, data configuration, the variants `dense`, `global`, `local6`, `local12`, `element`, `local_global`, `global_frozen`, `dense_scaled`, element references |
+| `slurm/` | Bridges-2 job files and scripts: environment, data download, smoke tests, pilots, Wave 1 (`wave1_*.job`), long runs as chained segments (`long_run.sh`, `submit_chain.sh`), size consistency, router check, timing, molecular evaluation |
 | `scripts/` | Data preparation and audit, pilot sample lists, size consistency along training, router check, inference timing, curve comparison, the pilot statistics (`pilot_statistics.py`, input `results/pilot_final_metrics.csv`) and the report figures and tables (`make_midterm_figures.py`, `audit_summary_table.py`) |
 | `manifests/` | The OMol25 data manifest and the fixed training and validation lists with their hashes |
 | `results/` | Raw and summary result files (CSV) and figures behind every number in the reports |
-| `tests/` | Unit tests (152): routing, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
-| `docs/` | Detailed reports: `TRAINING.md` (setup and run), `local-routing.md`, `size-consistency-training.md`, `router-check.md`, `frozen-router.md`, `scaled-dense.md`, `molecular-evaluation.md`, `inference-timing.md` |
+| `tests/` | Unit tests (286): routing, the 8 variants, the long-run chain, checkpoint tools, final metrics and statistics, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
+| `docs/` | Detailed reports: `TRAINING.md` (setup and run), `local-routing.md`, `size-consistency-training.md`, `router-check.md`, `frozen-router.md`, `scaled-dense.md`, `molecular-evaluation.md`, `inference-timing.md`, `final-training-plan.md`, `launch-checklist.md` (how to start the final training) |
 | `requirements.txt`, `requirements-training.txt`, `requirements-mace.txt` | Environments: UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8); extra training packages; a separate environment for MACE |
 
 Model weights, checkpoints, the OMol25 data and the run folders are not in the repository. They live on the Bridges-2 file system of the
@@ -83,7 +83,7 @@ See [the figure guide](docs/final-figures.md) for training curves, descriptive
 long-run plots and `make_ensemble_figure.py` report-set comparisons.
 
 1. Create the environments from the requirements files; the steps are in the header of each file. The UMA weights are gated on Hugging Face: log in and accept the license first. Never commit a token.
-2. Run the tests: `python -m unittest discover -s tests`. All 152 tests pass on Windows (CPU). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
+2. Run the tests: `python -m unittest discover -s tests`. All 286 tests pass on Windows (2026-11-01). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
 3. The audit, the pilots and every follow-up experiment have a job file in `slurm/` and a report in `docs/` or `audit/` that gives the exact commands, the job identifiers, the settings and the files that hold the results. Start with `docs/TRAINING.md`.
 4. A run writes `settings.txt` and `summary.txt`; check that `settings.txt` shows the steps, the seed, the variant and the sample list hashes you expect before you trust the run.
 

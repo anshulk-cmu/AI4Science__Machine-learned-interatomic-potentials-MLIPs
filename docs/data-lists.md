@@ -32,7 +32,7 @@ $PY scripts/check_pilot_data.py verify --samples manifests/long_samples.json \
     --train-rows "$TRAIN_LIST" --val-rows "$VAL_LIST" "${DATA_OVERRIDES[@]}"
 ```
 
-- **Important for the long-run script (B2).** `pilot.sh` calls `verify` without `--samples`, so it looks the list up in `pilot_samples.json`. With the long list it stops with an error and does not train. The long-run script must pass `--samples` with a file that holds both lists of the run. `long_samples.json` holds only the two new lists. A run that trains on the long list and validates on `pilot_val_5k.txt` needs both entries in one file. Simple ways: add `--val-samples`, or a third JSON file with both entries. Not done here (part of B2).
+- **Important for the long-run script (B2).** `pilot.sh` calls `verify` without `--samples`, so it looks the list up in `pilot_samples.json`. With the long list it stops with an error and does not train. The long-run script must pass `--samples` with a file that holds both lists of the run. `long_samples.json` holds only the two new lists. A run that trains on the long list and validates on `pilot_val_5k.txt` needs both entries in one file. Simple ways: add `--val-samples`, or a third JSON file with both entries. Done in B2: `verify` now takes `--samples` more than once, and `slurm/long_run.sh` passes `long_samples.json` and `pilot_samples.json`.
 - The selection list is for the checkpoint selection scripts (plan items C1 to C4). It is not the validation set of the training job. The report set stays `pilot_val_5k.txt`.
 
 ## 4. Checks

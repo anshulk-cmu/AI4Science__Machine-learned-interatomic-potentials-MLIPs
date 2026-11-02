@@ -41,8 +41,12 @@ model on CPU (`tests/test_training_config.py` asserts them):
 
 | Variant | Total parameters | Expert bank | Router | Active per structure |
 | --- | ---: | ---: | ---: | ---: |
-| Dense | 5,981,057 | none | none | 5,981,057 |
-| Global | 37,652,265 | 36,179,968 (24 MOLE layers) | 17,320 | 5,998,377 |
+| Dense, Scaled Dense | 5,981,057 | none | none | 5,981,057 |
+| Global, Frozen, Local-6, Local-12, Element | 37,652,265 | 36,179,968 (24 MOLE layers) | 17,320 | 5,998,377 |
+| Local+Global | 37,654,313 | 36,179,968 (24 MOLE layers) | 19,368 | 6,000,425 |
+
+Local+Global has 2,048 more router parameters: the first layer of the routing network also reads the global composition
+(`docs/local-global-router.md`).
 
 The active count keeps one of the 8 expert weight slices in every MOLE layer, plus every
 parameter outside the expert weights (the MOLE biases are shared, not per expert). Both
@@ -156,7 +160,8 @@ neighbors within 6 A, and every message edge mixes the experts with the coeffici
   `training.max_atoms=320` ran out of memory on a 12 GB laptop GPU even with `checkpoint_chunk_size: 4096`
   and the mixing recomputed in the backward pass. Lower `training.max_atoms` or run on a larger GPU (Bridges-2). The peak
   memory per setting has not been measured yet.
-- Not supported: a routing radius above the message cutoff (Local-12), graph parallelism, merging into one linear layer.
+- Not supported: graph parallelism, merging into one linear layer. A routing radius above the message cutoff (Local-12)
+  builds its own routing graph (`docs/local12.md`).
 - fairchem builds each edge frame from Euler angles, which are singular for an edge exactly along y. Forces there differ
   from the energy gradient, for Dense as well. The tests rotate molecules off the axes for that reason.
 
@@ -180,6 +185,12 @@ log live. The run name is `job.run_name`.
 |---|---|---|
 | Dense, Global | `v100-32` (V100, 32 GB) or larger | measured peak 9.5 GiB (Dense) and 10.5 GiB (Global) at 450 atoms per batch |
 | Local-6 | `h100-80` (H100, 80 GB, 2 SU per GPU-hour), chosen by the team on 2026-10-11 for memory headroom; `l40s-48` also works | measured peak 26.3 GiB at 450 atoms in the smoke test, 27.6 GiB in the 30-step pilot test and 37.3 GiB in a longer run on an L40S (46 GiB), so the L40S had about 9 GiB free; the H100 has about 40 GiB more. The H100 has not run this environment yet |
+| Element, Local+Global | `h100-80` | the same per-edge expert mixing as Local-6; `pilot.sh` keeps the Local-6 guard (44,000 MiB) until measured |
+| Local-12 | `h100-80` only | `pilot.sh` asks for 79,000 MiB until a smoke run measures the peak (`docs/local12.md`) |
+
+Measured later (pilot summaries on Ocean, `nvidia-smi` every 5 s over the whole 50,000-step run): Local-6 peaked at 43,097 to
+45,241 MiB on the H100, and Dense and Global at 14,810 to 16,414 MiB on the V100. So an L40S (46,068 MiB) is only marginal for
+Local-6. The long-run and Wave 1 job files use `h100-80` for every Local variant (`docs/launch-checklist.md`).
 
 Peaks are from the 20-step smoke test (`nvidia-smi`, so they include the allocator cache), run with the settings in the next
 section (expandable segments, cache cleared every 50 steps). Without them the same runs showed 19.5 GiB (Dense) and 20.0 GiB
@@ -290,7 +301,7 @@ faster). The cost of the three seeds is then about 29 SU (Dense), 39 SU (Global)
 of the 2,948. A limit is a cap, and only the hours used are charged: at the 48 h cap the worst case is 144, 144 and 288 SU, 576 SU in total.
 Each seed keeps 11 step checkpoints and the final one, about 865 MB each for Global and Local-6 and 140 MB for Dense, about 70 GB for all
 nine runs.
-`pilot.sh` refuses a GPU that is too small (Dense and Global need 31 GB or more, Local-6 44 GB or more, so an H100 or an L40S).
+`pilot.sh` refuses a GPU that is too small (Dense, Global and the two controls need 31 GB or more, Local-6, Element and Local+Global 44 GB or more, so an H100 or an L40S, and Local-12 79 GB, so an H100).
 
 **Test before the long runs.** One 30-step run per model on the real job files, the real fixed lists and seed 0 (about 3 SU in total; the
 Local-6 test runs on an H100, which has not run this environment yet, so run it first).
