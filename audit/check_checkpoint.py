@@ -13,21 +13,26 @@ import models
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("checkpoints", nargs="+")
+    ap.add_argument("--prediction-average", action="store_true", help="evaluate one equal-weight ensemble of all supplied checkpoints")
+    ap.add_argument("--device", default="cuda", help="device for prediction averaging")
     ap.add_argument("--task", default="omol")
     ap.add_argument("--dtype", default="float64")
-    ap.add_argument("--gaps", type=int, nargs="+", default=[8, 100])
+    ap.add_argument("--gaps", type=int, nargs="+", default=[8, 10, 15, 25, 100])
     a = ap.parse_args()
     al, ni = g.ideal_slab("Al"), g.ideal_slab("Ni")
     failed = 0
-    for path in a.checkpoints:
+    for path in ([a.checkpoints] if a.prediction_average else a.checkpoints):
         try:
-            energy, cutoff = models.load("uma", path, a.task, a.dtype)
+            energy, cutoff = (models.load_prediction_average(path, a.task, a.dtype, a.device)
+                              if a.prediction_average else models.load("uma", path, a.task, a.dtype))
+            radius = models.interaction_radius(energy, cutoff)
             e_al, e_ni = energy(g.isolated(al)), energy(g.isolated(ni))
             deltas = []
             for gap in a.gaps:
                 pair = g.stacked(al, ni, gap)
                 g.assert_disconnected(pair, cutoff)
-                deltas.append(f"{gap} A: {(energy(pair) - e_al - e_ni) * 1000:.6g}")
+                status = "disconnected" if g.disconnected(pair, radius) else "routing-connected"
+                deltas.append(f"{gap} A: {(energy(pair) - e_al - e_ni) * 1000:.6g} [{status}]")
             print(f"{path}  Delta meV  " + "  ".join(deltas), flush=True)
         except Exception:                      # one bad checkpoint must not hide the others
             failed += 1

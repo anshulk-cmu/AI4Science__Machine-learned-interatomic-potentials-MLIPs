@@ -1,0 +1,210 @@
+{
+  "scope": "Software smoke test only; K=3, four selection and four report structures; not final accuracy evidence",
+  "selection_row_indices": [
+    695,
+    722,
+    1687,
+    2590
+  ],
+  "report_row_indices": [
+    272,
+    522,
+    669,
+    1967
+  ],
+  "selection": {
+    "variant": "local6",
+    "seed": 0,
+    "total_steps": 50000,
+    "k": 3,
+    "dtype": "float64",
+    "rule": "lowest selection force MAE in last half; ties use earlier step",
+    "selection_rows_sha256": "f3a84cf773b7849bf6d584700abba0dcd3e9c05d01767fb63e1c51cf5bed3631",
+    "report_rows_sha256": "6b3eab3758270a97eecda876484aaa0ae532fda7f43e6532346f87e9846632e9",
+    "data_inventory": [
+      {
+        "name": "data0000.aselmdb",
+        "bytes": 290377728
+      }
+    ],
+    "data_rows": 34526,
+    "selected": [
+      {
+        "step": 50000,
+        "path": "pilot_local6_s0_49041936/train/202610-1117-0509-eed4/checkpoints/final/inference_ckpt.pt",
+        "sha256": "54b3c889ea9035966310eccf81e3626f6aa1b6485651c1479662a5cf821a6514",
+        "energy_mae_per_atom_eV": 0.005153220537631449,
+        "force_mae_eV_per_A": 0.023301799076065024,
+        "n_structures": 4,
+        "n_force_components": 1065
+      },
+      {
+        "step": 40000,
+        "path": "pilot_local6_s0_49041936/train/202610-1117-0509-eed4/checkpoints/step_40000/inference_ckpt.pt",
+        "sha256": "0b0e863974ce56e5abb185fecd63ce03752b94aabf2b87709f315bbba695d5e8",
+        "energy_mae_per_atom_eV": 0.004967910429561347,
+        "force_mae_eV_per_A": 0.024813834560655976,
+        "n_structures": 4,
+        "n_force_components": 1065
+      },
+      {
+        "step": 30000,
+        "path": "pilot_local6_s0_49041936/train/202610-1117-0509-eed4/checkpoints/step_30000/inference_ckpt.pt",
+        "sha256": "1640cf28c31794d668ad654f2cb4acdde1ceafd45fb35f512029e78a5d98b62d",
+        "energy_mae_per_atom_eV": 0.005817736126607449,
+        "force_mae_eV_per_A": 0.028804318483791388,
+        "n_structures": 4,
+        "n_force_components": 1065
+      }
+    ],
+    "final": {
+      "step": 50000,
+      "path": "pilot_local6_s0_49041936/train/202610-1117-0509-eed4/checkpoints/final/inference_ckpt.pt",
+      "sha256": "54b3c889ea9035966310eccf81e3626f6aa1b6485651c1479662a5cf821a6514",
+      "energy_mae_per_atom_eV": 0.005153220537631449,
+      "force_mae_eV_per_A": 0.023301799076065024,
+      "n_structures": 4,
+      "n_force_components": 1065
+    }
+  },
+  "report": [
+    {
+      "variant": "local6",
+      "seed": "0",
+      "method": "final",
+      "eval_split": "report",
+      "energy_mae_per_atom_eV": "0.007024323285981597",
+      "force_mae_eV_per_A": "0.037398581445320184",
+      "n_structures": "4",
+      "n_force_components": "1047"
+    },
+    {
+      "variant": "local6",
+      "seed": "0",
+      "method": "best",
+      "eval_split": "report",
+      "energy_mae_per_atom_eV": "0.007024323285981597",
+      "force_mae_eV_per_A": "0.037398581445320184",
+      "n_structures": "4",
+      "n_force_components": "1047"
+    },
+    {
+      "variant": "local6",
+      "seed": "0",
+      "method": "weight_average",
+      "eval_split": "report",
+      "energy_mae_per_atom_eV": "0.005322571613855048",
+      "force_mae_eV_per_A": "0.03985911828058501",
+      "n_structures": "4",
+      "n_force_components": "1047"
+    },
+    {
+      "variant": "local6",
+      "seed": "0",
+      "method": "prediction_average",
+      "eval_split": "report",
+      "energy_mae_per_atom_eV": "0.005501663848708587",
+      "force_mae_eV_per_A": "0.03987660130140954",
+      "n_structures": "4",
+      "n_force_components": "1047"
+    }
+  ],
+  "physics": {
+    "weight_average": {
+      "locality": [
+        {
+          "gap_A": 8,
+          "interaction_radius_A": 6.0,
+          "routing_disconnected": true,
+          "min_distance_A": 8.04585432523536,
+          "e_a_eV": -2079.8814971697207,
+          "e_b_eV": -1101.7994791282367,
+          "e_pair_eV": -3181.6809762979574,
+          "delta_eV": 0.0,
+          "max_dforce_a_eV_A": 4.0608835428777945e-16,
+          "max_dforce_b_eV_A": 4.914500568528652e-16,
+          "repeat_energy_eV": 0.0,
+          "repeat_force_eV_A": 4.75098925995612e-16
+        },
+        {
+          "gap_A": 15,
+          "interaction_radius_A": 6.0,
+          "routing_disconnected": true,
+          "min_distance_A": 15.024505709769908,
+          "e_a_eV": -2079.8814971697207,
+          "e_b_eV": -1101.7994791282367,
+          "e_pair_eV": -3181.6809762979574,
+          "delta_eV": 0.0,
+          "max_dforce_a_eV_A": 2.044325800678625e-16,
+          "max_dforce_b_eV_A": 2.4655755197371116e-16,
+          "repeat_energy_eV": 0.0,
+          "repeat_force_eV_A": 7.781467564125337e-16
+        },
+        {
+          "gap_A": 100,
+          "interaction_radius_A": 6.0,
+          "routing_disconnected": true,
+          "min_distance_A": 100.00367879144702,
+          "e_a_eV": -2079.8814971697207,
+          "e_b_eV": -1101.7994791282367,
+          "e_pair_eV": -3181.6809762979574,
+          "delta_eV": 0.0,
+          "max_dforce_a_eV_A": 4.0436549343196473e-16,
+          "max_dforce_b_eV_A": 3.112497840834977e-16,
+          "repeat_energy_eV": 0.0,
+          "repeat_force_eV_A": 5.752589961872277e-16
+        }
+      ],
+      "max_finite_difference_error_eV_A": 4.927723190606415e-07
+    },
+    "prediction_average": {
+      "locality": [
+        {
+          "gap_A": 8,
+          "interaction_radius_A": 6.0,
+          "routing_disconnected": true,
+          "min_distance_A": 8.04585432523536,
+          "e_a_eV": -2079.8796198153964,
+          "e_b_eV": -1101.7970624856778,
+          "e_pair_eV": -3181.6766823010744,
+          "delta_eV": -2.2737367544323206e-13,
+          "max_dforce_a_eV_A": 2.5447867175859907e-16,
+          "max_dforce_b_eV_A": 1.5082660018536562e-16,
+          "repeat_energy_eV": 0.0,
+          "repeat_force_eV_A": 2.237726045655905e-16
+        },
+        {
+          "gap_A": 15,
+          "interaction_radius_A": 6.0,
+          "routing_disconnected": true,
+          "min_distance_A": 15.024505709769908,
+          "e_a_eV": -2079.8796198153964,
+          "e_b_eV": -1101.7970624856778,
+          "e_pair_eV": -3181.6766823010744,
+          "delta_eV": -2.2737367544323206e-13,
+          "max_dforce_a_eV_A": 1.400299048285492e-16,
+          "max_dforce_b_eV_A": 2.8386549854823397e-16,
+          "repeat_energy_eV": 0.0,
+          "repeat_force_eV_A": 2.951273991599437e-16
+        },
+        {
+          "gap_A": 100,
+          "interaction_radius_A": 6.0,
+          "routing_disconnected": true,
+          "min_distance_A": 100.00367879144702,
+          "e_a_eV": -2079.8796198153964,
+          "e_b_eV": -1101.7970624856778,
+          "e_pair_eV": -3181.6766823010744,
+          "delta_eV": -2.2737367544323206e-13,
+          "max_dforce_a_eV_A": 3.0150272531948617e-16,
+          "max_dforce_b_eV_A": 1.885676401206896e-16,
+          "repeat_energy_eV": 0.0,
+          "repeat_force_eV_A": 3.8559277963506344e-16
+        }
+      ],
+      "max_finite_difference_error_eV_A": 4.935280011331145e-07
+    }
+  },
+  "physics_system": "water and methane; neutral closed-shell",
+  "finite_difference_displacement_A": 0.0001
+}

@@ -1,4 +1,4 @@
-"""Size consistency along training: Delta = E(Al+Ni) - E(Al) - E(Ni) for every saved checkpoint of the nine pilots.
+"""Size consistency along training: Delta = E(Al+Ni) - E(Al) - E(Ni) for saved checkpoints of the pilot and final runs.
 
 Same slabs, gaps, charge and spin as audit/check_checkpoint.py (the final-checkpoint stage of slurm/pilot.sh).
   run:   python scripts/size_consistency_along_training.py --out-dir DIR
@@ -14,8 +14,8 @@ import traceback
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RUN_RE = re.compile(r"^pilot_(dense|global|local6)_s(\d+)_(\d+)$")
-FLOOR_MEV = 1e-3                                     # Dense and Local-6 must stay below this at every checkpoint
+RUN_RE = re.compile(r"^(?:pilot|final|long)_(dense_scaled|global_frozen|local_global|local12|local6|element|dense|global)_s(\d+)_(\d+)$")
+FLOOR_MEV = 1e-3                                     # local models must stay below this when both graphs disconnect
 TRAIN_WINDOW = 500                                   # train loss is the mean of the last 500 logged steps
 
 
@@ -31,7 +31,7 @@ def checkpoints(run_dir):
 
 def final_delta_from_summary(run_dir):
     """The Delta (meV) the pilot job printed for its final checkpoint, by gap."""
-    m = re.findall(r"(\d+) A: (\S+)", next(l for l in (run_dir / "summary.txt").read_text().splitlines() if "Delta meV" in l))
+    m = re.findall(r"(\d+) A: (\S+)", next((l for l in (run_dir / "summary.txt").read_text().splitlines() if "Delta meV" in l), ""))
     return {int(g): float(v) for g, v in m}
 
 
@@ -70,8 +70,11 @@ def evaluate(runs, a):
         for step, (tr, va) in sorted(losses(run_dir, ckpts[-1][0]).items()):
             loss_rows.append(dict(run=run_dir.name, variant=variant, seed=seed, step=step, train_loss_mean500=tr, val_loss=va))
         for step, path in ckpts:
+            if a.every_steps and step % a.every_steps and step != ckpts[-1][0]:
+                continue
             try:
                 energy, cutoff = models.load("uma", str(path), a.task, a.dtype)
+                radius = models.interaction_radius(energy, cutoff)
                 backbone = next((m for m in energy.unit.model.modules() if hasattr(m, "global_mole_tensors")), None)
 
                 def mix():
@@ -84,9 +87,12 @@ def evaluate(runs, a):
                 for gap in a.gaps:
                     pair = g.stacked(al, ni, gap)
                     g.assert_disconnected(pair, cutoff)
+                    disconnected = g.disconnected(pair, radius)
                     e_pair = energy(pair)
                     delta = (e_pair - e_al - e_ni) * 1000.0
                     rows.append(dict(run=run_dir.name, variant=variant, seed=seed, step=step, gap=gap,
+                                     interaction_radius_A=radius, routing_disconnected=disconnected,
+                                     expected_additive=disconnected and variant not in ("global", "local_global"),
                                      E_union=repr(e_pair), E_a=repr(e_al), E_b=repr(e_ni), Delta_meV=repr(delta)))
                     if variant == "global":
                         w[f"union_{gap}"] = mix()
@@ -105,6 +111,8 @@ def evaluate(runs, a):
 
 
 def write(path, rows):
+    if not rows:
+        raise ValueError(f"no evaluation rows for {path}")
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()
@@ -114,15 +122,19 @@ def write(path, rows):
 
 def selfcheck(rows, runs):
     """Dense and Local-6 below FLOOR_MEV at every checkpoint, and the final Delta equal to what the pilot job printed."""
-    bad = [r for r in rows if r["variant"] != "global" and abs(float(r["Delta_meV"])) >= FLOOR_MEV]
-    assert not bad, f"{len(bad)} Dense or Local-6 rows at or above {FLOOR_MEV} meV, first {bad[0]}"
+    bad = [r for r in rows if r.get("expected_additive", r["variant"] not in ("global", "local_global")) and abs(float(r["Delta_meV"])) >= FLOOR_MEV]
+    assert not bad, f"{len(bad)} disconnected local-model rows at or above {FLOOR_MEV} meV, first {bad[0]}"
     for run_dir, _, _ in runs:
+        if not (run_dir / "summary.txt").exists():
+            continue
         last = max(int(r["step"]) for r in rows if r["run"] == run_dir.name)
         for gap, printed in final_delta_from_summary(run_dir).items():
+            if not any(r["run"] == run_dir.name and int(r["gap"]) == gap for r in rows):
+                continue
             ours = next(float(r["Delta_meV"]) for r in rows if r["run"] == run_dir.name and int(r["step"]) == last and int(r["gap"]) == gap)
             # the job printed 6 significant digits; the floor values are noise, so compare those on the floor scale
             assert abs(ours - printed) <= max(1e-5 * abs(printed), FLOOR_MEV), f"{run_dir.name} gap {gap}: {ours} vs printed {printed}"
-    print(f"self-check passed: Dense and Local-6 below {FLOOR_MEV} meV at every checkpoint; final Delta equals the pilot summaries")
+    print(f"self-check passed: disconnected local models below {FLOOR_MEV} meV; available final summaries agree")
 
 
 def plot(csv_path, fig_path):
@@ -133,17 +145,22 @@ def plot(csv_path, fig_path):
 
     df = pd.read_csv(csv_path)
     df["abs"] = df.Delta_meV.abs()
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), sharey=True)
+    gaps = sorted(df.gap.unique())
+    fig, axes = plt.subplots(1, len(gaps), figsize=(5.5 * len(gaps), 4.2), sharey=True, squeeze=False)
+    axes = axes[0]
     colors = {"dense": "#4C72B0", "global": "#C44E52", "local6": "#55A868"}
-    names = {"dense": "Dense", "global": "Global", "local6": "Local-6"}
+    colors.update(element="#CC79A7", local12="#009E73", local_global="#E69F00", global_frozen="#999999", dense_scaled="#56B4E9")
+    names = {v: v.replace("_", " ") for v in colors}
     for ax, gap in zip(axes, sorted(df.gap.unique())):
         d = df[df.gap == gap]
         for v, c in colors.items():
             dv = d[d.variant == v]
+            if dv.empty:
+                continue
             for _, s in dv.groupby("seed"):
                 ax.plot(s.step, s["abs"], color=c, lw=0.8, alpha=0.5)
             m = dv.groupby("step")["abs"].mean()
-            ax.plot(m.index, m.values, color=c, lw=2.5, marker="o", ms=4, label=f"{names[v]} (mean of 3 seeds)")
+            ax.plot(m.index, m.values, color=c, lw=2.5, marker="o", ms=4, label=f"{names[v]} (mean of {dv.seed.nunique()} seeds)")
         ax.axhline(FLOOR_MEV, color="gray", ls="--", lw=1, label="1e-3 meV")
         ax.set_yscale("symlog", linthresh=1e-6)
         ax.set_xlabel("training step")
@@ -162,9 +179,12 @@ def main():
     ap.add_argument("--out-dir", default=str(ROOT / "results"))
     ap.add_argument("--task", default="omol")
     ap.add_argument("--dtype", default="float64")
-    ap.add_argument("--gaps", type=int, nargs="+", default=[8, 100])
+    ap.add_argument("--gaps", type=int, nargs="+", default=[8, 10, 15, 25, 100])
+    ap.add_argument("--every-steps", type=int, default=0, help="thin checkpoints; always include the final step")
     ap.add_argument("--plot", metavar="CSV", help="only draw the figure from an existing CSV")
     a = ap.parse_args()
+    if a.every_steps < 0:
+        ap.error("--every-steps must be nonnegative")
     if a.plot:
         plot(a.plot, ROOT / "results" / "figures" / "size_consistency_training.png")
         return
