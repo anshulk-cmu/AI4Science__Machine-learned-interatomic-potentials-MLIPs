@@ -3,7 +3,7 @@
 # Usage: pilot.sh dense|global|local6|local12|element|local_global|global_frozen|dense_scaled
 # Variant notes: docs/local12.md, docs/element-router.md, docs/local-global-router.md, docs/frozen-router.md, docs/scaled-dense.md.
 # Settings come from environment variables; the job files set them (agreed by the team on 2026-10-11):
-#   PILOT_RUN_PREFIX (pilot; use another prefix for a test)  PILOT_STEPS (50000)  PILOT_SEED (the Slurm array task id, 0 to 2, else 0)  PILOT_EVAL_EVERY, PILOT_CKPT_EVERY (steps/10)
+#   PILOT_RUN_PREFIX (pilot; use another prefix for a test)  PILOT_STEPS (50000)  PILOT_SEED (the Slurm array task id, 0 to 4, else 0)  PILOT_EVAL_EVERY, PILOT_CKPT_EVERY (steps/10)
 # Data: the fixed lists manifests/pilot_train_200k.txt and pilot_val_5k.txt, the same for every variant and seed. The job
 # stops before training if the datasets do not hold exactly those rows. Run slurm/prep_pilot_data.job once before the pilots.
 # For a short test with a random sample instead, set PILOT_TRAIN_SAMPLES and PILOT_VAL_SAMPLES.
