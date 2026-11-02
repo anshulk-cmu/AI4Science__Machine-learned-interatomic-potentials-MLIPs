@@ -1,5 +1,6 @@
 """Real fairchem checkpoint round trips and selection/report separation, on CPU."""
 import copy
+import gc
 import json
 import tempfile
 import unittest
@@ -95,6 +96,9 @@ class CheckpointTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        # ASE's SQLite backend opens a connection per read and never closes it; the connection and its statement
+        # cache form a cycle, so only the cyclic collector releases the file, and Windows cannot delete an open file.
+        gc.collect()
         cls.temp.cleanup()
 
     def test_average_ema_parameters_and_roundtrip(self):
