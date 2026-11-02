@@ -1,0 +1,37 @@
+#!/bin/bash
+#SBATCH -A che260063p
+#SBATCH -p GPU-shared
+#SBATCH -t 2:00:00
+#SBATCH -N 1
+#SBATCH --gpus=h100-80:1
+#SBATCH --job-name=smoke_new_variants
+#SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
+#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-user=anshulk@andrew.cmu.edu
+# made by make_sbatch.py from the Bridges-2 guide; estimated at most 4 SU
+# files created here are owned by the Unix group in effect at submission (p. 7):
+# submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/logs' afterwards
+umask 002                      # files stay group-writable for the project team (guide B9)
+export PYTHONNOUSERSITE=1      # packages in ~/.local must not leak into conda or pip environments (guide C27)
+set -x
+cd /ocean/projects/che260063p/shared/logs
+# Test only (docs/launch-checklist.md): 200 steps of Local-12, Element and Local+Global through pilot.sh on the fixed pilot lists,
+# from the integration copy of the code. One validation at the end (eval_every above the steps), a checkpoint every 100 steps.
+R=/ocean/projects/che260063p/shared
+export PILOT_REPO=$R/repo_integration/AI4Science-MLIPs
+export PILOT_RUN_PREFIX=smokeint PILOT_STEPS=200 PILOT_EVAL_EVERY=1000000 PILOT_CKPT_EVERY=100
+RC=0
+for v in local12 element local_global; do bash "$PILOT_REPO/slurm/pilot.sh" "$v" || RC=1; done
+# seconds per step = num_atoms_on_rank / atoms_per_second(approx), which fairchem computes from the wall time between two step logs
+for d in "$R"/runs/smokeint_*_s0_"$SLURM_JOB_ID"; do
+    "$R/envs/mlip/bin/python" -B - "$d" <<'PYEOF'
+import ast, statistics, sys
+from pathlib import Path
+d = Path(sys.argv[1])
+rows = [ast.literal_eval(l.split("INFO:root:", 1)[1]) for l in (d / "logs/train.log").read_text(errors="replace").splitlines() if "'train/step'" in l]
+dt = sorted(r["train/num_atoms_on_rank"] / r["train/atoms_per_second(approx)"] for r in rows if r["train/step"] >= 20)
+mem = [int(x) for x in (d / "logs/gpu_memory.txt").read_text().split()]
+print(f"{d.name}: steps 20 to {rows[-1]['train/step']}, n {len(dt)}, seconds per step median {statistics.median(dt):.3f} mean {statistics.mean(dt):.3f} p90 {dt[int(0.9 * len(dt))]:.3f}, peak GPU memory {max(mem)} MiB (nvidia-smi every 5 s)")
+PYEOF
+done
+exit $RC
