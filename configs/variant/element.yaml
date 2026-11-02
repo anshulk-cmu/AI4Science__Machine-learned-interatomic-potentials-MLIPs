@@ -1,0 +1,7 @@
+# Element-only routing; message passing still uses training.cutoff (6 A).
+defaults:
+  - local6
+  - _self_
+
+backbone:
+  routing_radius: 0.0
