@@ -52,6 +52,13 @@ now() { date '+%Y-%m-%d %H:%M:%S'; }
 note() { echo "$(now) job $JOB: $*" | tee -a "$SUMMARY"; }
 fail() { echo "$(now) job $JOB: $*" > "$RUN/FAILED"; note "RESULT: FAILED: $*. The later segments of this chain exit at once."; exit 1; }
 last_complete() { ls -d "$CKDIR"/step_*/.metadata 2>/dev/null | sed -E 's#.*/step_([0-9]+)/\.metadata$#\1#' | sort -n | tail -1; }
+# A segment killed together with this script cannot list its own W&B file, so every segment lists the ones still missing.
+# The folder names carry the start time, so sorted order is segment order.
+record_wandb() {
+    find "$TRAIN" -name '*.wandb' | sort | sed "s#^$RUN/##" | while read -r f; do
+        grep -qxF "wandb $f" "$RUN/segments.txt" 2>/dev/null || echo "wandb $f" >> "$RUN/segments.txt"
+    done
+}
 
 if [ -f "$RUN/DONE" ]; then note "DONE marker present: the run is finished, nothing to do"; exit 0; fi
 if [ -f "$RUN/FAILED" ]; then note "FAILED marker present ($(cat "$RUN/FAILED")); delete it after the fix to continue"; exit 1; fi
@@ -69,6 +76,7 @@ GPU_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | he
 note "segment start: $NAME, limit $HOURS h, GPU $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1) ${GPU_MIB} MiB, host $(hostname), code sha256 $CODE"
 [ "${GPU_MIB:-0}" -ge "$MIN_MIB" ] || fail "this GPU is too small for $VARIANT (need at least $MIN_MIB MiB)"
 
+record_wandb
 if [ ! -f "$CKDIR/final/.metadata" ]; then
     $PY -u -B scripts/check_pilot_data.py verify --samples manifests/long_samples.json --samples manifests/pilot_samples.json \
         --train-rows "$TRAIN_LIST" --val-rows "$VAL_LIST" "${DATA_OVERRIDES[@]}" > "$LOGS/verify_$JOB.log" 2>&1
@@ -80,8 +88,8 @@ if [ ! -f "$CKDIR/final/.metadata" ]; then
     BEFORE=$(last_complete); BEFORE=${BEFORE:-0}
     LIMIT=$(( START + HOURS * 3600 - MARGIN - $(date +%s) ))
     (( LIMIT > 0 )) || fail "no time is left for training; raise LONG_SEGMENT_HOURS or lower LONG_STOP_MARGIN_SEC"
-    WANDB_BEFORE=$(find "$TRAIN" -name '*.wandb' | sort)
     LOG=$LOGS/train_$JOB.log
+    echo "log logs/train_$JOB.log" >> "$RUN/segments.txt"     # before training, so a killed segment keeps its log
     ( while true; do nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits >> "$LOGS/gpu_memory_$JOB.txt"; sleep 5; done ) &
     POLL=$!
     note "START train from complete step $BEFORE, stop by time after $LIMIT s (log: $LOG)"
@@ -94,12 +102,16 @@ if [ ! -f "$CKDIR/final/.metadata" ]; then
         "${DATA_OVERRIDES[@]}" > "$LOG" 2>&1
     RC=$?
     kill $POLL 2>/dev/null; wait $POLL 2>/dev/null
+    ELAPSED=$(( $(date +%s) - T0 ))
     AFTER=$(last_complete); AFTER=${AFTER:-0}
-    echo "log logs/train_$JOB.log" >> "$RUN/segments.txt"
-    comm -13 <(echo "$WANDB_BEFORE") <(find "$TRAIN" -name '*.wandb' | sort) | sed "s#^$RUN/#wandb #" >> "$RUN/segments.txt"
+    record_wandb
     # The stage status is 0 only when the final checkpoint exists: fairchem exits 1 on its own SIGTERM path (resume-test.md Section 7).
-    if [ -f "$CKDIR/final/.metadata" ]; then STATUS=0; elif [ $RC -eq 124 ] || [ $RC -eq 137 ]; then STATUS=124; else STATUS=$(( RC ? RC : 1 )); fi
-    note "END   train exit $STATUS (training process $RC; 0 = final checkpoint written, 124 = stopped by time as planned), complete checkpoints up to step $AFTER, $(( $(date +%s) - T0 )) s, peak GPU memory $(sort -n "$LOGS/gpu_memory_$JOB.txt" 2>/dev/null | tail -1) MiB"
+    # timeout returns 124 when it stopped the run, also after its KILL. 137 (killed) counts as a stop by time only within 120 s of
+    # the limit; earlier it is a failure, for example the kernel's out-of-memory killer.
+    if [ -f "$CKDIR/final/.metadata" ]; then STATUS=0
+    elif [ $RC -eq 124 ] || { [ $RC -eq 137 ] && (( ELAPSED >= LIMIT - 120 )); }; then STATUS=124
+    else STATUS=$(( RC ? RC : 1 )); fi
+    note "END   train exit $STATUS (training process $RC; 0 = final checkpoint written, 124 = stopped by time as planned), complete checkpoints up to step $AFTER, $ELAPSED s, peak GPU memory $(sort -n "$LOGS/gpu_memory_$JOB.txt" 2>/dev/null | tail -1) MiB"
     grep -a 'OOM: ' "$LOG" | cut -c1-300 | head -5 | tee -a "$SUMMARY"
     grep -a -E 'OOM events' "$LOG" | tail -1 | sed 's/.*OOM events/OOM events/' | tee -a "$SUMMARY"
     if [ $STATUS -eq 124 ]; then
@@ -107,6 +119,7 @@ if [ ! -f "$CKDIR/final/.metadata" ]; then
         note "RESULT: stopped by time; complete checkpoints up to step $AFTER of $STEPS; the next segment resumes from there"
         exit 0
     fi
+    [ $STATUS -eq 0 ] || [ $RC -ne 137 ] || fail "the training process was killed (exit 137) after $ELAPSED s, $(( LIMIT - ELAPSED )) s before the stop by time; out of memory or killed by the system (log: $LOG)"
     [ $STATUS -eq 0 ] || { grep -a -E 'Traceback|Error' "$LOG" | head -3 | tee -a "$SUMMARY"; fail "training exited $RC without the final checkpoint (log: $LOG)"; }
 fi
 

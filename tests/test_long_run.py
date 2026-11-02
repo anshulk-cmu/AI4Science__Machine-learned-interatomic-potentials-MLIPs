@@ -45,6 +45,9 @@ save() { mkdir -p "$C/$1" && touch "$C/$1/inference_ckpt.pt" "$C/$1/.metadata"; 
 case "$STUB_TRAIN" in
     crash) echo "Traceback: stub crash"; exit 3 ;;
     noprogress) exec sleep 60 ;;
+    oom) save step_0; save step_$(( ${last:-0} + CKPT )); kill -KILL $$ ;;
+    latekill) save step_0; save step_$(( ${last:-0} + CKPT )); sleep 2; kill -KILL $$ ;;
+    killjob) save step_0; save step_$(( ${last:-0} + CKPT )); kill -KILL 0 ;;
     stop) n=$(( ${last:-0} + CKPT )); save step_0; save step_$n
           echo "{'train/loss': 0.2, 'train/step': $(( n - 1 ))}"
           printf 'Finished aggregating metrics: \n  val/omol.val,omol_energy,per_atom_mae: 0.0200\n  val/omol.val,omol_forces,mae: 0.0500\n  val/loss: 0.0800\n'
@@ -103,8 +106,9 @@ class ShellCase(unittest.TestCase):
                     LONG_SHARED=posix(self.tmp / "shared"), LONG_REPO=posix(ROOT), LONG_RUNS_DIR=posix(self.runs),
                     LONG_PY=posix(self.bin / "python"), STUB_CALLS=posix(self.calls), STUB_COUNTER=posix(self.tmp / "n"))
         base.update({k: str(v) for k, v in env.items()})
+        # A new session, so a stand-in that kills its process group (as the scheduler does) cannot reach this test process.
         return subprocess.run([BASH, posix(ROOT / "slurm" / script), *map(str, args)], env=base,
-                              capture_output=True, text=True, timeout=180)
+                              capture_output=True, text=True, timeout=180, start_new_session=True)
 
     def calls_text(self):
         return self.calls.read_text(encoding="utf-8") if self.calls.exists() else ""
@@ -204,6 +208,34 @@ class LongRunTests(ShellCase):
         r = self.segment(301, STUB_TRAIN="noprogress", LONG_STOP_MARGIN_SEC=3590)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("no new checkpoint", (self.folder() / "FAILED").read_text(encoding="utf-8"))
+
+    def test_a_kill_long_before_the_limit_is_a_failure_and_near_it_a_stop(self):
+        r = self.segment(311, STUB_TRAIN="oom")                       # limit about 1800 s, killed at once
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("killed (exit 137)", (self.folder() / "FAILED").read_text(encoding="utf-8"))
+        segments = (self.folder() / "segments.txt").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(segments[0], "log logs/train_311.log")
+        self.assertEqual(len([s for s in segments if s.startswith("wandb ")]), 1)
+        (self.folder() / "FAILED").unlink()
+        r = self.segment(312, STUB_TRAIN="latekill", LONG_STOP_MARGIN_SEC=3590)   # limit about 9 s
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("RESULT: stopped by time", r.stdout)
+
+    def test_a_segment_killed_with_its_script_keeps_its_log_and_wandb_file(self):
+        r = self.segment(321, STUB_TRAIN="killjob")                   # the scheduler kills every process of the job
+        self.assertNotEqual(r.returncode, 0)
+        run = self.folder()
+        self.assertEqual((run / "segments.txt").read_text(encoding="utf-8").splitlines(), ["log logs/train_321.log"])
+        self.assertNotIn("END   train", (run / "summary.txt").read_text(encoding="utf-8"))
+        r = self.segment(322, STUB_TRAIN="finish")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        segments = (run / "segments.txt").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([s for s in segments if s.startswith("log ")], ["log logs/train_321.log", "log logs/train_322.log"])
+        wandb = [s for s in segments if s.startswith("wandb ")]
+        self.assertEqual(len(wandb), 2)
+        self.assertEqual(wandb, sorted(wandb))                       # segment order
+        self.assertLess(segments.index(wandb[0]), segments.index("log logs/train_322.log"))
+        self.assertTrue((run / "DONE").exists())
 
     def test_changed_settings_and_small_gpu_are_refused(self):
         self.assertEqual(self.segment(401, STUB_TRAIN="crash").returncode, 1)
