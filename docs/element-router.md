@@ -69,6 +69,9 @@ the existing shared test helper passes temporary paths through Hydra overrides.
 
 ## 200-step training acceptance (pending)
 
+**Measured on Bridges-2 (job 50116348, 2026-11-01, `slurm/smoke_new_variants.job`).** 200 steps through `slurm/pilot.sh` on the fixed pilot lists, one H100. Data check PASS, no OOM event, one validation, final checkpoint, all stages passed. Peak GPU memory 25,695 MiB. Median 0.577 s per step, mean 0.629 (steps 20 to 199). Delta 3.7e-06 meV at 8, 10, 15, 25 and 100 A.
+
+
 The full training smoke run has not been performed. Native Windows cannot run
 the project's CUDA training CLI because it requires POSIX `fcntl` and NCCL;
 see `docs/TRAINING.md`. CPU unit tests do not replace this acceptance run.

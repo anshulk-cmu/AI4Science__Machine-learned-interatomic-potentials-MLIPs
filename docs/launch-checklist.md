@@ -135,7 +135,13 @@ Measured on the pilots (50,000 steps, a validation every 5,000 steps): mean seco
 | Global | v100-32 | 0.724 to 0.769 | measured |
 | Frozen | v100-32 | 0.777 to 0.791 | measured |
 | Local-6 | h100-80 | 0.818 to 0.942 | measured |
-| Element, Local+Global, Local-12 | h100-80 | see Section 6 | 200-step smoke run only |
+| Element | h100-80 | 0.629 (median 0.577) | 200-step smoke run, steps 20 to 199, no validation pause |
+| Local+Global | h100-80 | 0.655 (median 0.611) | 200-step smoke run, as above |
+| Local-12 | h100-80 | 1.059 (median 0.921) | 200-step smoke run, as above |
+
+The smoke numbers come from the first 200 batches of one seed. Use them as estimates. For comparison, the Local-6 pilots had a
+median of 0.70 to 0.80 s per step over 50,000 steps. So Local-12 is about 1.2 to 1.3 times Local-6, and Element and Local+Global
+are not slower than Local-6 (reasoning from the medians). The pilot means include the validation pauses; the smoke means do not.
 
 Hours of one run, about `N x s / 3600`. SU: hours x 1 (v100-32) or hours x 2 (h100-80). This is an estimate for a new N; validation every E steps changes it a little.
 
@@ -148,7 +154,21 @@ Two test jobs check the launch path on the cluster. They read the copy in `share
 - `slurm/smoke_new_variants.job`: 200 steps each of Local-12, Element and Local+Global through `pilot.sh`, on an H100.
 - `slurm/smoke_long_chain.job`: one Dense long run of 180 steps in three segments, on a V100.
 
-Results: see the run log and Section 7.
+Results (measured on 2026-11-01):
+
+| Job | What | Time | Result |
+|---|---|---|---|
+| 50116336 | chain smoke, GPU-small, 1 V100 | 20 min 16 s, 0.338 SU | segment A stopped by time at step 60 (exit 124); B resumed at step 60, finished 180 steps, size check, DONE; C exited at once. `collect_final_metrics.py` read both W&B files and both logs; `discover` found steps 0 to 180. 186 optimizer steps ran in total |
+| 50116348 | new variants, GPU-shared, 1 H100 | 39 min 50 s | all three: data check PASS, 200 steps, no OOM, one validation, final checkpoint, all stages passed |
+
+| Variant | Peak GPU memory (nvidia-smi, 200 steps and one validation) | Delta at 8 / 10 / 15 / 25 / 100 A (meV) | Prediction |
+|---|---|---|---|
+| Element | 25,695 MiB | 3.7e-06 at every gap | zero: yes |
+| Local+Global | 37,637 MiB | -50.40 at every gap | not zero and flat: yes |
+| Local-12 | 37,801 MiB | 0.379 / 0.0343 / 2.8e-06 / 2.8e-06 / 2.8e-06 | not zero below 12 A, zero from 15 A: yes |
+
+A peak over 200 steps is a lower bound. Local-6 peaked at 26 to 29 GiB in short tests and at 43 to 45 GiB over 50,000 steps.
+So keep the H100 for Local-12, Element and Local+Global.
 
 ## 7. After the runs
 

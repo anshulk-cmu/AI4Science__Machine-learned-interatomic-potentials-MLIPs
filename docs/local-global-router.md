@@ -95,6 +95,9 @@ of this result. Windows cache/TEMP setup is documented in `docs/element-router.m
 
 ## 200-step training acceptance (pending)
 
+**Measured on Bridges-2 (job 50116348, 2026-11-01, `slurm/smoke_new_variants.job`).** 200 steps through `slurm/pilot.sh` on the fixed pilot lists, one H100. Data check PASS, no OOM event, one validation, final checkpoint, all stages passed. Peak GPU memory 37,637 MiB. Median 0.611 s per step, mean 0.655 (steps 20 to 199). Delta -50.40 meV at 8, 10, 15, 25 and 100 A.
+
+
 No production training or GPU memory measurement has been performed for this
 variant. Native Windows lacks the POSIX/NCCL support required by the project's
 CUDA training CLI; see `docs/TRAINING.md`. Unit tests do not replace this run.

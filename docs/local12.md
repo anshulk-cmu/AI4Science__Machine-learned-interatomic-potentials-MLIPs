@@ -16,4 +16,7 @@ The audit gaps are 8, 10, 15, 25 and 100 Å. The guard uses `max(message cutoff,
 
 ## Cluster check still needed
 
+**Measured on Bridges-2 (job 50116348, 2026-11-01, `slurm/smoke_new_variants.job`).** 200 steps through `slurm/pilot.sh` on the fixed pilot lists, one H100. Data check PASS, no OOM event, one validation, final checkpoint, all stages passed. Peak GPU memory 37,801 MiB (nvidia-smi every 5 s, 200 steps and one validation). Median 0.921 s per step, mean 1.059 (steps 20 to 199). Delta 0.379 meV at 8 A and 0.0343 meV at 10 A (routing-connected), 2.8e-06 meV at 15, 25 and 100 A. The peak is over 200 steps only, so the 80 GB guard stays.
+
+
 The 200-step GPU smoke run, peak memory and throughput are not measured yet. `pilot.sh` reserves an 80 GB GPU for Local-12 (79,000 MiB guard). This is a provisional allocation, not a measured minimum. Anshul submits the smoke run after review. No jobs were submitted as part of this change.
