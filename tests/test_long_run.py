@@ -329,8 +329,7 @@ class SubmitChainTests(ShellCase):
 class LaunchFileTests(unittest.TestCase):
     def test_shell_scripts_keep_team_files_group_writable(self):
         for script in ("long_run.sh", "submit_chain.sh", "pilot.sh"):
-            self.assertIn("
-umask 002", (ROOT / "slurm" / script).read_text(encoding="utf-8"), script)
+            self.assertIn("\numask 002", (ROOT / "slurm" / script).read_text(encoding="utf-8"), script)
 
     def test_gpu_guards_agree_between_pilot_and_long_runs(self):
         self.assertEqual(min_mib("pilot.sh"), min_mib("long_run.sh"))
