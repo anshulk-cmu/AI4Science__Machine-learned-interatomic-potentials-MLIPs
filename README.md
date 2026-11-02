@@ -57,7 +57,7 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 | `scripts/` | Data preparation and audit, pilot sample lists, size consistency along training, router check, inference timing, curve comparison, the pilot statistics (`pilot_statistics.py`, input `results/pilot_final_metrics.csv`) and the report figures and tables (`make_midterm_figures.py`, `audit_summary_table.py`) |
 | `manifests/` | The OMol25 data manifest and the fixed training and validation lists with their hashes |
 | `results/` | Raw and summary result files (CSV) and figures behind every number in the reports |
-| `tests/` | Unit tests (286): routing, the 8 variants, the long-run chain, checkpoint tools, final metrics and statistics, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
+| `tests/` | Unit tests (293): routing, the 8 variants, the long-run chain, checkpoint tools, final metrics and statistics, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
 | `docs/` | Detailed reports: `TRAINING.md` (setup and run), `local-routing.md`, `size-consistency-training.md`, `router-check.md`, `frozen-router.md`, `scaled-dense.md`, `molecular-evaluation.md`, `inference-timing.md`, `final-training-plan.md`, `launch-checklist.md` (how to start the final training) |
 | `requirements.txt`, `requirements-training.txt`, `requirements-mace.txt` | Environments: UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8); extra training packages; a separate environment for MACE |
 
@@ -83,7 +83,7 @@ See [the figure guide](docs/final-figures.md) for training curves, descriptive
 long-run plots and `make_ensemble_figure.py` report-set comparisons.
 
 1. Create the environments from the requirements files; the steps are in the header of each file. The UMA weights are gated on Hugging Face: log in and accept the license first. Never commit a token.
-2. Run the tests: `python -m unittest discover -s tests`. All 286 tests pass on Windows (2026-11-01). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
+2. Run the tests: `python -m unittest discover -s tests`. All 293 tests pass on Windows (2026-11-02). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
 3. The audit, the pilots and every follow-up experiment have a job file in `slurm/` and a report in `docs/` or `audit/` that gives the exact commands, the job identifiers, the settings and the files that hold the results. Start with `docs/TRAINING.md`.
 4. A run writes `settings.txt` and `summary.txt`; check that `settings.txt` shows the steps, the seed, the variant and the sample list hashes you expect before you trust the run.
 
