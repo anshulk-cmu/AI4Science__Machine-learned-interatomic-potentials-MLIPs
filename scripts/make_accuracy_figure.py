@@ -1,13 +1,15 @@
 """Accuracy figures for pilots, the 8-variant final table, and long runs.
 
-Legacy usage: python scripts/make_accuracy_figure.py out.pdf
-See docs/final-figures.md for explicit CSV inputs and metrics-only figures.
+Legacy usage: python scripts/make_accuracy_figure.py out.pdf draws the submitted midterm figure (4.6 x 2.9 in) exactly as
+before; any other option selects the new figures. See docs/final-figures.md for explicit CSV inputs and metrics-only figures.
 """
 import argparse
 from pathlib import Path
 
 import matplotlib.ticker as ticker
+import numpy as np
 import pandas as pd
+from scipy import stats
 
 from figure_common import (STYLE, OI, plt, numeric, validate_metrics, seed_points,
                            model_ticks, save_figure)
@@ -45,7 +47,7 @@ def validate_curves(cur, fin):
     return cur.sort_values(["variant", "seed", "step"])
 
 
-def band(ax, df, col, scale=1.0, start=0, ref=None):
+def band(ax, df, col, scale=1.0, start=0, ref=None, edge=True):
     for v, (name, color, marker, line) in STYLE.items():
         if v not in set(df.variant):
             continue
@@ -55,8 +57,48 @@ def band(ax, df, col, scale=1.0, start=0, ref=None):
         if ref is not None:
             y = (ref.loc[g.index].to_numpy()[:, None] - g.to_numpy()) * scale
         ax.fill_between(g.index, y.min(1), y.max(1), color=color, alpha=.18, lw=0)
-        ax.plot(g.index, y.mean(1), color=color, ls=line, marker=marker, ms=3,
-                markeredgecolor="#444444", markeredgewidth=.35, lw=1.1, label=name)
+        marker_edge = dict(markeredgecolor="#444444", markeredgewidth=.35) if edge else {}
+        ax.plot(g.index, y.mean(1), color=color, ls=line, marker=marker, ms=3, lw=1.1, label=name, **marker_edge)
+
+
+# The submitted midterm figure: the drawing code of main before the 8-variant work, 3 seeds, 5 models.
+LEGACY_RC = {"font.size": 7.6, "axes.labelsize": 7.6, "xtick.labelsize": 7.2, "ytick.labelsize": 7.2,
+             "legend.fontsize": 7.2, "axes.spines.top": False, "axes.spines.right": False, "pdf.fonttype": 42}
+
+
+def legacy(out):
+    cur = pd.read_csv(ROOT / "results" / "pilot_validation_curves.csv")
+    fin = pd.read_csv(ROOT / "results" / "pilot_final_metrics.csv")
+    with plt.rc_context(LEGACY_RC):
+        dense = cur[cur.variant == "dense"].pivot(index="step", columns="seed", values=CURVE_FORCE).mean(axis=1)
+        fig, ax = plt.subplots(2, 2, figsize=(4.6, 2.9))
+        band(ax[0, 0], cur, TRAIN, edge=False)
+        ax[0, 0].set(ylabel="training loss", title="(a) training loss")
+        band(ax[0, 1], cur, CURVE_FORCE, edge=False)
+        ax[0, 1].set(ylabel=r"force MAE (eV/$\AA$)", yscale="log", title="(b) validation force error")
+        band(ax[1, 0], cur, CURVE_FORCE, scale=1e3, start=15000, ref=dense, edge=False)
+        ax[1, 0].axhline(0, color="grey", lw=0.6)
+        ax[1, 0].set(ylabel="Dense minus model\n" r"($10^{-3}$ eV/$\AA$)", title="(c) gain over Dense")
+        for a in (ax[0, 0], ax[0, 1], ax[1, 0]):
+            a.set_xlabel("training step"); a.set_xticks(range(0, 50001, 10000)); a.set_xticklabels(["0", "10k", "20k", "30k", "40k", "50k"])
+        t = stats.t.ppf(0.975, 2)
+        models = [v for v in STYLE if v in set(fin.variant)]
+        for i, v in enumerate(models):
+            name, c, mk, ls = STYLE[v]
+            y = fin[fin.variant == v].sort_values("seed")[FORCE].to_numpy()
+            h = t * y.std(ddof=1) / np.sqrt(3)
+            ax[1, 1].errorbar(i, y.mean(), yerr=h, color=c, capsize=2.5, lw=1.1, zorder=2)
+            ax[1, 1].plot(np.full(3, i) + np.array([-0.12, 0, 0.12]), y, ls="none", marker=mk, ms=3, color=c, alpha=0.7, zorder=3)
+        ax[1, 1].set(ylabel=r"force MAE (eV/$\AA$)", title="(d) step 50,000, 95% interval")
+        ax[1, 1].set_xticks(range(5)); ax[1, 1].set_xticklabels(["Dense", "Global", "Local\n-6", "Frozen", "Scaled\nDense"], fontsize=6.6)
+        ax[1, 1].set_xlim(-0.6, 4.6)
+        h, l = ax[0, 0].get_legend_handles_labels()
+        fig.legend(h, l, ncol=5, loc="lower center", frameon=False, columnspacing=1.2, handlelength=2.2, bbox_to_anchor=(0.5, -0.005))
+        for a in ax.flat:
+            a.title.set_fontsize(7.6)
+        fig.tight_layout(rect=(0, 0.06, 1, 1), h_pad=0.9, w_pad=0.8)
+        fig.savefig(out)
+    plt.close(fig)
 
 
 def endpoint_panel(ax, fin, metric, models, descriptive=False):
@@ -114,6 +156,8 @@ def build_figure(fin, cur=None, long_run=False, title=None):
 
 
 def main(out, metrics=None, curves=None, metrics_only=False, long_run=False, require_final=False, title=None):
+    if not (metrics or curves or metrics_only or long_run or require_final or title):
+        return legacy(out)
     if curves is not None and metrics is None:
         raise ValueError("Custom --curves requires an explicit --metrics CSV")
     if (metrics is not None or long_run) and curves is None and not metrics_only:

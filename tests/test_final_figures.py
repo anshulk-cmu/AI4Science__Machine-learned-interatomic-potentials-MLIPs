@@ -177,6 +177,17 @@ class FinalFigures(unittest.TestCase):
             for filename in ("legacy.pdf", "final.png", "long.svg", "ensemble.pdf"):
                 self.assertGreater((out / filename).stat().st_size, 10000)
 
+    def test_legacy_call_keeps_the_submitted_report_size(self):
+        """The call without options must draw the midterm figure at 4.6 x 2.9 in, as on main (PDF 331.2 x 208.8 pt)."""
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as directory:
+            pdf, png = Path(directory) / "legacy.pdf", Path(directory) / "legacy.png"
+            accuracy.main(str(pdf))
+            accuracy.main(str(png))
+            self.assertIn(b"/MediaBox [ 0 0 331.2 208.8 ]", pdf.read_bytes())
+            with Image.open(png) as image:
+                self.assertEqual(image.size, (460, 290))
+
     def test_cli_avoids_silent_pilot_curve_fallback(self):
         with self.assertRaisesRegex(ValueError, "explicit --metrics"):
             accuracy.main("unused.png", curves="custom.csv")

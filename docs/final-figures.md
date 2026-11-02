@@ -137,9 +137,10 @@ The legacy command still reads the original pilot CSVs:
 python scripts/make_accuracy_figure.py results/figures/pilot_accuracy.pdf
 ```
 
-The figure layout is wider to accommodate eight variants. Numerical summaries
-retain the old definitions, but the layout is not pixel-identical to the old
-midterm image. The separate `make_midterm_figures.py` audit, size-consistency
+This call, with no option, draws the submitted midterm figure with the code of
+main: 4.6 x 2.9 in, 3 seeds, 5 models. Its PNG is pixel-identical to the main
+output (checked on 2026-11-02), and `tests/test_final_figures.py` fails if the
+size changes. Any option selects the new, wider layout for eight variants. The separate `make_midterm_figures.py` audit, size-consistency
 and router-ablation figures are unchanged by this E3 accuracy task.
 
 ## Tests
