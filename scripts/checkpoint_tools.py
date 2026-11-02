@@ -51,7 +51,9 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     selection = sub.add_parser("select")
     selection.add_argument("--run-dir", type=Path, required=True)
-    selection.add_argument("--total-steps", type=int, required=True, help="actual completed length, not a planned unfinished run")
+    selection.add_argument("--total-steps", type=int, required=True, help="the run length in settings.txt")
+    selection.add_argument("--allow-unfinished", action="store_true",
+                           help="a run stopped before --total-steps: use the step checkpoints that exist; outputs are marked partial")
     selection.add_argument("--variant", required=True)
     selection.add_argument("--seed", type=int, required=True)
     selection.add_argument("--k", type=int, default=5)
@@ -93,24 +95,27 @@ def main():
             match = re.search(rf"(?:^|\s){name}=(\S+)", settings)
             if not match or match.group(1) != expected:
                 raise ValueError(f"{name} does not match run settings")
-        candidates = ck.discover(args.run_dir, args.total_steps)
+        candidates = ck.discover(args.run_dir, args.total_steps, args.allow_unfinished)
+        # An unfinished run applies the same rule to the steps it reached: the last half of 0 to the last checkpoint.
+        length = candidates[-1][0]
+        partial = dict(partial=length < args.total_steps, reached_step=length) if args.allow_unfinished else {}
         # Fail before expensive inference if K cannot be met.
-        if sum(step >= args.total_steps / 2 for step, _ in candidates) < args.k or args.k < 1:
+        if length <= 0 or sum(step >= length / 2 for step, _ in candidates) < args.k or args.k < 1:
             raise ValueError("not enough last-half checkpoints for the requested K")
         args.output.mkdir(parents=True, exist_ok=False)
         rows = []
         for step, path in candidates:
-            if step < args.total_steps / 2:
+            if step < length / 2:
                 continue
             unit = ck.predictor(path, args.device, args.dtype)
-            row = dict(step=step, path=str(path), sha256=ck.sha256(path), **ck.evaluate(unit, data, selection_rows))
+            row = dict(step=step, path=str(path), sha256=ck.sha256(path), **ck.evaluate(unit, data, selection_rows), **partial)
             rows.append(row)
             print(json.dumps(row), flush=True)
             del unit
             release()
-        selected = ck.select(rows, args.total_steps, args.k)
+        selected = ck.select(rows, length, args.k)
         record = dict(run_dir=str(args.run_dir.resolve()), variant=args.variant, seed=args.seed,
-                      total_steps=args.total_steps, k=args.k, dtype=args.dtype,
+                      total_steps=args.total_steps, **partial, k=args.k, dtype=args.dtype,
                       rule="lowest selection force MAE in last half; ties use earlier step",
                       selection_rows=str(args.selection_rows.resolve()), report_rows=str(args.report_rows.resolve()),
                       selection_rows_sha256=ck.sha256(args.selection_rows), report_rows_sha256=ck.sha256(args.report_rows),
@@ -131,6 +136,7 @@ def main():
         sidecar = json.loads(args.averaged.with_suffix(args.averaged.suffix + ".json").read_text())
         if sidecar["selection_sha256"] != ck.sha256(args.selection) or sidecar["checkpoint_sha256"] != ck.sha256(args.averaged):
             raise ValueError("averaged checkpoint does not match this selection")
+        partial = {key: record[key] for key in ("partial", "reached_step") if key in record}
         args.output.mkdir(parents=True, exist_ok=False)
         rows = []
         methods = {"final": [record["final"]["path"]], "best": [record["selected"][0]["path"]],
@@ -139,14 +145,14 @@ def main():
             units = [ck.predictor(path, args.device, args.dtype) for path in paths]
             unit = ck.PredictionAverage(units)
             row = dict(variant=record["variant"], seed=record["seed"], method=method, eval_split="report",
-                       **ck.evaluate(unit, data, report_rows))
+                       **ck.evaluate(unit, data, report_rows), **partial)
             rows.append(row)
             print(json.dumps(row), flush=True)
             del unit, units
             release()
         write_csv(args.output / "ensemble_metrics.csv", rows)
         write_json(args.output / "evaluation.json", dict(selection_sha256=ck.sha256(args.selection),
-                   averaged_sha256=ck.sha256(args.averaged), dtype=args.dtype, methods=methods,
+                   averaged_sha256=ck.sha256(args.averaged), dtype=args.dtype, methods=methods, **partial,
                    energy_metric="mean over structures of absolute total energy error divided by atom count",
                    force_metric="mean absolute error over all Cartesian force components"))
 

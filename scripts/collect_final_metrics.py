@@ -60,7 +60,7 @@ def metric_value(value, name):
     return result
 
 
-def metadata(run):
+def metadata(run, allow_unfinished=False):
     settings = run / "settings.txt"
     if settings.exists():
         text = settings.read_text(encoding="utf-8-sig")
@@ -102,8 +102,10 @@ def metadata(run):
     summary = run / "summary.txt"
     if summary.exists():
         statuses = re.findall(r"END\s+train\s+exit\s+(\d+)", summary.read_text(encoding="utf-8-sig"))
-        if statuses and int(statuses[-1]) != 0:
+        # An unfinished run usually ends in a stopped or killed stage; its earlier validations are still measurements.
+        if statuses and int(statuses[-1]) != 0 and not allow_unfinished:
             raise CollectionError(f"{run}: latest training stage failed (exit {statuses[-1]})")
+        fields["last_train_exit"] = int(statuses[-1]) if statuses else None
     return fields
 
 
@@ -215,14 +217,17 @@ def history_rows(path):
             raise CollectionError(f"{path}: invalid W&B protobuf/history record: {exc}") from exc
 
 
-def final_event(paths, reader, steps):
+def final_event(paths, reader, steps, allow_unfinished=False):
     """Select the last eval of the latest segment, not the best or largest-step eval.
 
     train/step is zero based. val/step, when present, counts completed optimizer
     steps. W&B _step and val/epoch are not optimizer steps.
+    allow_unfinished: a run that stopped before `steps`; use the latest complete
+    validation in segment order, at whatever step it ran. Returns the step too.
     """
     current = None
     final = None
+    latest = None
     for path in paths:
         # Explicit segment order; no stale state from a previous attempt is usable.
         current, final = None, None
@@ -233,6 +238,13 @@ def final_event(paths, reader, steps):
             if row.get("_validation") or "val/epoch" in row or any(key in row for key in METRICS):
                 step = integer(row["val/step"], "val/step") if "val/step" in row else current
                 final = (step, row, path)
+                if step is not None and not set(METRICS) - row.keys():
+                    latest = final
+    if allow_unfinished:
+        if latest is None or latest[0] > steps:
+            raise CollectionError("no complete validation at or below the planned steps")
+        step, event, path = latest
+        return {column: metric_value(event[key], key) for key, column in METRICS.items()}, str(path), step
     if final is None:
         raise CollectionError("latest segment has no validation after its last training step")
     step, event, path = final
@@ -241,7 +253,7 @@ def final_event(paths, reader, steps):
     missing = set(METRICS) - event.keys()
     if missing:
         raise CollectionError(f"{path}: incomplete final validation; missing {sorted(missing)}")
-    return {column: metric_value(event[key], key) for key, column in METRICS.items()}, str(path)
+    return {column: metric_value(event[key], key) for key, column in METRICS.items()}, str(path), step
 
 
 def source_paths(run, spec, key):
@@ -275,10 +287,10 @@ def segment_record(run):
     return spec
 
 
-def collect_run(spec, steps, source="auto"):
+def collect_run(spec, steps, source="auto", allow_unfinished=False):
     run = Path(spec["path"]).resolve()
     spec = {**segment_record(run), **spec}      # explicit manifest lists win
-    meta = metadata(run)
+    meta = metadata(run, allow_unfinished)
     if meta["steps"] != steps:
         raise CollectionError(f"{run}: configured for {meta['steps']} steps, requested report is {steps}")
     logs = source_paths(run, spec, "logs") if source != "wandb" else []
@@ -286,19 +298,21 @@ def collect_run(spec, steps, source="auto"):
     if source == "wandb" and not histories:
         raise CollectionError(f"{run}: no W&B history")
     if histories:
-        metrics, selected = final_event(histories, history_rows, steps)
+        metrics, selected, reached = final_event(histories, history_rows, steps, allow_unfinished)
         precision = "full_precision_history"
         if logs:
-            rounded, _ = final_event(logs, log_rows, steps)
-            if any(abs(metrics[key] - rounded[key]) > 0.00005001 for key in metrics):
+            rounded, _, log_step = final_event(logs, log_rows, steps, allow_unfinished)
+            if log_step != reached or any(abs(metrics[key] - rounded[key]) > 0.00005001 for key in metrics):
                 raise CollectionError(f"{run}: W&B and final train.log metrics disagree beyond rounding")
     elif logs:
-        metrics, selected = final_event(logs, log_rows, steps)
+        metrics, selected, reached = final_event(logs, log_rows, steps, allow_unfinished)
         precision = "rounded_train_log"
     else:
         raise CollectionError(f"{run}: no usable metric source")
     row = dict(variant=meta["variant"], seed=meta["seed"], **metrics)
-    provenance = dict(**meta, run=str(run), source=selected, precision=precision,
+    if allow_unfinished:
+        row.update(reached_step=reached, partial=reached < steps)
+    provenance = dict(**meta, run=str(run), source=selected, precision=precision, reached_step=reached,
                       source_files=[str(p) for p in histories + logs], step_verified=True)
     return row, provenance
 
@@ -359,7 +373,7 @@ def validate(rows, variants, seeds, allow_partial=False):
     return missing
 
 
-def write_outputs(output, rows, missing, variants, seeds, steps):
+def write_outputs(output, rows, missing, variants, seeds, steps, allow_unfinished=False):
     output = Path(output).resolve()
     sidecar = output.with_suffix(".provenance.json")
     if output.suffix.lower() != ".csv":
@@ -372,12 +386,16 @@ def write_outputs(output, rows, missing, variants, seeds, steps):
         raise CollectionError("output must not overwrite an input or its provenance")
     rows = sorted(rows, key=lambda item: (variants.index(item[0]["variant"]), item[0]["seed"]))
     buffer = io.StringIO(newline="")
-    writer = csv.DictWriter(buffer, fieldnames=COLUMNS, lineterminator="\n")
+    columns = COLUMNS + ["reached_step", "partial"] if allow_unfinished else COLUMNS
+    writer = csv.DictWriter(buffer, fieldnames=columns, lineterminator="\n")
     writer.writeheader()
-    writer.writerows(row for row, _ in rows)
+    # Merged rows carry no reached step; they count as complete at the report length.
+    writer.writerows({"reached_step": steps, "partial": False, **row} if allow_unfinished else row for row, _ in rows)
     content = buffer.getvalue().encode("utf-8")
+    partial_rows = sum(bool(row.get("partial")) for row, _ in rows)
     info = dict(schema_version=1, steps=steps, variants=variants, expected_seeds=list(range(seeds)),
-                complete=not missing, missing=missing, csv_sha256=hashlib.sha256(content).hexdigest(),
+                complete=not missing and not partial_rows, missing=missing, allow_unfinished=allow_unfinished,
+                partial_rows=partial_rows, csv_sha256=hashlib.sha256(content).hexdigest(),
                 rows=[p for _, p in rows])
     output.parent.mkdir(parents=True, exist_ok=True)
     pending = []
@@ -405,6 +423,9 @@ def main(argv=None):
     parser.add_argument("--steps", type=int, default=50_000)
     parser.add_argument("--source", choices=("auto", "wandb", "log"), default="auto")
     parser.add_argument("--allow-partial", action="store_true", help="permit missing runs, never invalid or duplicate rows")
+    parser.add_argument("--allow-unfinished", action="store_true",
+                        help="accept runs that stopped before --steps: use the latest complete validation and add the "
+                             "columns reached_step and partial; such a table cannot be merged later")
     args = parser.parse_args(argv)
     try:
         steps = integer(args.steps, "--steps", 1)
@@ -426,16 +447,19 @@ def main(argv=None):
         rows = [item for path in args.merge for item in merge_csv(path, steps)]
         for spec in specs:
             try:
-                rows.append(collect_run(spec, steps, args.source))
+                rows.append(collect_run(spec, steps, args.source, args.allow_unfinished))
             except (CollectionError, OSError, ValueError) as exc:
                 raise CollectionError(f"{spec['path']}: {exc}") from exc
         missing = validate(rows, variants, seeds, args.allow_partial)
-        write_outputs(args.output, rows, missing, variants, seeds, steps)
+        write_outputs(args.output, rows, missing, variants, seeds, steps, args.allow_unfinished)
         rounded = sum(p["precision"] == "rounded_train_log" for _, p in rows)
         unverified = sum(not p["step_verified"] for _, p in rows)
         unknown_data = sum(not p["data_id"] for _, p in rows)
         print(f"Wrote {len(rows)} rows to {args.output}; missing pairs: {len(missing)}")
         print(f"Rounded log rows: {rounded}; legacy rows with unverified steps: {unverified}; unknown data IDs: {unknown_data}")
+        if args.allow_unfinished:
+            partial = [f"{r['variant']} seed {r['seed']} at step {r['reached_step']}" for r, _ in rows if r.get("partial")]
+            print(f"PARTIAL: {len(partial)} of {len(rows)} rows stopped before {steps} steps: " + ("; ".join(partial) or "none"))
         return 0
     except (CollectionError, OSError, ValueError, TypeError, KeyError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

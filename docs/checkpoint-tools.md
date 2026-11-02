@@ -12,7 +12,7 @@ Energy MAE is the mean, over structures, of absolute total-energy error divided 
 
 ## Commands
 
-Run from the repository root, in the fairchem 2.21 environment. Replace the example paths with one run and the full validation split. `--variant`, `--seed` and `--total-steps` must match `settings.txt`. The current reader expects one `train/*/checkpoints` directory per run; chained runs must retain that layout. A `final` folder requires a successful run summary. Incomplete or differently arranged runs need an explicit, reviewed mapping of checkpoints to actual steps first.
+Run from the repository root, in the fairchem 2.21 environment. Replace the example paths with one run and the full validation split. `--variant`, `--seed` and `--total-steps` must match `settings.txt`. The current reader expects one `train/*/checkpoints` directory per run; chained runs must retain that layout. A `final` folder requires a successful run summary. A run that stopped before `--total-steps` (for example at the training stop) needs `select --allow-unfinished`. Then only the numeric step checkpoints count, the last one is the step reached, the rule takes the last half of the steps reached, and every row of `selection_metrics.csv`, `selection.json`, `ensemble_metrics.csv` and `evaluation.json` gets `partial` and `reached_step`. A run with a `final` checkpoint is refused in this mode. Differently arranged runs need an explicit, reviewed mapping of checkpoints to actual steps first.
 
 ```bash
 python scripts/checkpoint_tools.py select \

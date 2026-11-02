@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import check_pilot_data  # noqa: E402
 import collect_final_metrics as cm  # noqa: E402
+sys.path.insert(0, str(ROOT))
+from training.checkpoints import discover  # noqa: E402
 
 BASH = shutil.which("bash")
 VARIANTS = ("dense", "global", "local6", "local12", "element", "local_global", "global_frozen", "dense_scaled")
@@ -43,7 +45,10 @@ save() { mkdir -p "$C/$1" && touch "$C/$1/inference_ckpt.pt" "$C/$1/.metadata"; 
 case "$STUB_TRAIN" in
     crash) echo "Traceback: stub crash"; exit 3 ;;
     noprogress) exec sleep 60 ;;
-    stop) save step_0; save step_$(( ${last:-0} + CKPT )); echo "{'train/loss': 0.2, 'train/step': $(( ${last:-0} + CKPT ))}"
+    stop) n=$(( ${last:-0} + CKPT )); save step_0; save step_$n
+          echo "{'train/loss': 0.2, 'train/step': $(( n - 1 ))}"
+          printf 'Finished aggregating metrics: \n  val/omol.val,omol_energy,per_atom_mae: 0.0200\n  val/omol.val,omol_forces,mae: 0.0500\n  val/loss: 0.0800\n'
+          echo "{'train/loss': 0.2, 'train/step': $(( n + 2 ))}"
           mkdir -p "$C/preemption_state"; exec sleep 60 ;;
     finish) for (( s=${last:-0}; s<STEPS; s+=CKPT )); do save step_$s; done
             echo "{'train/loss': 0.1, 'train/step': $(( STEPS - 1 ))}"
@@ -136,6 +141,14 @@ class LongRunTests(ShellCase):
         self.assertIn("END   train exit 124", summary)
         self.assertIn("RESULT: stopped by time; complete checkpoints up to step 10", summary)
         self.assertFalse((run / "DONE").exists() or (run / "FAILED").exists())
+        # Stopped before the planned steps: the readers refuse it unless partial mode is asked for.
+        with self.assertRaises(cm.CollectionError):
+            cm.collect_run({"path": str(run)}, 40, source="log")
+        row, _ = cm.collect_run({"path": str(run)}, 40, source="log", allow_unfinished=True)
+        self.assertEqual((row["reached_step"], row["partial"], row["force_mae_eV_per_A"]), (10, True, 0.05))
+        with self.assertRaises(ValueError):
+            discover(run, 40)
+        self.assertEqual([s for s, _ in discover(run, 40, allow_unfinished=True)], [0, 10])
         store = run / "train" / run.name / ".distributed-shared-file"
         store.touch()
 
@@ -176,8 +189,6 @@ class LongRunTests(ShellCase):
         row, provenance = cm.collect_run({"path": str(run)}, 40, source="log")
         self.assertEqual((row["variant"], row["seed"], row["force_mae_eV_per_A"]), ("dense", 0, 0.037))
         self.assertTrue(provenance["source"].endswith("train_102.log"))
-        sys.path.insert(0, str(ROOT))
-        from training.checkpoints import discover
         self.assertEqual([s for s, _ in discover(run, 40)], [0, 10, 20, 30, 40])
 
     def test_crash_writes_failed_and_stops_the_chain(self):

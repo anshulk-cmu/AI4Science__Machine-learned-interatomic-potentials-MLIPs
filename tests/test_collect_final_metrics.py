@@ -341,6 +341,31 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertTrue(json.loads(out.with_suffix(".provenance.json").read_text())["complete"])
 
+    def test_unfinished_run_needs_the_opt_in_and_is_marked_partial(self):
+        # Stopped at the training stop: validated at step 100, trained on to step 150, no final event, no DONE.
+        text = "{'train/step': 99}\n" + log_eval(evaluation(0.02, 0.04, 0.06)) + "{'train/step': 149}\n"
+        run = self.run_dir(text=text)
+        (run / "summary.txt").write_text("END   train exit 124 (stopped by time)\n", encoding="utf-8")
+        with self.assertRaises(cm.CollectionError):
+            self.collect(run)
+        row, provenance = self.collect(run, allow_unfinished=True)
+        self.assertEqual((row["reached_step"], row["partial"], row["force_mae_eV_per_A"]), (100, True, 0.04))
+        self.assertEqual(provenance["last_train_exit"], 124)
+        out = self.root / "partial.csv"
+        self.assertEqual(self.invoke(run, "--output", out, "--steps", 200, "--expected-seeds", 1,
+                                     "--variants", "element")[0], 1)
+        code, stdout, err = self.invoke(run, "--output", out, "--steps", 200, "--expected-seeds", 1,
+                                        "--variants", "element", "--allow-unfinished")
+        self.assertEqual(code, 0, err)
+        self.assertIn("PARTIAL: 1 of 1 rows stopped before 200 steps: element seed 0 at step 100", stdout)
+        with out.open(encoding="utf-8") as stream:
+            self.assertEqual(list(csv.DictReader(stream)), [dict(variant="element", seed="0", energy_mae_per_atom_eV="0.02",
+                             force_mae_eV_per_A="0.04", val_loss="0.06", reached_step="100", partial="True")])
+        info = json.loads(out.with_suffix(".provenance.json").read_text())
+        self.assertEqual((info["complete"], info["partial_rows"], info["rows"][0]["reached_step"]), (False, 1, 100))
+        with self.assertRaisesRegex(cm.CollectionError, "expected columns"):
+            cm.merge_csv(out, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

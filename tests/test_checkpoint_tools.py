@@ -46,6 +46,23 @@ class SelectionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ck.read_rows(b)
 
+    def test_unfinished_run_needs_the_opt_in(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            ckdir = run / "train/long_dense_s0_50/checkpoints"     # a stopped chain: no final, no DONE
+            for step in (0, 10, 20):
+                (ckdir / f"step_{step}").mkdir(parents=True)
+                (ckdir / f"step_{step}/inference_ckpt.pt").touch()
+            (ckdir / "preemption_state").mkdir()
+            (run / "summary.txt").write_text("RESULT: stopped by time\n")
+            with self.assertRaisesRegex(ValueError, "last saved step"):
+                ck.discover(run, 50)
+            self.assertEqual([s for s, _ in ck.discover(run, 50, allow_unfinished=True)], [0, 10, 20])
+            (ckdir / "final").mkdir()
+            (ckdir / "final/inference_ckpt.pt").touch()
+            with self.assertRaisesRegex(ValueError, "final checkpoint"):
+                ck.discover(run, 50, allow_unfinished=True)
+
     def test_metrics_weight_force_components_not_molecules(self):
         class Dataset:
             def get_atoms(self, index):
@@ -191,6 +208,45 @@ class CheckpointTests(unittest.TestCase):
         report_rows.write_text("0\n3\n")
         with self.assertRaisesRegex(ValueError, "changed"):
             cli("report", "--selection", selection, "--averaged", avg, "--data", dbpath, "--output", self.root/"rejected")
+
+    def test_unfinished_run_select_and_report_are_marked_partial(self):
+        import csv
+        import shutil
+        import ase.db
+        from scripts.checkpoint_tools import main
+        run = self.root / "unfinished"                   # planned 80 steps, checkpoints only up to step 40
+        shutil.copytree(self.run_dir, run)
+        (run / "settings.txt").write_text("variant=local12 seed=0 steps=80\n")
+        dbpath = self.root / "tiny_unfinished.db"
+        with ase.db.connect(str(dbpath)) as db:
+            for name in ("H2O", "CH4", "H2O", "CH4"):
+                atoms = generic(molecule(name))
+                atoms.calc = SinglePointCalculator(atoms, energy=0., forces=np.zeros((len(atoms),3)))
+                db.write(atoms, data={"charge":0, "spin":1})
+        selection_rows, report_rows = self.root/"selection_u.txt", self.root/"report_u.txt"
+        selection_rows.write_text("0\n1\n"); report_rows.write_text("2\n3\n")
+        def cli(*args):
+            with patch("sys.argv", ["checkpoint_tools.py", *map(str,args)]):
+                main()
+        def rows(path):
+            with path.open() as stream:
+                return list(csv.DictReader(stream))
+        select = ("select", "--run-dir", run, "--total-steps", 80, "--variant", "local12", "--seed", 0, "--k", 3,
+                  "--selection-rows", selection_rows, "--report-rows", report_rows, "--data", dbpath)
+        with self.assertRaisesRegex(ValueError, "last saved step"):
+            cli(*select, "--output", self.root/"strict_u")
+        output = self.root / "selected_u"
+        cli(*select, "--output", output, "--allow-unfinished")
+        record = ck.checked_selection(output/"selection.json")
+        self.assertEqual((record["partial"], record["reached_step"], record["total_steps"], record["final"]["step"]), (True, 40, 80, 40))
+        self.assertTrue(all(r["partial"] == "True" and r["reached_step"] == "40" for r in rows(output/"selection_metrics.csv")))
+        avg = self.root/"average_u.pt"
+        cli("average", "--selection", output/"selection.json", "--output", avg)
+        cli("report", "--selection", output/"selection.json", "--averaged", avg, "--data", dbpath, "--output", self.root/"report_u")
+        report = rows(self.root/"report_u"/"ensemble_metrics.csv")
+        self.assertEqual(len(report), 4)
+        self.assertTrue(all(r["partial"] == "True" and r["reached_step"] == "40" for r in report))
+        self.assertTrue(json.loads((self.root/"report_u"/"evaluation.json").read_text())["partial"])
 
 
 if __name__ == "__main__":

@@ -34,8 +34,12 @@ def split_rows(selection_path, report_path):
     return selection, report
 
 
-def discover(run_dir, total_steps):
-    """One trainer directory per run. Numeric folders and final may duplicate the last step."""
+def discover(run_dir, total_steps, allow_unfinished=False):
+    """One trainer directory per run. Numeric folders and final may duplicate the last step.
+
+    allow_unfinished: a run stopped before total_steps (for example at the training stop). Only numeric step folders
+    count, the last one is the step reached, and a run with a final checkpoint is refused (use the strict mode).
+    """
     run_dir = Path(run_dir).resolve()
     roots = list(run_dir.glob("train/*/checkpoints"))
     if len(roots) != 1 or total_steps <= 0:
@@ -43,6 +47,8 @@ def discover(run_dir, total_steps):
     found = {}
     for path in sorted(roots[0].glob("*/inference_ckpt.pt")):
         folder = path.parent.name
+        if folder == "final" and allow_unfinished:
+            raise ValueError("this run has a final checkpoint; select it without --allow-unfinished")
         if folder == "final":
             # A failed or interrupted run must not silently acquire the planned step count.
             summary = (run_dir / "summary.txt").read_text()
@@ -60,7 +66,7 @@ def discover(run_dir, total_steps):
             found[step] = path.resolve()
     if not found:
         raise ValueError("no inference checkpoints found")
-    if max(found) != total_steps:
+    if max(found) != total_steps and not allow_unfinished:
         raise ValueError("last saved step does not equal the supplied completed run length")
     return sorted(found.items())
 

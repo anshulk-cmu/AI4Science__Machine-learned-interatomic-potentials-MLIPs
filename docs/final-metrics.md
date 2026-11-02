@@ -151,6 +151,13 @@ python scripts/collect_final_metrics.py --run-manifest long_runs.json \
 `--expected-seeds N` requires exactly seeds 0..N-1 within that report.
 Do not combine the 50,000-step and 300,000-step cohorts.
 
+A run that stopped before `--steps` (for example at the training stop) is refused by default.
+`--allow-unfinished` accepts it: the row comes from the latest complete validation in
+segment order, and the CSV gets two more columns, `reached_step` and `partial`. The
+provenance records `partial_rows`, `reached_step` and the last training exit, and
+`complete` is false if any row is partial. The command prints one PARTIAL line. Such a
+table cannot be merged with `--merge`, because its columns differ.
+
 ## Validation
 
 ```bash
