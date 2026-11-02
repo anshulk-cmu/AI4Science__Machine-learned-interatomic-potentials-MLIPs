@@ -7,6 +7,7 @@
 # The GPU follows the variant: v100-32 for dense, dense_scaled, global, global_frozen; h100-80 for local6, element,
 # local_global, local12. --dry-run prints the plan and runs sbatch --test-only for the first segment; it submits nothing.
 # Optional environment: LONG_REPO (the code copy the jobs run), LONG_RUNS_DIR (where the run folder goes).
+umask 002                      # the run folder and chains.txt stay group-writable for the team (guide B9)
 set -uo pipefail
 usage() { echo "usage: submit_chain.sh VARIANT --steps N --seed S --segments K --hours H --eval-every E --ckpt-every C [--dry-run]"; exit 2; }
 VARIANT=${1:-}
