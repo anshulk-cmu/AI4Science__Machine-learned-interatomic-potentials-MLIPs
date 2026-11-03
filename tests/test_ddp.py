@@ -125,7 +125,7 @@ def case_oom(rank, tmp):
             outcome = "finished"
         except Exception as exc:
             outcome = f"{type(exc).__name__}: {exc}"
-    return {"outcome": outcome, "calls": len(calls), "freed": free.call_count, "seconds": time.time() - t0}
+    return {"outcome": outcome, "calls": len(calls), "freed": free.call_count, "seconds": time.time() - t0, "at": time.time()}
 
 
 def case_eval_probe_logs(rank, tmp):
@@ -211,12 +211,13 @@ class TwoProcessTests(unittest.TestCase):
         return [json.loads(Path(f"{out}.{r}").read_text(encoding="utf-8")) for r in (0, 1)], time.time() - t0, tmp
 
     def test_an_oom_on_one_rank_stops_it_at_once_and_the_other_rank_is_released(self):
-        (r0, r1), seconds, _ = self.spawn("case_oom")
+        (r0, r1), _, _ = self.spawn("case_oom")
         self.assertIn("OOM: train batch ran out of memory on rank 0 of 2", r0["outcome"])
         self.assertIn("the run stops", r0["outcome"])
         self.assertEqual((r0["calls"], r0["freed"]), (1, 0))       # no retry, no cleanup that could hide the error
         self.assertNotEqual(r1["outcome"], "finished")                 # its collective failed when rank 0 left
-        self.assertLess(seconds, 100)
+        # released within the 30 s process-group timeout of rank 0's error (in a real run torch elastic kills it after 30 s)
+        self.assertLess(r1["at"] - r0["at"], 45, r1["outcome"])
 
     def test_eval_counts_a_shared_batch_once_and_reduces_the_loss_probe_and_logs(self):
         (r0, r1), _, tmp = self.spawn("case_eval_probe_logs")
