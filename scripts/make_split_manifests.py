@@ -5,11 +5,13 @@
   write    the lists split_train_70, split_val_20, split_test_10 and their fixed subsets, split_samples.json and the
            row -> group -> set table (no data needed beyond the train_4M table)
   check    counts, shares, disjoint rows, compositions and calculation folders, distributions against a null of other
-           seeds, and the relation to the official val split and to the earlier lists; writes a JSON report
+           seeds, the relation to the official val split and to the earlier lists, and the rows a run of --steps steps
+           reads (fairchem's own batch sampler); writes a JSON report
 
-Whole compositions go to one set: shuffle the compositions with a seeded generator, take their rows in that order, and give
-each composition to the set in which the middle of its rows falls (70 and 90 percent of all rows are the borders). The
-written lists are the source of truth; split_samples.json holds their hashes for `check_pilot_data.py verify --samples`.
+Whole compositions go to one set, separately within each data source (the data_ids value of most of a composition's rows):
+shuffle the compositions of the source with a seeded generator, take their rows in that order, and give each composition to
+the set in which the middle of its rows falls (70 and 90 percent of the source's rows are the borders). The written lists
+are the source of truth; split_samples.json holds their hashes for `check_pilot_data.py verify --samples`.
 
   python scripts/make_split_manifests.py extract --data-root R --split train_4M --out keys_train_4M.npz --workers 16
   python scripts/make_split_manifests.py write --table keys_train_4M.npz [--out-dir manifests] [--assignment F.npz]
@@ -54,6 +56,11 @@ def read_keys(task):
     return out
 
 
+def load(path):
+    with np.load(path) as f:
+        return {k: f[k] for k in f.files}
+
+
 def factorize(values):
     """Integer codes into the sorted unique values, so codes do not depend on the reading order."""
     keys, codes = np.unique(np.asarray(values), return_inverse=True)
@@ -83,13 +90,23 @@ def extract(args):
           f"calculation folders, natoms equal metadata.npz for every row, {time.time() - t0:.0f} s", flush=True)
 
 
-def assign(group, seed=SEED, shares=SHARES):
-    """Set code of every row (0 train, 1 val, 2 test). Codes in `group` run 0..G-1."""
+def strata_of(group, labels):
+    """Stratum of each composition: the label (data_ids code) of most of its rows; a tie goes to the lower code."""
+    n = labels.max() + 1
+    return np.bincount(group.astype(np.int64) * n + labels, minlength=(group.max() + 1) * n).reshape(-1, n).argmax(axis=1)
+
+
+def assign(group, strata=None, seed=SEED, shares=SHARES):
+    """Set code of every row (0 train, 1 val, 2 test). Codes in `group` run 0..G-1; `strata` holds one code per group
+    (None: one stratum). One generator serves the strata in code order."""
     sizes = np.bincount(group)
-    order = np.random.default_rng(seed).permutation(len(sizes))
-    middle = np.cumsum(sizes[order]) - sizes[order] / 2
+    strata = np.zeros(len(sizes), np.int64) if strata is None else strata
+    rng = np.random.default_rng(seed)
     of_group = np.empty(len(sizes), np.int8)
-    of_group[order] = np.searchsorted(np.cumsum(shares)[:-1] * len(group), middle, side="right")
+    for s in np.unique(strata):
+        ids = rng.permutation(np.flatnonzero(strata == s))
+        middle = np.cumsum(sizes[ids]) - sizes[ids] / 2
+        of_group[ids] = np.searchsorted(np.cumsum(shares)[:-1] * sizes[ids].sum(), middle, side="right")
     return of_group[group]
 
 
@@ -98,9 +115,9 @@ def draw(rows, n, seed, exclude=None):
     return np.sort(np.random.default_rng(seed).choice(pool, n, replace=False))
 
 
-def build(group):
+def build(group, strata=None):
     """All lists as {name: sorted rows}, and the set code of every row."""
-    split = assign(group)
+    split = assign(group, strata)
     lists = {name: np.flatnonzero(split == k) for k, name in enumerate(LISTS)}
     for name, k, n, seed, exclude in SUBSETS:
         lists[name] = draw(lists[LISTS[k]], n, seed, lists.get(exclude))
@@ -123,9 +140,10 @@ def list_checks(lists, split, group, tolerance=TOLERANCE):
 
 
 def write(args):
-    table = np.load(args.table)
+    table = load(args.table)
     group = table["composition"]
-    lists, split = build(group)
+    strata = strata_of(group, table["data_ids"])
+    lists, split = build(group, strata)
     checks = list_checks(lists, split, group)
     for text, ok in checks.items():
         print(f"{'PASS' if ok else 'FAIL'}  {text}")
@@ -133,8 +151,10 @@ def write(args):
         raise SystemExit("a list check FAILED; nothing was written")
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    info = {"method": f"compositions in numpy.random.default_rng({SEED}).permutation order; each composition goes to the set "
-                      "where the middle of its rows falls on the cumulative row count (borders at 70 and 90 percent); "
+    info = {"method": "within each data source (the data_ids of most rows of a composition, in code order), the compositions "
+                      f"in numpy.random.default_rng({SEED}).permutation order (one generator); each composition goes to the "
+                      "set where the middle of its rows falls on the cumulative row count of the source (borders at 70 and "
+                      "90 percent); "
                       "subsets: default_rng(seed).choice(rows of the set not in the excluded list, n, replace=False), "
                       "sorted", "group_key": "composition (atoms.info['composition'])", "group_seed": SEED,
             "table_sha256": sha256(args.table), "lists": {}}
@@ -152,7 +172,7 @@ def write(args):
     (out / "split_samples.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8", newline="\n")
     if args.assignment:
         np.savez_compressed(args.assignment, split=split, group=group, group_keys=table["composition_keys"],
-                            set_names=np.array(SETS))
+                            group_stratum=strata, stratum_keys=table["data_ids_keys"], set_names=np.array(SETS))
 
 
 def describe_groups(codes):
@@ -196,15 +216,29 @@ def gaps(t, split):
     return out
 
 
+def sampler_rows(natoms, steps, seed, max_atoms=450):
+    """Batches per epoch, and rows in the first `steps` batches of epoch 0, with fairchem's own batch builder and order
+    (MaxAtomDistributedBatchSampler, one GPU, the run's seed and training.max_atoms)."""
+    import torch
+    from fairchem.core.datasets.samplers.max_atom_distributed_sampler import get_batches
+    order = np.random.default_rng(seed).permutation(len(natoms))
+    batches = get_batches(natoms[order].astype(np.int64), order, max_atoms, 0)[0]
+    g = torch.Generator()
+    g.manual_seed(seed)
+    first = torch.randperm(len(batches), generator=g)[:steps].tolist()
+    return len(batches), sum(len(batches[i]) for i in first)
+
+
 def check(args):
-    t = np.load(args.table)
+    t = load(args.table)
     info = json.loads((Path(args.lists_dir) / "split_samples.json").read_text(encoding="utf-8"))["lists"]
     lists = {name: read_rows(Path(args.lists_dir) / name) for name in info}
     group, n = t["composition"], len(t["composition"])
     split = np.full(n, -1, np.int8)
     for k, name in enumerate(LISTS):
         split[lists[name]] = k
-    rebuilt, _ = build(group)
+    strata = strata_of(group, t["data_ids"])
+    rebuilt, _ = build(group, strata)
     report = {"rows": n, "checks": {f"{name}: sha256 equals split_samples.json": sha256(Path(args.lists_dir) / name) == e["sha256"]
                                     for name, e in info.items()}}
     report["checks"]["lists equal the assignment recomputed from the table"] = all(
@@ -222,14 +256,14 @@ def check(args):
                         "rows_of_compositions_with_several_folders": int(np.isin(group, np.flatnonzero(systems_per_comp > 1)).sum()),
                         "folders_with_several_compositions": int((comp_per_system > 1).sum())}
     gap = gaps(t, split)
-    null = [gaps(t, assign(group, seed)) for seed in range(args.null_seeds)]
+    null = [gaps(t, assign(group, strata, seed)) for seed in range(args.null_seeds)]
     for pair, row in gap.items():
         for key in [k for k in row if not k.endswith("_at")]:
             values = np.array([s[pair][key] for s in null])
             row[key + "_null_p50_max"] = [float(np.median(values)), float(values.max())]
             row[key + "_rank_among_null"] = int((values < row[key]).sum())
     report["distributions"] = gap
-    report["distributions_note"] = (f"null: the same statistics for {args.null_seeds} other group orders (seeds 0 to "
+    report["distributions_note"] = (f"null: the same statistics for {args.null_seeds} other group orders of the same rule (seeds 0 to "
                                     f"{args.null_seeds - 1}); rank = how many null values are below this split's value")
     earlier = {}
     pilot = json.loads((MANIFESTS / "pilot_samples.json").read_text(encoding="utf-8"))["lists"]
@@ -238,7 +272,7 @@ def check(args):
         rows = read_rows(MANIFESTS / name)
         earlier[name] = {s: int((split[rows] == k).sum()) for k, s in enumerate(SETS)}
     if args.val_table:
-        v = np.load(args.val_table)
+        v = load(args.val_table)
         # membership per val composition, then per row through the codes
         in_set = [np.isin(v["composition_keys"], t["composition_keys"][np.unique(group[lists[name]])]) for name in LISTS]
         in_train_4M = np.isin(v["composition_keys"], t["composition_keys"])
@@ -252,6 +286,14 @@ def check(args):
             codes = v["composition"][read_rows(MANIFESTS / name)]
             earlier[name] = {f"rows whose composition is in {s}": int(m[codes].sum()) for s, m in zip(SETS, in_set)}
     report["earlier_lists"] = earlier
+    if args.steps:
+        train = {LISTS[0]: lists[LISTS[0]], **{name: read_rows(MANIFESTS / name) for name in EARLIER["train_4M"] if real}}
+        report["sampler"] = {name: {seed: dict(zip(("batches_per_epoch", f"rows_in_first_{args.steps}_batches"),
+                                                   sampler_rows(t["natoms"][rows], args.steps, seed))) for seed in range(5)}
+                             for name, rows in train.items()}
+        if real:      # the pilot logs: epoch-end validation at steps 27,375, 27,402 and 27,401 for seeds 0, 1, 2
+            got = [report["sampler"]["pilot_train_200k.txt"][s]["batches_per_epoch"] for s in range(3)]
+            report["checks"]["sampler gives the measured pilot epochs 27375, 27402, 27401"] = got == [27375, 27402, 27401]
     report["passed"] = all(report["checks"].values())
     Path(args.out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8", newline="\n")
     for text, ok in report["checks"].items():
@@ -280,6 +322,7 @@ def main():
     p.add_argument("--val-table", help="the extract output of val, for the relation to the official val split")
     p.add_argument("--lists-dir", default=str(MANIFESTS))
     p.add_argument("--null-seeds", type=int, default=20)
+    p.add_argument("--steps", type=int, default=150_000, help="run length for the rows-seen count (0: skip)")
     p.add_argument("--out", required=True)
     p.set_defaults(fn=check)
     args = ap.parse_args()
