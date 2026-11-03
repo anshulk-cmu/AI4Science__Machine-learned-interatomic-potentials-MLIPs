@@ -76,6 +76,19 @@ class SplitSamplerTests(unittest.TestCase):
         self.assertEqual(out["split_two_ranks_resumed_in_epoch1"]["mismatched_steps"], 0)
 
 
+class FingerprintTests(unittest.TestCase):
+    def test_a_copy_is_found_by_content_not_by_the_empty_sid(self):
+        from training.guarded_unit import batch_fingerprint
+        from training.resume_probe import set_hash, structure_hashes
+
+        a, b = Batch(["a", "b"], [3, 2]), Batch(["c", "d"], [3, 2])
+        self.assertEqual(a["sid"], b["sid"])                                     # what fairchem gives for OMol25 rows
+        self.assertNotEqual(batch_fingerprint(a), batch_fingerprint(b))
+        self.assertEqual(batch_fingerprint(a), batch_fingerprint(Batch(["a", "b"], [3, 2])))
+        self.assertEqual(set_hash(structure_hashes(a)), set_hash(structure_hashes(Batch(["b"], [2])) + structure_hashes(Batch(["a"], [3]))))
+        self.assertNotEqual(set_hash(structure_hashes(a)), set_hash(structure_hashes(b)))
+
+
 def gloo_works():
     try:
         torch.distributed.ProcessGroupGloo.create_device(hostname="127.0.0.1")
@@ -101,8 +114,13 @@ def bare_unit(cls):
 
 
 class Batch(dict):
-    def __init__(self, sids, sizes):
-        super().__init__(sid=sids, natoms=torch.tensor(sizes))
+    """Structures named by letters, each with its own positions. The sid is empty, as for every OMol25 row."""
+
+    def __init__(self, names, sizes):
+        pos = torch.cat([torch.full((n, 3), float(ord(s))) for s, n in zip(names, sizes)])
+        super().__init__(sid=[""] * len(names), natoms=torch.tensor(sizes), pos=pos,
+                         atomic_numbers=torch.ones(sum(sizes), dtype=torch.long))
+        self.names = names
 
 
 def case_oom(rank, tmp):
@@ -137,11 +155,11 @@ def case_eval_probe_logs(rank, tmp):
     from training import resume_probe as rp
 
     unit = bare_unit(gu.GuardedTrainEvalUnit)
-    value = {"a": 1.0, "b": 2.0, "c": 3.0, "d": 4.0}
+    value = {"a": 1.0, "b": 2.0, "c": 3.0, "d": 4.0, "e": 5.0}
     unit.eval_unit = types.SimpleNamespace(running_metrics={"forces": {"omol.val": {"mae": Metrics()}}}, total_loss_metrics=Metrics())
 
     def eval_step(self, state, data):
-        self.eval_unit.running_metrics["forces"]["omol.val"]["mae"] += Metrics(total=sum(value[s] for s in data["sid"]), numel=len(data["sid"]))
+        self.eval_unit.running_metrics["forces"]["omol.val"]["mae"] += Metrics(total=sum(value[s] for s in data.names), numel=len(data.names))
         self.eval_unit.total_loss_metrics += Metrics(metric=10.0 * (rank + 1), total=10.0 * (rank + 1), numel=1)
 
     seen = {}
@@ -154,8 +172,8 @@ def case_eval_probe_logs(rank, tmp):
     with mock.patch.object(MLIPTrainEvalUnit, "eval_step", eval_step), mock.patch.object(MLIPTrainEvalUnit, "on_eval_epoch_end", epoch_end), \
             mock.patch.object(MLIPTrainEvalUnit, "on_eval_epoch_start", lambda self, state: None):
         unit.on_eval_epoch_start(None)
-        unit.eval_step(None, Batch(["a", "b"] if rank == 0 else ["c"], [3, 3] if rank == 0 else [4]))   # one batch split in two
-        unit.eval_step(None, Batch(["d"], [9]))                                                          # held by both ranks
+        unit.eval_step(None, Batch(["a", "b"] if rank == 0 else ["c", "e"], [3, 3] if rank == 0 else [4, 2]))   # split in two parts of two
+        unit.eval_step(None, Batch(["d"], [9]))                                                                  # held by both ranks
         unit.on_eval_epoch_end(None)
     seen["rows"] = unit.eval_rows
 
@@ -173,8 +191,6 @@ def case_eval_probe_logs(rank, tmp):
     with mock.patch.object(MLIPTrainEvalUnit, "train_step", train_step):
         for step, data in enumerate(batches):
             probe.train_progress.num_steps_completed = step
-            data.update(atomic_numbers=torch.ones(int(data["natoms"].sum()), dtype=torch.long),
-                        pos=torch.zeros(int(data["natoms"].sum()), 3))
             probe.train_step(None, data)
 
     logging.getLogger().setLevel(logging.INFO)
@@ -222,16 +238,17 @@ class TwoProcessTests(unittest.TestCase):
     def test_eval_counts_a_shared_batch_once_and_reduces_the_loss_probe_and_logs(self):
         (r0, r1), _, tmp = self.spawn("case_eval_probe_logs")
         for r in (r0, r1):
-            self.assertEqual((r["mae_total"], r["mae_numel"]), (10.0, 4))      # a, b, c, d once each
+            self.assertEqual((r["mae_total"], r["mae_numel"]), (15.0, 5))      # a, b, c, e, d once each
             self.assertAlmostEqual(r["val_loss"], 15.0)                         # (10 + 20) / 2 ranks, per step
-        self.assertEqual(r0["rows"] + r1["rows"], 4)
+        self.assertEqual(r0["rows"] + r1["rows"], 5)
         import logging
         self.assertEqual((r0["log_level"], r1["log_level"]), (logging.INFO, logging.WARNING))
         from training import resume_probe as rp
         rows = (Path(tmp) / "probe" / "global" / "seg_1.csv").read_text(encoding="utf-8").splitlines()
         first, second = (line.split(",") for line in rows[1:])
-        self.assertEqual((first[3], first[4], first[5], float(first[6])), ("3", "10", rp.sids_hash(["c", "a", "b"]), 1.5))
-        self.assertEqual((second[3], second[4], second[5]), ("1", "7", rp.sids_hash(["d"])))
+        whole = rp.set_hash(rp.structure_hashes(Batch(["b", "c"], [2, 3])) + rp.structure_hashes(Batch(["a"], [5])))
+        self.assertEqual((first[3], first[4], first[5], float(first[6])), ("3", "10", whole, 1.5))
+        self.assertEqual((second[3], second[4], second[5]), ("1", "7", rp.set_hash(rp.structure_hashes(Batch(["d"], [7])))))
         for rank in (0, 1):
             self.assertEqual(len((Path(tmp) / "probe" / f"rank{rank}" / "seg_1.csv").read_text(encoding="utf-8").splitlines()), 3)
             self.assertTrue((Path(tmp) / "probe" / f"rank{rank}" / "mem_seg_1.csv").exists())

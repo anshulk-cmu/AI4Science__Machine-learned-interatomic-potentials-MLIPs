@@ -90,7 +90,8 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual((r["loss"], r["lr"], r["batch_sha256"]), (0.123456789012345, 4e-5, rp.batch_hash(batch())))
         # the whole step on one GPU: the same row, with the order-free hash of the structure ids
         self.assertEqual({k: v for k, v in whole[7].items() if k != "batch_sha256"}, {k: v for k, v in r.items() if k != "batch_sha256"})
-        self.assertEqual(whole[7]["batch_sha256"], rp.sids_hash(["b", "a"]))
+        self.assertEqual(whole[7]["batch_sha256"], rp.set_hash(rp.structure_hashes(batch((1, 0)))))
+        self.assertNotEqual(rp.set_hash(rp.structure_hashes(batch())), rp.set_hash(rp.structure_hashes(batch((0, 0)))))
         self.assertEqual(memory[0].split(",")[0], "step")
         self.assertEqual(memory[1].split(",")[:3], ["7", "2", "5"])
 

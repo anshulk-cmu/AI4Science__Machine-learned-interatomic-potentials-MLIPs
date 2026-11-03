@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import copy
 import gc
+import hashlib
 import logging
 
 import torch
@@ -28,6 +29,15 @@ from training.dense_scaled import lr_scaled
 def is_oom(exc: BaseException) -> bool:
     """True for torch.OutOfMemoryError and for the RuntimeError text CUDA raises, for example 'CUDA driver error: out of memory'."""
     return isinstance(exc, torch.OutOfMemoryError) or (isinstance(exc, RuntimeError) and "out of memory" in str(exc).lower())
+
+
+def batch_fingerprint(data) -> str:
+    """sha256 of the atom counts, atomic numbers and positions of a batch. Not the sid: an OMol25 row has no sid in its
+    data, so fairchem stores an empty string for every structure."""
+    h = hashlib.sha256()
+    for key in ("natoms", "atomic_numbers", "pos"):
+        h.update(data[key].detach().cpu().contiguous().numpy().tobytes())
+    return h.hexdigest()
 
 
 def free_memory() -> None:
@@ -97,15 +107,15 @@ class GuardedTrainEvalUnit(MLIPTrainEvalUnit):
         if distutils.get_world_size() == 1:
             self._run("eval", lambda: MLIPTrainEvalUnit.eval_step(self, state, data), data)
             return
-        sids = [None] * distutils.get_world_size()
-        torch.distributed.all_gather_object(sids, list(data["sid"]))
-        duplicate = sids[distutils.get_rank()] in sids[:distutils.get_rank()]
+        prints = [None] * distutils.get_world_size()
+        torch.distributed.all_gather_object(prints, batch_fingerprint(data))
+        duplicate = prints[distutils.get_rank()] in prints[:distutils.get_rank()]
         kept = copy.deepcopy(self.eval_unit.running_metrics) if duplicate else None
         self._run("eval", lambda: MLIPTrainEvalUnit.eval_step(self, state, data), data)
         if duplicate:
             self.eval_unit.running_metrics = kept      # the loss of the copy stays: DDPMTLoss already counts it W times
         else:
-            self.eval_rows += len(data["sid"])
+            self.eval_rows += int(data["natoms"].numel())
 
     def on_eval_epoch_start(self, state) -> None:
         self.eval_rows = 0

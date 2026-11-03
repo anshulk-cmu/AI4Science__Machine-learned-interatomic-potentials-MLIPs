@@ -5,8 +5,8 @@ step in the epoch, the batch size, a sha256 of the batch content, the loss, the 
 It also writes one JSON line when training starts (where a resumed run picks up) and after every validation (the
 metrics at full precision; the training log rounds them to 4 decimals).
 
-Rank 0 also writes probe/global/<name>: one row per step for the whole step over all ranks, with the sha256 of the
-sorted structure ids (so a run on W ranks compares with a run on one GPU), the structure and atom counts of all ranks
+Rank 0 also writes probe/global/<name>: one row per step for the whole step over all ranks, with an order-free sha256
+of its structures (so a run on W ranks compares with a run on one GPU), the structure and atom counts of all ranks
 and the global loss (the mean of the rank losses, which DDPMTLoss scales to the global batch). With several ranks
 the per-rank rows go to probe/rank<r>/<name> and batch_log itself is not written. Next to each per-rank file,
 mem_<name> holds the peak GPU memory of every step, and the events file gets a sha256 of the model and EMA weights at
@@ -36,8 +36,21 @@ def batch_hash(data) -> str:
     return h.hexdigest()
 
 
-def sids_hash(sids) -> str:
-    return hashlib.sha256("\n".join(sorted(map(str, sids))).encode("utf-8")).hexdigest()
+def structure_hashes(data) -> list[str]:
+    """sha256 of the atomic numbers and positions of each structure (OMol25 rows have an empty sid, see guarded_unit.py)."""
+    out, start = [], 0
+    for n in data["natoms"].tolist():
+        h = hashlib.sha256()
+        for key in ("atomic_numbers", "pos"):
+            h.update(data[key][start:start + n].detach().cpu().contiguous().numpy().tobytes())
+        out.append(h.hexdigest())
+        start += n
+    return out
+
+
+def set_hash(hashes) -> str:
+    """Order-free sha256 of a set of structures."""
+    return hashlib.sha256("\n".join(sorted(hashes)).encode("utf-8")).hexdigest()
 
 
 def probe_file(path: Path) -> Path:
@@ -105,14 +118,14 @@ class ProbeTrainEvalUnit(GuardedTrainEvalUnit):
         common = (repr(lr), repr(self.last_grad_norm))
         with self.batch_log.open("a", encoding="utf-8") as f:
             f.write(",".join(map(str, (step, epoch, in_epoch, structures, atoms, digest, repr(self.last_loss), *common))) + "\n")
-        sids, loss, counts = list(data["sid"]), self.last_loss, [structures, atoms]
+        hashes, loss, counts = structure_hashes(data), self.last_loss, [structures, atoms]
         if self.world > 1:
             gathered = [None] * self.world
-            torch.distributed.all_gather_object(gathered, (sids, loss, counts))
+            torch.distributed.all_gather_object(gathered, (hashes, loss, counts))
             loss = sum(g[1] for g in gathered) / self.world
             parts = [g for i, g in enumerate(gathered) if g[0] not in [h[0] for h in gathered[:i]]]   # a batch every rank holds counts once
-            sids = [s for g in parts for s in g[0]]
+            hashes = [s for g in parts for s in g[0]]
             counts = [sum(g[2][i] for g in parts) for i in (0, 1)]
         if self.global_log:
             with self.global_log.open("a", encoding="utf-8") as f:
-                f.write(",".join(map(str, (step, epoch, in_epoch, *counts, sids_hash(sids), repr(loss), *common))) + "\n")
+                f.write(",".join(map(str, (step, epoch, in_epoch, *counts, set_hash(hashes), repr(loss), *common))) + "\n")
