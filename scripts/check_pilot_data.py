@@ -3,7 +3,8 @@
   prep    write <data-root>/pilot/{train_4M,val}_index.npz, a copy of metadata.npz plus an integer field `index`,
           which fairchem's subset_to hook needs to select rows by number
   verify  compose configs/train.yaml with the given Hydra overrides, build the train and val datasets, and check that
-          they hold exactly the rows of the sample lists, and that the lists match their hashes
+          they hold exactly the rows of the sample lists, read from the split folder the manifest names (the 70/20/10
+          validation lists are rows of train_4M), and that the lists match their hashes
   stats   for the rows of one list: neighbours within the cutoff, force and energy scales with the official element
           references, elements, charges and spins, and the structure ids
 
@@ -90,6 +91,7 @@ def verify(args):
             "list sha256 equals manifest": sha256(rows_file) == info["sha256"],
             "list size equals manifest": len(want) == info["count"],
             "dataset rows equal list": got.shape == want.shape and bool((got == np.sort(want)).all()),
+            f"rows read from the {info['split']} folder": Path(str(sub.dataset.config["src"])).name == info["split"],
             "split size equals manifest": sub.dataset.num_samples == info["rows_in_split"],
         }
         for text, passed in checks.items():

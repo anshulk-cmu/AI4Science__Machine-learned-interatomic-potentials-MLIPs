@@ -6,7 +6,8 @@
 # failure). Each segment decides from the run folder what to do (slurm/long_run.sh).
 # The GPU follows the variant: v100-32 for dense, dense_scaled, global, global_frozen; h100-80 for local6, element,
 # local_global, local12. --dry-run prints the plan and runs sbatch --test-only for the first segment; it submits nothing.
-# Optional environment: LONG_REPO (the code copy the jobs run), LONG_RUNS_DIR (where the run folder goes).
+# Optional environment: LONG_REPO (the code copy the jobs run), LONG_RUNS_DIR (where the run folder goes), LONG_TRAIN_LIST,
+# LONG_VAL_LIST, LONG_VAL_SPLIT (the data of slurm/long_run.sh; unset, it uses split_train_70 and split_val_monitor_5k of train_4M).
 umask 002                      # the run folder and chains.txt stay group-writable for the team (guide B9)
 set -uo pipefail
 usage() { echo "usage: submit_chain.sh VARIANT --steps N --seed S --segments K --hours H --eval-every E --ckpt-every C [--dry-run]"; exit 2; }
@@ -39,12 +40,13 @@ REPO=${LONG_REPO:-$SHARED/repo/AI4Science-MLIPs}
 NAME=long_${VARIANT}_s${SEED}_${STEPS}
 RUN=${LONG_RUNS_DIR:-$SHARED/runs}/$NAME
 EXPORT="LONG_VARIANT=$VARIANT,LONG_STEPS=$STEPS,LONG_SEED=$SEED,LONG_EVAL_EVERY=$EVAL,LONG_CKPT_EVERY=$CKPT,LONG_SEGMENT_HOURS=$HOURS,LONG_REPO=$REPO"
-[ -n "${LONG_RUNS_DIR:-}" ] && EXPORT+=",LONG_RUNS_DIR=$LONG_RUNS_DIR"
+for v in LONG_RUNS_DIR LONG_TRAIN_LIST LONG_VAL_LIST LONG_VAL_SPLIT; do [ -n "${!v:-}" ] && EXPORT+=",$v=${!v}"; done
 OPTS=(-A che260063p -p GPU-shared "--gpus=$GPU:1" -t "$HOURS:00:00" "--job-name=$NAME" "--export=$EXPORT")
 JOBFILE=$REPO/slurm/long_run.job
 
 echo "run $NAME: $STEPS steps, seed $SEED, eval every $EVAL, checkpoint every $CKPT"
 echo "folder $RUN, code $REPO"
+echo "data: train ${LONG_TRAIN_LIST:-manifests/split_train_70.txt}, validation ${LONG_VAL_LIST:-manifests/split_val_monitor_5k.txt} from ${LONG_VAL_SPLIT:-train_4M}"
 echo "$SEGMENTS segments of at most $HOURS h on $GPU: at most $(( SEGMENTS * HOURS * RATE )) SU (only the hours used are charged)"
 if [ -f "$RUN/DONE" ]; then echo "DONE marker present: this run is finished; nothing to submit"; exit 0; fi
 if [ -f "$RUN/FAILED" ]; then echo "REFUSED: $RUN/FAILED exists: $(cat "$RUN/FAILED"). Fix the cause and delete it first."; exit 1; fi

@@ -7,7 +7,9 @@
 #   LONG_SEGMENT_HOURS (the Slurm time limit of this segment, 1 to 48).
 # Optional: LONG_STOP_MARGIN_SEC (1800: training stops this long before the limit, so this script can still write its markers),
 #   LONG_SHARED (the project's shared folder), LONG_REPO, LONG_RUNS_DIR, LONG_PY.
-# Data: manifests/long_train_1200k.txt (training) and manifests/pilot_val_5k.txt (validation, the report set).
+# Data (docs/data-split.md): LONG_TRAIN_LIST (manifests/split_train_70.txt) for training, LONG_VAL_LIST
+#   (manifests/split_val_monitor_5k.txt) for the validation every LONG_EVAL_EVERY steps, its rows read from the LONG_VAL_SPLIT
+#   folder (train_4M). The test rows (split_test_10.txt) are never read here.
 # Run folder <runs>/long_<variant>_s<seed>_<steps>: settings.txt (written once, checked by every later segment), summary.txt,
 #   segments.txt (ordered training logs and W&B files, read by scripts/collect_final_metrics.py), logs/, train/<name>/checkpoints.
 # The run is finished only when checkpoints/final/.metadata exists. Then this segment runs the size-consistency check and writes
@@ -63,8 +65,9 @@ record_wandb() {
 if [ -f "$RUN/DONE" ]; then note "DONE marker present: the run is finished, nothing to do"; exit 0; fi
 if [ -f "$RUN/FAILED" ]; then note "FAILED marker present ($(cat "$RUN/FAILED")); delete it after the fix to continue"; exit 1; fi
 
-PILOT_TRAIN_LIST=$REPO/manifests/long_train_1200k.txt PILOT_VAL_LIST=$REPO/manifests/pilot_val_5k.txt source "$REPO/slurm/pilot_data_overrides.sh"
-DATA_NOTE="fixed lists: $(basename "$TRAIN_LIST") sha256 $(sha256sum "$TRAIN_LIST" | cut -c1-16), $(basename "$VAL_LIST") sha256 $(sha256sum "$VAL_LIST" | cut -c1-16)"
+PILOT_TRAIN_LIST=${LONG_TRAIN_LIST:-$REPO/manifests/split_train_70.txt} PILOT_VAL_LIST=${LONG_VAL_LIST:-$REPO/manifests/split_val_monitor_5k.txt} \
+    PILOT_VAL_SPLIT=${LONG_VAL_SPLIT:-train_4M} source "$REPO/slurm/pilot_data_overrides.sh"
+DATA_NOTE="fixed lists: $(basename "$TRAIN_LIST") sha256 $(sha256sum "$TRAIN_LIST" | cut -c1-16), $(basename "$VAL_LIST") sha256 $(sha256sum "$VAL_LIST" | cut -c1-16) from $VAL_SPLIT"
 SETTINGS="variant=$VARIANT steps=$STEPS seed=$SEED data=$DATA_NOTE eval_every=$EVAL_EVERY ckpt_every=$CKPT_EVERY"
 if [ ! -f "$RUN/settings.txt" ]; then
     { echo "$SETTINGS"; echo "first_job=$JOB user=${USER:-unknown} repo=$REPO"; } > "$RUN/settings.txt"
@@ -78,8 +81,9 @@ note "segment start: $NAME, limit $HOURS h, GPU $(nvidia-smi --query-gpu=name --
 
 record_wandb
 if [ ! -f "$CKDIR/final/.metadata" ]; then
-    $PY -u -B scripts/check_pilot_data.py verify --samples manifests/long_samples.json --samples manifests/pilot_samples.json \
-        --train-rows "$TRAIN_LIST" --val-rows "$VAL_LIST" "${DATA_OVERRIDES[@]}" > "$LOGS/verify_$JOB.log" 2>&1
+    $PY -u -B scripts/check_pilot_data.py verify --samples manifests/split_samples.json --samples manifests/long_samples.json \
+        --samples manifests/pilot_samples.json --train-rows "$TRAIN_LIST" --val-rows "$VAL_LIST" "${DATA_OVERRIDES[@]}" \
+        > "$LOGS/verify_$JOB.log" 2>&1
     rc=$?
     grep -a -E 'PASS|FAIL|RESULT' "$LOGS/verify_$JOB.log" | tee -a "$SUMMARY"
     [ $rc -eq 0 ] || fail "the datasets do not match the fixed lists (log: $LOGS/verify_$JOB.log)"

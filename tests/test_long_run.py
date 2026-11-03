@@ -168,11 +168,16 @@ class LongRunTests(ShellCase):
         self.assertEqual(len(train), 2)
         for c in train:
             for arg in (f"+job.timestamp_id={run.name}", "training.steps=40", "training.ckpt_every=10", "training.eval_every=40",
-                        "job.seed=0", "long_train_1200k.txt", "pilot_val_5k.txt"):
+                        "job.seed=0", "rhv:" + posix(ROOT / "manifests/split_train_70.txt"),
+                        "rhv:" + posix(ROOT / "manifests/split_val_monitor_5k.txt"),
+                        "val_dataset.dataset_configs.omol.splits.val.src=" + posix(self.tmp / "shared/data/omol25/train_4M"),
+                        "val.metadata_path=" + posix(self.tmp / "shared/data/omol25/pilot/train_4M_index.npz")):
                 self.assertIn(arg, c)
             self.assertNotIn("max_steps", c)
+            self.assertNotIn("split_test", c)
         verify = [c for c in calls.splitlines() if "check_pilot_data.py verify" in c]
-        self.assertTrue(all("--samples manifests/long_samples.json --samples manifests/pilot_samples.json" in c for c in verify))
+        self.assertTrue(all("--samples manifests/split_samples.json --samples manifests/long_samples.json "
+                            "--samples manifests/pilot_samples.json" in c for c in verify))
         size = [c for c in calls.splitlines() if "check_checkpoint.py" in c]
         self.assertEqual(len(size), 1)
         self.assertIn("final/inference_ckpt.pt --gaps 8 10 15 25 100", size[0])
@@ -182,6 +187,7 @@ class LongRunTests(ShellCase):
         settings = (run / "settings.txt").read_text(encoding="utf-8")
         for key in ("variant", "seed", "steps"):
             self.assertEqual(len(re.findall(rf"(?:^|\s){key}=", settings)), 1)
+        self.assertRegex(settings, r"split_train_70\.txt sha256 \w{16}, split_val_monitor_5k\.txt sha256 \w{16} from train_4M ")
 
         before = self.calls_text()
         r = self.segment(103, STUB_TRAIN="crash")
@@ -194,6 +200,16 @@ class LongRunTests(ShellCase):
         self.assertEqual((row["variant"], row["seed"], row["force_mae_eV_per_A"]), ("dense", 0, 0.037))
         self.assertTrue(provenance["source"].endswith("train_102.log"))
         self.assertEqual([s for s, _ in discover(run, 40)], [0, 10, 20, 30, 40])
+
+    def test_lists_come_from_variables(self):
+        r = self.segment(151, STUB_TRAIN="finish", LONG_TRAIN_LIST=posix(ROOT / "manifests/long_train_1200k.txt"),
+                         LONG_VAL_LIST=posix(ROOT / "manifests/pilot_val_5k.txt"), LONG_VAL_SPLIT="val")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        train = [c for c in self.calls_text().splitlines() if "-m training.run" in c][0]
+        for arg in ("long_train_1200k.txt", "pilot_val_5k.txt", "splits.val.src=" + posix(self.tmp / "shared/data/omol25/val"),
+                    "val.metadata_path=" + posix(self.tmp / "shared/data/omol25/pilot/val_index.npz")):
+            self.assertIn(arg, train)
+        self.assertNotIn("split_", train)
 
     def test_crash_writes_failed_and_stops_the_chain(self):
         r = self.segment(201, STUB_TRAIN="crash")
@@ -302,6 +318,14 @@ class SubmitChainTests(ShellCase):
                     self.assertNotIn("afterok", c)
                 self.assertIn(" ".join(ids), (self.runs / f"long_{variant}_s1_300000" / "chains.txt").read_text(encoding="utf-8"))
                 self.assertGreaterEqual(GPU_MIB[gpu], min_mib("long_run.sh")[variant])
+                self.assertNotIn("LONG_VAL_LIST", calls[0])
+
+    def test_list_variables_reach_the_segments(self):
+        r = self.submit("dense", LONG_TRAIN_LIST="/x/a.txt", LONG_VAL_LIST="/x/b.txt", LONG_VAL_SPLIT="val")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("data: train /x/a.txt, validation /x/b.txt from val", r.stdout)
+        for c in self.sbatch_calls():
+            self.assertIn("LONG_TRAIN_LIST=/x/a.txt,LONG_VAL_LIST=/x/b.txt,LONG_VAL_SPLIT=val", c)
 
     def test_dry_run_submits_nothing(self):
         r = self.submit("local12", "--dry-run")
@@ -353,6 +377,17 @@ class LaunchFileTests(unittest.TestCase):
                 self.assertIn("export PILOT_STEPS=${PILOT_STEPS:-50000}", text)
                 self.assertNotIn("PILOT_SEED", text)      # the seed is the array task id
                 self.assertTrue(text.rstrip().endswith(f'/slurm/pilot.sh" {variant}'))
+
+    @unittest.skipUnless(BASH, "needs bash")
+    def test_pilot_overrides_read_val_by_default(self):
+        script = 'REPO=/r OMOL_DATA_ROOT=/d; source slurm/pilot_data_overrides.sh; printf "%s\\n" "${DATA_OVERRIDES[@]}"'
+        out = subprocess.run([BASH, "-c", script], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+        t, v = "train_dataset.dataset_configs.omol.splits.train", "val_dataset.dataset_configs.omol.splits.val"
+        self.assertEqual(out, [f"{t}.sample_n=null", f"{t}.no_shuffle=true", f"{t}.metadata_path=/d/pilot/train_4M_index.npz",
+                               f"{t}.subset_to=[{{metadata_key:index,op:in,rhv:/r/manifests/pilot_train_200k.txt}}]",
+                               f"{v}.src=/d/val", f"{v}.sample_n=null", f"{v}.no_shuffle=true",
+                               f"{v}.metadata_path=/d/pilot/val_index.npz",
+                               f"{v}.subset_to=[{{metadata_key:index,op:in,rhv:/r/manifests/pilot_val_5k.txt}}]"])
 
     def test_long_run_job_file(self):
         text = (ROOT / "slurm" / "long_run.job").read_text(encoding="utf-8")
