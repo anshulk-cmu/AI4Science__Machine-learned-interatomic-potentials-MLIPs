@@ -80,7 +80,10 @@ v100)
     export RESUME_TEST_DIR=$DIR/resume RESUME_REPO=$REPO RESUME_SEED=0 RESUME_CKPT_EVERY=100
     R="bash slurm/resume_test.sh"
     note "START Dense, one GPU each (S1 on GPU 0, S2 on GPU 1)"
-    RESUME_STEPS=400 CUDA_VISIBLE_DEVICES=0 $R dense S1 & RESUME_STEPS=400 CUDA_VISIBLE_DEVICES=1 $R dense S2 & wait
+    # wait for these two runs only: a bare wait would also wait for the endless GPU poll
+    RESUME_STEPS=400 CUDA_VISIBLE_DEVICES=0 $R dense S1 & A=$!
+    RESUME_STEPS=400 CUDA_VISIBLE_DEVICES=1 $R dense S2 & B=$!
+    wait $A $B
     step "Dense, two ranks: D1, D2, DB stopped by SIGTERM after step 250, DB resumed" env RESUME_STEPS=400 RESUME_RANKS=2 $R dense D1 D2 DB:term:250 DB
     step "Dense, two ranks against one GPU" compare --refs S1 S2 --tests D1 D2 --steps 400 --probe-dir probe/global --uninterrupted --out "$OUT/dense_two_ranks_vs_one"
     step "Dense, two-rank noise" compare --refs D1 D2 --tests S1 S2 --steps 400 --probe-dir probe/global --uninterrupted --out "$OUT/dense_one_vs_two_ranks"
@@ -88,7 +91,9 @@ v100)
         step "Dense, two-rank resume, probe/$p" compare --refs D1 D2 --tests DB --steps 400 --probe-dir probe/$p --out "$OUT/dense_resume_$p"
     done
     note "START Element, one GPU each (E1, E1b), 200 steps"
-    RESUME_STEPS=200 CUDA_VISIBLE_DEVICES=0 $R element E1:smallval & RESUME_STEPS=200 CUDA_VISIBLE_DEVICES=1 $R element E1b:smallval & wait
+    RESUME_STEPS=200 CUDA_VISIBLE_DEVICES=0 $R element E1:smallval & A=$!
+    RESUME_STEPS=200 CUDA_VISIBLE_DEVICES=1 $R element E1b:smallval & B=$!
+    wait $A $B
     for spec in "element E2:smallval" "local_global LG2:smallval" "local12 L12:smallval"; do
         step "two ranks, 200 steps: $spec" env RESUME_STEPS=200 RESUME_RANKS=2 $R $spec
     done
