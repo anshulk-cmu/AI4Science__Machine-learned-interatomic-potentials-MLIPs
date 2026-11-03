@@ -41,26 +41,26 @@
       "subset_of": "split_val_20.txt",
       "sha256": "4aa3aae414296dfb4d9f55792717869ba8acd455e60f018eadaf6c6b0e0108c3"
     },
-    "split_val_select_20k.txt": {
+    "split_val_select_10k.txt": {
       "split": "train_4M",
       "rows_in_split": 3986754,
-      "count": 20000,
+      "count": 10000,
       "seed": 11792,
-      "first": 220,
-      "last": 3986726,
+      "first": 229,
+      "last": 3985872,
       "subset_of": "split_val_20.txt",
       "disjoint_from": "split_val_monitor_5k.txt",
-      "sha256": "a8d526665ef1597e447f269578b777999b356a5b728bc32e6bb5f5bd0553ee77"
+      "sha256": "dfa6ffbd71290f91f390f034350cf2dad8e1ed7a61e7538ac84e16a70d3f4ec7"
     },
-    "split_test_eval_20k.txt": {
+    "split_test_eval_10k.txt": {
       "split": "train_4M",
       "rows_in_split": 3986754,
-      "count": 20000,
+      "count": 10000,
       "seed": 11793,
-      "first": 537,
-      "last": 3986735,
+      "first": 718,
+      "last": 3986582,
       "subset_of": "split_test_10.txt",
-      "sha256": "54b907fc5d00f0186965497b18831094a597ebf14bb040b100f3a7f24c9156e9"
+      "sha256": "d7b093aa22949416615a3dd0875d219fe41f4611d35600c1eb42f4fb40617193"
     }
   }
 }

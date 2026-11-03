@@ -37,8 +37,8 @@ SEED = 11790                          # the group order; the earlier lists used 
 LISTS = ("split_train_70.txt", "split_val_20.txt", "split_test_10.txt")
 # name, set it is drawn from, size, seed, list it must not share a row with
 SUBSETS = (("split_val_monitor_5k.txt", 1, 5_000, SEED + 1, None),
-           ("split_val_select_20k.txt", 1, 20_000, SEED + 2, "split_val_monitor_5k.txt"),
-           ("split_test_eval_20k.txt", 2, 20_000, SEED + 3, None))
+           ("split_val_select_10k.txt", 1, 10_000, SEED + 2, "split_val_monitor_5k.txt"),
+           ("split_test_eval_10k.txt", 2, 10_000, SEED + 3, None))
 EARLIER = {"train_4M": ("pilot_train_200k.txt", "long_train_1200k.txt"), "val": ("pilot_val_5k.txt", "select_val_5k.txt")}
 
 

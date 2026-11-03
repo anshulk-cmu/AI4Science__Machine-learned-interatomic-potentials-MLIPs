@@ -66,7 +66,7 @@ class AssignTests(unittest.TestCase):
         lists, split = msm.build(group)
         checks = msm.list_checks(lists, split, group)
         self.assertTrue(all(checks.values()), checks)
-        self.assertEqual([len(lists[name]) for name, *_ in msm.SUBSETS], [5_000, 20_000, 20_000])
+        self.assertEqual([len(lists[name]) for name, *_ in msm.SUBSETS], [5_000, 10_000, 10_000])
         again, _ = msm.build(group)
         self.assertTrue(all(np.array_equal(lists[k], again[k]) for k in lists))
 
@@ -76,10 +76,10 @@ class AssignTests(unittest.TestCase):
         checks = msm.list_checks(bad, split, group)
         self.assertFalse(checks["every row in exactly one set"])
         self.assertFalse(checks["no composition in two sets"])
-        bad = dict(lists, **{"split_val_select_20k.txt": lists["split_val_monitor_5k.txt"]})
+        bad = dict(lists, **{"split_val_select_10k.txt": lists["split_val_monitor_5k.txt"]})
         checks = msm.list_checks(bad, split, group)
-        self.assertFalse(checks["split_val_select_20k.txt: no row of split_val_monitor_5k.txt"])
-        self.assertFalse(checks["split_val_select_20k.txt: 20000 distinct rows of split_val_20.txt"])
+        self.assertFalse(checks["split_val_select_10k.txt: no row of split_val_monitor_5k.txt"])
+        self.assertFalse(checks["split_val_select_10k.txt: 10000 distinct rows of split_val_20.txt"])
         lopsided = np.where(split == 2, 1, split).astype(np.int8)     # no test set
         checks = msm.list_checks({**lists, "split_test_10.txt": np.flatnonzero(lopsided == 2)}, lopsided, group)
         self.assertFalse(checks["split_test_10.txt: share within 0.5 points of 0.1"])
@@ -91,7 +91,7 @@ class AssignTests(unittest.TestCase):
             msm.write(Namespace(table=str(table), out_dir=str(out), assignment=str(Path(tmp) / "assign.npz")))
             info = json.loads((out / "split_samples.json").read_text(encoding="utf-8"))
             self.assertEqual(info["table_sha256"], hashlib.sha256(table.read_bytes()).hexdigest())
-            self.assertEqual(info["lists"]["split_val_select_20k.txt"]["disjoint_from"], "split_val_monitor_5k.txt")
+            self.assertEqual(info["lists"]["split_val_select_10k.txt"]["disjoint_from"], "split_val_monitor_5k.txt")
             with self.assertRaises(SystemExit) as done:
                 msm.check(Namespace(table=str(table), val_table=str(table), lists_dir=str(out), null_seeds=2, steps=200,
                                     out=str(Path(tmp) / "checks.json")))

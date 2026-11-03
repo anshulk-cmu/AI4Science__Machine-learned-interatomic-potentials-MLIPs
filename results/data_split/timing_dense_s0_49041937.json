@@ -1,0 +1,31 @@
+{
+  "checkpoint": "/ocean/projects/che260063p/shared/runs/pilot_dense_s0_49041937/train/202610-1117-0510-e3d7/checkpoints/final/inference_ckpt.pt",
+  "rows": "manifests/split_test_10.txt",
+  "n": 300,
+  "device": "cuda",
+  "gpu": "Tesla V100-SXM2-32GB",
+  "torch": "2.8.0+cu128",
+  "atoms_mean": 52.57666666666667,
+  "runs": [
+    {
+      "dtype": "float32",
+      "load_s": 7.086815589107573,
+      "eval_s": 19.487509172875434,
+      "s_per_structure": 0.06495836390958477,
+      "energy_mae_per_atom_eV": 0.015085001689661324,
+      "force_mae_eV_per_A": 0.06023621184164409,
+      "n_structures": 300,
+      "n_force_components": 47319
+    },
+    {
+      "dtype": "float64",
+      "load_s": 0.5420472309924662,
+      "eval_s": 22.299603232182562,
+      "s_per_structure": 0.07433201077394187,
+      "energy_mae_per_atom_eV": 0.015085045067606353,
+      "force_mae_eV_per_A": 0.060235409715611435,
+      "n_structures": 300,
+      "n_force_components": 47319
+    }
+  ]
+}
