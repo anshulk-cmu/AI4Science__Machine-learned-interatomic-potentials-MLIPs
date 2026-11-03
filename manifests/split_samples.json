@@ -1,0 +1,66 @@
+{
+  "method": "within each data source (the data_ids of most rows of a composition, in code order), the compositions in numpy.random.default_rng(11790).permutation order (one generator); each composition goes to the set where the middle of its rows falls on the cumulative row count of the source (borders at 70 and 90 percent); subsets: default_rng(seed).choice(rows of the set not in the excluded list, n, replace=False), sorted",
+  "group_key": "composition (atoms.info['composition'])",
+  "group_seed": 11790,
+  "table_sha256": "155f2364eaf1e9008c37d203e5bb1dda837f4609c2e5a5b16e62f3fada17180d",
+  "lists": {
+    "split_train_70.txt": {
+      "split": "train_4M",
+      "rows_in_split": 3986754,
+      "count": 2791057,
+      "seed": 11790,
+      "first": 0,
+      "last": 3986753,
+      "sha256": "f57e446a78c486252012e93b74c6d07d70ffef764f09b3c4b8466154b52e1979"
+    },
+    "split_val_20.txt": {
+      "split": "train_4M",
+      "rows_in_split": 3986754,
+      "count": 796421,
+      "seed": 11790,
+      "first": 4,
+      "last": 3986752,
+      "sha256": "d963a939aef7ea9b5f024d34f642017d5121b2fb0d76416fb53853f0004633b6"
+    },
+    "split_test_10.txt": {
+      "split": "train_4M",
+      "rows_in_split": 3986754,
+      "count": 399276,
+      "seed": 11790,
+      "first": 7,
+      "last": 3986741,
+      "sha256": "3f13039de47b76f70763a2f6f07ac22e792ae9f0724bfcffd392fe9414f9d155"
+    },
+    "split_val_monitor_5k.txt": {
+      "split": "train_4M",
+      "rows_in_split": 3986754,
+      "count": 5000,
+      "seed": 11791,
+      "first": 156,
+      "last": 3985578,
+      "subset_of": "split_val_20.txt",
+      "sha256": "4aa3aae414296dfb4d9f55792717869ba8acd455e60f018eadaf6c6b0e0108c3"
+    },
+    "split_val_select_20k.txt": {
+      "split": "train_4M",
+      "rows_in_split": 3986754,
+      "count": 20000,
+      "seed": 11792,
+      "first": 220,
+      "last": 3986726,
+      "subset_of": "split_val_20.txt",
+      "disjoint_from": "split_val_monitor_5k.txt",
+      "sha256": "a8d526665ef1597e447f269578b777999b356a5b728bc32e6bb5f5bd0553ee77"
+    },
+    "split_test_eval_20k.txt": {
+      "split": "train_4M",
+      "rows_in_split": 3986754,
+      "count": 20000,
+      "seed": 11793,
+      "first": 537,
+      "last": 3986735,
+      "subset_of": "split_test_10.txt",
+      "sha256": "54b907fc5d00f0186965497b18831094a597ebf14bb040b100f3a7f24c9156e9"
+    }
+  }
+}
