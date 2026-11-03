@@ -11,6 +11,8 @@ passes a numeric check when its largest difference to any reference run is at mo
 must match exactly. The criteria were fixed before the runs (see the doc).
 
 Usage (repository root): python scripts/resume_compare.py TEST_DIR --refs A1 A2 A3 --tests B C --steps 400 --out OUT_PREFIX
+Runs on several ranks (docs/ddp.md): --probe-dir probe/rank0 (or rank1) compares one rank's batches, --probe-dir probe/global
+the whole step. --uninterrupted compares runs that were never stopped (a two-rank run against one-GPU runs).
 """
 import argparse
 import csv
@@ -56,8 +58,8 @@ def merge_segments(segments):
     return merged, starts
 
 
-def load_run(run_dir):
-    paths = sorted((run_dir / "probe").glob("seg_*.csv"), key=lambda p: int(p.stem.split("_")[1]))
+def load_run(run_dir, probe_dir="probe"):
+    paths = sorted((run_dir / probe_dir).glob("seg_*.csv"), key=lambda p: int(p.stem.split("_")[1]))
     segments = [s for p in paths for s in read_segments(p)]
     rows, starts = merge_segments(segments)
     evals = []
@@ -97,14 +99,15 @@ def numeric_check(name, test_value, noise):
     return {"check": name, "value": test_value, "noise": noise, "limit": limit, "pass": test_value <= limit}
 
 
-def compare(refs, test, steps, resume_steps):
+def compare(refs, test, steps, resume_steps, resumed=True):
     """All checks of one resumed run against the reference runs. resume_steps: the steps compared numerically."""
     out = []
     all_steps = range(steps)
     complete = all(s in test["rows"] for s in all_steps) and len(test["rows"]) == steps
     out.append({"check": "steps 0 to N-1 all present once, after merging segments", "pass": complete,
                 "value": f"{len(test['rows'])} steps, segments start at {test['starts']}"})
-    out.append({"check": "run was resumed (two or more segments)", "pass": len(test["starts"]) >= 2, "value": test["starts"]})
+    if resumed:
+        out.append({"check": "run was resumed (two or more segments)", "pass": len(test["starts"]) >= 2, "value": test["starts"]})
     if not complete:
         return out
     for key in ("batch_sha256", "epoch", "step_in_epoch", "structures", "atoms"):
@@ -180,16 +183,18 @@ def main():
     ap.add_argument("--steps", type=int, required=True)
     ap.add_argument("--epoch-check", action="store_true", help="also check the batches of epoch 0 and epoch 1")
     ap.add_argument("--out", type=Path, required=True, help="prefix of the output files (_steps.csv, _checks.json)")
+    ap.add_argument("--probe-dir", default="probe", help="probe folder inside each run folder")
+    ap.add_argument("--uninterrupted", action="store_true", help="the tests were never stopped: compare every step")
     args = ap.parse_args()
     if len(args.refs) < 2:
         ap.error("need at least two reference runs for a noise floor")
 
-    refs = [load_run(args.test_dir / n) for n in args.refs]
-    tests = [load_run(args.test_dir / n) for n in args.tests]
+    refs = [load_run(args.test_dir / n, args.probe_dir) for n in args.refs]
+    tests = [load_run(args.test_dir / n, args.probe_dir) for n in args.tests]
     result = {"factor": FACTOR, "floor": FLOOR, "runs": {}}
     for t in tests:
-        start = t["starts"][-1] if len(t["starts"]) >= 2 else 0
-        checks = compare(refs, t, args.steps, list(range(start, args.steps)))
+        start = t["starts"][-1] if len(t["starts"]) >= 2 and not args.uninterrupted else 0
+        checks = compare(refs, t, args.steps, list(range(start, args.steps)), resumed=not args.uninterrupted)
         if args.epoch_check:
             checks += epoch_check(t)
         result["runs"][t["name"]] = checks

@@ -3,15 +3,23 @@
 When a batch runs out of memory the unit logs an event with the memory state, clears the gradients, collects Python
 garbage, empties the CUDA cache, and runs the same batch again, up to `max_oom_retries` times. A batch that still fails
 stops the run with a clear message, so a real memory problem is seen instead of hidden. Every `gc_every` steps Python
-garbage is collected and the CUDA cache is emptied. Single process only.
+garbage is collected and the CUDA cache is emptied.
+
+With more than one rank (docs/ddp.md) a retry is not safe: the other ranks already wait in a collective of the same step
+(the loss sample count, the DDP gradient buckets), and a retry would pair its collectives with theirs. So an out-of-memory
+error stops the run at once, and torch elastic stops the other ranks. The eval step counts a batch that every rank holds
+(training/split_sampler.py) only once, val/loss is reduced over the ranks, and ranks above 0 log warnings and errors only.
 """
 from __future__ import annotations
 
+import copy
 import gc
 import logging
 
 import torch
 
+from fairchem.core.common import distutils
+from fairchem.core.units.mlip_unit._metrics import Metrics
 from fairchem.core.units.mlip_unit.mlip_unit import MLIPTrainEvalUnit
 
 from training.dense_scaled import lr_scaled
@@ -45,6 +53,8 @@ class GuardedTrainEvalUnit(MLIPTrainEvalUnit):
         self.max_oom_retries = max_oom_retries
         self.oom_events = {"train": 0, "eval": 0}          # out-of-memory errors seen
         self.oom_recovered = {"train": 0, "eval": 0}       # batches that ran after a cleanup and a retry
+        if distutils.get_world_size() > 1 and distutils.get_rank() > 0:
+            logging.getLogger().setLevel(logging.WARNING)  # one copy of every per-step and validation line
 
     def _run(self, kind: str, step, data) -> None:
         for attempt in range(self.max_oom_retries + 1):
@@ -54,6 +64,11 @@ class GuardedTrainEvalUnit(MLIPTrainEvalUnit):
                 if not is_oom(exc):
                     raise
                 message = str(exc)
+                if distutils.get_world_size() > 1:
+                    raise RuntimeError(f"OOM: {kind} batch ran out of memory on rank {distutils.get_rank()} of "
+                                       f"{distutils.get_world_size()}. With several ranks a retry could pair collectives "
+                                       f"of different steps, so the run stops; the last checkpoint stays on disk. "
+                                       f"{memory_note()} ({message})") from exc
             else:
                 if attempt:
                     self.oom_recovered[kind] += 1
@@ -79,7 +94,33 @@ class GuardedTrainEvalUnit(MLIPTrainEvalUnit):
             free_memory()
 
     def eval_step(self, state, data) -> None:
+        if distutils.get_world_size() == 1:
+            self._run("eval", lambda: MLIPTrainEvalUnit.eval_step(self, state, data), data)
+            return
+        sids = [None] * distutils.get_world_size()
+        torch.distributed.all_gather_object(sids, list(data["sid"]))
+        duplicate = sids[distutils.get_rank()] in sids[:distutils.get_rank()]
+        kept = copy.deepcopy(self.eval_unit.running_metrics) if duplicate else None
         self._run("eval", lambda: MLIPTrainEvalUnit.eval_step(self, state, data), data)
+        if duplicate:
+            self.eval_unit.running_metrics = kept      # the loss of the copy stays: DDPMTLoss already counts it W times
+        else:
+            self.eval_rows += len(data["sid"])
+
+    def on_eval_epoch_start(self, state) -> None:
+        self.eval_rows = 0
+        super().on_eval_epoch_start(state)
+
+    def on_eval_epoch_end(self, state) -> None:
+        world = distutils.get_world_size()
+        if world > 1:
+            # each rank's loss is its share of the global batch loss times W, so the global mean is the sum over ranks / W
+            m = self.eval_unit.total_loss_metrics
+            total = distutils.all_reduce(m.total, device=distutils.get_device_for_local_rank()) / world
+            self.eval_unit.total_loss_metrics = Metrics(metric=total / m.numel, total=total, numel=m.numel)
+            rows = distutils.all_reduce(self.eval_rows, device=distutils.get_device_for_local_rank())
+            logging.info(f"Validation on {world} ranks: {rows} rows, each counted once; {m.numel} steps per rank")
+        super().on_eval_epoch_end(state)
 
     def on_train_end(self, state) -> None:
         e, r = self.oom_events, self.oom_recovered

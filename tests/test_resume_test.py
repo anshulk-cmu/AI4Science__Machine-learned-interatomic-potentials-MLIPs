@@ -71,8 +71,10 @@ class ProbeTests(unittest.TestCase):
             unit.optimizer = types.SimpleNamespace(param_groups=[{"lr": 4e-5}], zero_grad=lambda **k: None)
             unit.logger, unit.last_grad_norm = None, 2.5
             unit.train_progress = types.SimpleNamespace(num_steps_completed=7, num_epochs_completed=1, num_steps_completed_in_epoch=3)
-            unit.batch_log = Path(tmp) / "seg_1.csv"
-            unit.batch_log.write_text(rp.COLUMNS + "\n", encoding="utf-8")
+            unit.world, unit.rank = 1, 0
+            unit.batch_log = rp.probe_file(Path(tmp) / "seg_1.csv")
+            unit.global_log = rp.probe_file(Path(tmp) / "global" / "seg_1.csv")
+            unit.memory_log = Path(tmp) / "mem_seg_1.csv"
 
             def fake_step(self, state, data):
                 self.last_loss = 0.123456789012345
@@ -80,10 +82,17 @@ class ProbeTests(unittest.TestCase):
             with mock.patch.object(MLIPTrainEvalUnit, "train_step", fake_step):
                 unit.train_step(None, batch())
             rows = rc.read_segments(unit.batch_log)[0]
+            whole = rc.read_segments(unit.global_log)[0]
+            memory = unit.memory_log.read_text(encoding="utf-8").splitlines()
         self.assertEqual(list(rows), [7])
         r = rows[7]
         self.assertEqual((r["epoch"], r["step_in_epoch"], r["structures"], r["atoms"]), (1, 3, 2, 5))
         self.assertEqual((r["loss"], r["lr"], r["batch_sha256"]), (0.123456789012345, 4e-5, rp.batch_hash(batch())))
+        # the whole step on one GPU: the same row, with the order-free hash of the structure ids
+        self.assertEqual({k: v for k, v in whole[7].items() if k != "batch_sha256"}, {k: v for k, v in r.items() if k != "batch_sha256"})
+        self.assertEqual(whole[7]["batch_sha256"], rp.sids_hash(["b", "a"]))
+        self.assertEqual(memory[0].split(",")[0], "step")
+        self.assertEqual(memory[1].split(",")[:3], ["7", "2", "5"])
 
 
 class ViableCheckpointTests(unittest.TestCase):
@@ -165,6 +174,21 @@ class CompareTests(unittest.TestCase):
     def test_missing_step_fails(self):
         result = self.checks(segments=[(1, 0, 4), (2, 6, 9)])
         self.assertFalse(result["steps 0 to N-1 all present once, after merging segments"])
+
+    def test_uninterrupted_runs_and_a_probe_subfolder(self):
+        # two-rank runs keep their rows in probe/rank<r> and probe/global; a two-rank run is compared with one-GPU runs from step 0
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, noise in (("S1", 0.0), ("S2", 1e-3), ("D1", 5e-4)):
+                run = write_run(tmp, name, [(1, 0, 9)], loss_noise=noise)
+                (run / "probe" / "global").mkdir()
+                for f in (run / "probe").glob("seg_*"):
+                    f.rename(run / "probe" / "global" / f.name)
+            refs = [rc.load_run(Path(tmp) / n, "probe/global") for n in ("S1", "S2")]
+            test = rc.load_run(Path(tmp) / "D1", "probe/global")
+            checks = {c["check"]: c["pass"] for c in rc.compare(refs, test, 10, list(range(10)), resumed=False)}
+            self.assertNotIn("run was resumed (two or more segments)", checks)
+            self.assertTrue(all(checks.values()), checks)
+            self.assertEqual(rc.load_run(Path(tmp) / "D1")["rows"], {})
 
     def test_epoch_check(self):
         rows = {s: {"epoch": 0 if s < 4 else 1, "batch_sha256": h} for s, h in enumerate("abcdbca")}
