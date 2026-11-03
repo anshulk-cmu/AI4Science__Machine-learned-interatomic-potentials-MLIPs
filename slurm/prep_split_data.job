@@ -3,12 +3,14 @@
 #SBATCH -p RM-shared
 #SBATCH -t 2:00:00
 #SBATCH -N 1
-#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-node=8
 #SBATCH --job-name=prep_split_data
 #SBATCH --output=/ocean/projects/che260063p/shared/logs/slurm-%j.out
 #SBATCH --mail-type=ALL,TIME_LIMIT_80
 #SBATCH --mail-user=anshulk@andrew.cmu.edu
-# made by make_sbatch.py from the Bridges-2 guide; estimated at most 32 SU
+# made by make_sbatch.py from the Bridges-2 guide; estimated at most 16 SU (2 h x 8 cores)
+# Job 50162814 ran this with 16 cores to read the keys (12 min). With the tables in place, the lists check runs one
+# process at a time; 8 cores give 16 GB for the two key tables (about 4 GB in memory) and their string comparisons.
 # files created here are owned by the Unix group in effect at submission (p. 7):
 # submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/logs' afterwards
 umask 002                      # files stay group-writable for the project team (guide B9)

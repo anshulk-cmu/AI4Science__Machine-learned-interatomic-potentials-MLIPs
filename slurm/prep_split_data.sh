@@ -52,6 +52,13 @@ if [ -f manifests/split_samples.json ]; then
     stage verify_samples $PY -u -B scripts/check_pilot_data.py verify --samples manifests/split_samples.json \
         --train-rows "$TRAIN_LIST" --val-rows "$VAL_LIST" "${DATA_OVERRIDES[@]}"
     grep -a -E 'PASS|FAIL|RESULT' "$LOGS/verify_samples.log" | tee -a "$SUMMARY"
+    # The same lists with the validation rows read from the official val folder must fail the check.
+    PILOT_TRAIN_LIST=$TRAIN_LIST PILOT_VAL_LIST=$VAL_LIST PILOT_VAL_SPLIT=val source "$REPO/slurm/pilot_data_overrides.sh"
+    $PY -u -B scripts/check_pilot_data.py verify --samples manifests/split_samples.json --train-rows "$TRAIN_LIST" \
+        --val-rows "$VAL_LIST" "${DATA_OVERRIDES[@]}" > "$LOGS/verify_wrong_folder.log" 2>&1
+    if [ $? -ne 0 ] && grep -q "FAIL  split_val_monitor_5k.txt: rows read from the train_4M folder" "$LOGS/verify_wrong_folder.log"; then
+        note "PASS  verify fails when the validation rows are read from val (log: $LOGS/verify_wrong_folder.log)"
+    else note "FAIL  verify did not catch validation rows read from val"; FAILED=1; fi
     stage check $PY -u -B scripts/make_split_manifests.py check --table "$OUT/keys_train_4M.npz" \
         --val-table "$OUT/keys_val.npz" --out "$RUN/checks.json"
     grep -a -E 'PASS|FAIL|RESULT' "$LOGS/check.log" | tee -a "$SUMMARY"
