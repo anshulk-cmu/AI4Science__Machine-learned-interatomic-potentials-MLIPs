@@ -11,6 +11,8 @@
 # made by make_sbatch.py from the Bridges-2 guide; estimated at most 16 SU (2 h x 8 cores)
 # Job 50162814 ran this with 16 cores to read the keys (12 min). With the tables in place, the lists check runs one
 # process at a time; 8 cores give 16 GB for the two key tables (about 4 GB in memory) and their string comparisons.
+# Runs the code copy that `b2.py syncrepo <this repository> /ocean/projects/che260063p/shared/repo_split` makes; that copy
+# was deleted after the runs of 2026-11-03, so make it again before a rerun (never point this at shared/repo while chains run).
 # files created here are owned by the Unix group in effect at submission (p. 7):
 # submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/logs' afterwards
 umask 002                      # files stay group-writable for the project team (guide B9)

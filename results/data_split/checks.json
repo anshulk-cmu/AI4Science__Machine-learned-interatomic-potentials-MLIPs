@@ -1,0 +1,299 @@
+{
+  "rows": 3986754,
+  "checks": {
+    "split_train_70.txt: sha256 equals split_samples.json": true,
+    "split_val_20.txt: sha256 equals split_samples.json": true,
+    "split_test_10.txt: sha256 equals split_samples.json": true,
+    "split_val_monitor_5k.txt: sha256 equals split_samples.json": true,
+    "split_val_select_10k.txt: sha256 equals split_samples.json": true,
+    "split_test_eval_10k.txt: sha256 equals split_samples.json": true,
+    "lists equal the assignment recomputed from the table": true,
+    "split_train_70.txt: share within 0.5 points of 0.7": true,
+    "split_val_20.txt: share within 0.5 points of 0.2": true,
+    "split_test_10.txt: share within 0.5 points of 0.1": true,
+    "every row in exactly one set": true,
+    "no composition in two sets": true,
+    "split_val_monitor_5k.txt: 5000 distinct rows of split_val_20.txt": true,
+    "split_val_select_10k.txt: 10000 distinct rows of split_val_20.txt": true,
+    "split_val_select_10k.txt: no row of split_val_monitor_5k.txt": true,
+    "split_test_eval_10k.txt: 10000 distinct rows of split_test_10.txt": true,
+    "no calculation folder in two sets": true,
+    "sampler gives the measured pilot epochs 27375, 27402, 27401": true
+  },
+  "sets": {
+    "split_train_70.txt": {
+      "rows": 2791057,
+      "share": 0.700082573441953,
+      "gap_points": 0.008257344195305993,
+      "compositions": 790983,
+      "calculation_folders": 2725168
+    },
+    "split_val_20.txt": {
+      "rows": 796421,
+      "share": 0.19976677768430157,
+      "gap_points": -0.023322231569844476,
+      "compositions": 225311,
+      "calculation_folders": 777305
+    },
+    "split_test_10.txt": {
+      "rows": 399276,
+      "share": 0.1001506488737454,
+      "gap_points": 0.01506488737453987,
+      "compositions": 110864,
+      "calculation_folders": 389757
+    }
+  },
+  "groups": {
+    "composition": {
+      "groups": 1127158,
+      "rows_per_group_p50_p90_p99": [
+        1.0,
+        4.0,
+        28.0
+      ],
+      "largest_groups": [
+        9907,
+        9683,
+        9163,
+        8870,
+        8054
+      ],
+      "largest_group_share": 0.002484979007984942,
+      "rows_in_groups_of_1": 684684
+    },
+    "calculation_folder": {
+      "groups": 3892230,
+      "rows_per_group_p50_p90_p99": [
+        1.0,
+        1.0,
+        2.0
+      ],
+      "largest_groups": [
+        11,
+        10,
+        8,
+        8,
+        8
+      ],
+      "largest_group_share": 2.759136881784028e-06,
+      "rows_in_groups_of_1": 3807948
+    },
+    "compositions_with_several_folders": 409595,
+    "rows_of_compositions_with_several_folders": 3233793,
+    "folders_with_several_compositions": 0
+  },
+  "distributions": {
+    "train vs val": {
+      "ks_atoms_per_structure": 0.010969724122640051,
+      "largest_data_ids_share_gap": 0.0032470237250955963,
+      "largest_data_ids_share_gap_at": "ani2x",
+      "largest_elements_share_gap": 0.01509286433185475,
+      "largest_elements_share_gap_at": 7,
+      "largest_charge_share_gap": 0.005875936310994256,
+      "largest_charge_share_gap_at": 0,
+      "largest_spin_share_gap": 0.002375381556082301,
+      "largest_spin_share_gap_at": 1,
+      "ks_atoms_per_structure_null_p50_max": [
+        0.019370640930226016,
+        0.03249245128784206
+      ],
+      "ks_atoms_per_structure_rank_among_null": 2,
+      "largest_data_ids_share_gap_null_p50_max": [
+        0.0059470435873096375,
+        0.009340191443982813
+      ],
+      "largest_data_ids_share_gap_rank_among_null": 2,
+      "largest_elements_share_gap_null_p50_max": [
+        0.013095902800343506,
+        0.02928164623974261
+      ],
+      "largest_elements_share_gap_rank_among_null": 12,
+      "largest_charge_share_gap_null_p50_max": [
+        0.005452081086854084,
+        0.011104652755062783
+      ],
+      "largest_charge_share_gap_rank_among_null": 11,
+      "largest_spin_share_gap_null_p50_max": [
+        0.0012000663651690405,
+        0.0034113189032213276
+      ],
+      "largest_spin_share_gap_rank_among_null": 17
+    },
+    "train vs test": {
+      "ks_atoms_per_structure": 0.039493225870549625,
+      "largest_data_ids_share_gap": 0.0016223980267039695,
+      "largest_data_ids_share_gap_at": "reactivity",
+      "largest_elements_share_gap": 0.02165302162130578,
+      "largest_elements_share_gap_at": 7,
+      "largest_charge_share_gap": 0.003766644119905682,
+      "largest_charge_share_gap_at": 0,
+      "largest_spin_share_gap": 0.0008367764222121099,
+      "largest_spin_share_gap_at": 2,
+      "ks_atoms_per_structure_null_p50_max": [
+        0.026255192754289627,
+        0.039093834800675686
+      ],
+      "ks_atoms_per_structure_rank_among_null": 20,
+      "largest_data_ids_share_gap_null_p50_max": [
+        0.005399025069870889,
+        0.011295165235301857
+      ],
+      "largest_data_ids_share_gap_rank_among_null": 0,
+      "largest_elements_share_gap_null_p50_max": [
+        0.025311177876423674,
+        0.04222066181022377
+      ],
+      "largest_elements_share_gap_rank_among_null": 7,
+      "largest_charge_share_gap_null_p50_max": [
+        0.007992983444995234,
+        0.017050328032526485
+      ],
+      "largest_charge_share_gap_rank_among_null": 0,
+      "largest_spin_share_gap_null_p50_max": [
+        0.0012959825126461696,
+        0.004434744003836699
+      ],
+      "largest_spin_share_gap_rank_among_null": 4
+    },
+    "val vs test": {
+      "ks_atoms_per_structure": 0.030307373390842496,
+      "largest_data_ids_share_gap": 0.0036570688904457166,
+      "largest_data_ids_share_gap_at": "ani2x",
+      "largest_elements_share_gap": 0.02090682722341808,
+      "largest_elements_share_gap_at": 8,
+      "largest_charge_share_gap": 0.004589577292265522,
+      "largest_charge_share_gap_at": -2,
+      "largest_spin_share_gap": 0.0031999095831151125,
+      "largest_spin_share_gap_at": 1,
+      "ks_atoms_per_structure_null_p50_max": [
+        0.03172661110170272,
+        0.04721115402457314
+      ],
+      "ks_atoms_per_structure_rank_among_null": 9,
+      "largest_data_ids_share_gap_null_p50_max": [
+        0.00598876928533431,
+        0.01662758271244586
+      ],
+      "largest_data_ids_share_gap_rank_among_null": 2,
+      "largest_elements_share_gap_null_p50_max": [
+        0.025936748886797922,
+        0.052059874911196236
+      ],
+      "largest_elements_share_gap_rank_among_null": 7,
+      "largest_charge_share_gap_null_p50_max": [
+        0.00840900290829405,
+        0.017629095632624048
+      ],
+      "largest_charge_share_gap_rank_among_null": 2,
+      "largest_spin_share_gap_null_p50_max": [
+        0.0020875519782027133,
+        0.005486785124931504
+      ],
+      "largest_spin_share_gap_rank_among_null": 16
+    }
+  },
+  "distributions_note": "null: the same statistics for 20 other group orders of the same rule (seeds 0 to 19); rank = how many null values are below this split's value",
+  "official_val": {
+    "rows": 2762021,
+    "compositions": 603008,
+    "compositions_also_in_train_4M": 0,
+    "rows_whose_composition_is_in_train_4M": 0,
+    "rows_whose_composition_is_in": {
+      "train": 0,
+      "val": 0,
+      "test": 0
+    },
+    "calculation_folders_also_in_train_4M": 14
+  },
+  "earlier_lists": {
+    "pilot_train_200k.txt": {
+      "train": 140164,
+      "val": 39596,
+      "test": 20240
+    },
+    "long_train_1200k.txt": {
+      "train": 840211,
+      "val": 239634,
+      "test": 120155
+    },
+    "pilot_val_5k.txt": {
+      "rows whose composition is in train": 0,
+      "rows whose composition is in val": 0,
+      "rows whose composition is in test": 0
+    },
+    "select_val_5k.txt": {
+      "rows whose composition is in train": 0,
+      "rows whose composition is in val": 0,
+      "rows whose composition is in test": 0
+    }
+  },
+  "sampler": {
+    "split_train_70.txt": {
+      "0": {
+        "batches_per_epoch": 381159,
+        "rows_in_first_150000_batches": 1097574
+      },
+      "1": {
+        "batches_per_epoch": 381073,
+        "rows_in_first_150000_batches": 1099436
+      },
+      "2": {
+        "batches_per_epoch": 381092,
+        "rows_in_first_150000_batches": 1098492
+      },
+      "3": {
+        "batches_per_epoch": 381079,
+        "rows_in_first_150000_batches": 1098716
+      },
+      "4": {
+        "batches_per_epoch": 381036,
+        "rows_in_first_150000_batches": 1099352
+      }
+    },
+    "pilot_train_200k.txt": {
+      "0": {
+        "batches_per_epoch": 27375,
+        "rows_in_first_150000_batches": 200000
+      },
+      "1": {
+        "batches_per_epoch": 27402,
+        "rows_in_first_150000_batches": 200000
+      },
+      "2": {
+        "batches_per_epoch": 27401,
+        "rows_in_first_150000_batches": 200000
+      },
+      "3": {
+        "batches_per_epoch": 27380,
+        "rows_in_first_150000_batches": 200000
+      },
+      "4": {
+        "batches_per_epoch": 27376,
+        "rows_in_first_150000_batches": 200000
+      }
+    },
+    "long_train_1200k.txt": {
+      "0": {
+        "batches_per_epoch": 163766,
+        "rows_in_first_150000_batches": 1098952
+      },
+      "1": {
+        "batches_per_epoch": 163705,
+        "rows_in_first_150000_batches": 1099376
+      },
+      "2": {
+        "batches_per_epoch": 163746,
+        "rows_in_first_150000_batches": 1099405
+      },
+      "3": {
+        "batches_per_epoch": 163719,
+        "rows_in_first_150000_batches": 1099247
+      },
+      "4": {
+        "batches_per_epoch": 163723,
+        "rows_in_first_150000_batches": 1099264
+      }
+    }
+  },
+  "passed": true
+}

@@ -14,6 +14,8 @@
 # Times the checkpoint tools' evaluator (scripts/time_checkpoint_eval.py) on 300 rows of split_test_10.txt with the
 # final checkpoints of the Dense and Local-6 pilots (seed 0), float32 and float64. The accuracy values are not results:
 # the pilots trained on pilot_train_200k.txt, which holds 20,240 rows of the test set.
+# Runs the code copy that `b2.py syncrepo <this repository> /ocean/projects/che260063p/shared/repo_split` makes; that copy
+# was deleted after the runs of 2026-11-03, so make it again before a rerun (never point this at shared/repo while chains run).
 # files created here are owned by the Unix group in effect at submission (p. 7):
 # submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/repo_split/AI4Science-MLIPs' afterwards
 umask 002                      # files stay group-writable for the project team (guide B9)

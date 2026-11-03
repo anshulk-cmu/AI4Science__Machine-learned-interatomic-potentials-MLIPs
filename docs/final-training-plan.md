@@ -110,14 +110,29 @@ Frozen, Scaled Dense, Element, Local+Global and Local-12 times are guesses. A sh
 
 ---
 
-## 5. Data for the long runs (decision D1)
+## 5. Data for the long runs (decision D1, changed on 3 Nov)
 
-- The pilots read a fixed list of 200,000 training rows. 50,000 steps are about 2 passes over this list.
-- 300,000 steps on 200,000 rows are about 12 passes. The model may over-fit.
-- Recommended: a new fixed list of 1,200,000 rows from `train_4M`. 300,000 steps are then about 2 passes, as in the pilots.
-- The validation list stays `pilot_val_5k.txt`, so Wave 1 and Wave 2 use the same report set.
-- Alternative: use all 4M rows. It costs more data preparation and gives fewer passes.
-- Wave 1 keeps the 200,000-row list, so the new seeds stay comparable to the pilots.
+The long runs use a 70/20/10 split of all of `train_4M` by composition ([data-split.md](data-split.md)). It replaces the
+1,200,000-row list and the 5,000-row selection list for the final runs.
+
+| Set | List | Rows | Use |
+|---|---|---:|---|
+| Train (70 percent) | `split_train_70.txt` | 2,791,057 | training rows of every long run |
+| Validation (20 percent) | `split_val_20.txt` | 796,421 | never trained on; monitoring and checkpoint choice |
+| Monitor | `split_val_monitor_5k.txt` | 5,000 | validation during training, every `--eval-every` steps |
+| Selection | `split_val_select_10k.txt` | 10,000 | checkpoint choice (Section 6) |
+| Test (10 percent) | `split_test_10.txt` | 399,276 | held out; used once at the end |
+| Test evaluation | `split_test_eval_10k.txt` | 10,000 | the final evaluation (Section 6) |
+
+- No composition is in two sets. The official `val` split shares no composition with any of them.
+- 150,000 steps read about 1.1 million of the 2.79 million training rows, each once (0.39 passes; measured with fairchem's sampler
+  code, [data-split.md](data-split.md) Section 8). So the larger set does not give more data per run. It removes repeats and frees
+  the rows that the validation and test sets need.
+- The validation values during training now come from rows of `train_4M` (mean 55 atoms), not from the official `val` (mean 102 atoms).
+  Long-run curves and values are therefore not comparable with the pilot and Wave 1 values. The extra report on `pilot_val_5k.txt`
+  (Section 6, rule 6) links them.
+- Wave 1 keeps the 200,000-row list and `pilot_val_5k.txt`, so the new seeds stay comparable to the pilots. Do not evaluate Wave 1
+  or pilot checkpoints on the new lists: `pilot_train_200k.txt` holds 20,240 rows of the new test set and 39,596 of the validation set.
 
 ---
 
@@ -135,14 +150,17 @@ Frozen, Scaled Dense, Element, Local+Global and Local-12 times are guesses. A sh
 - Forces from averaged predictions are still the gradient of the averaged energy.
 - We must run the size-consistency test on the final combined model. We must not assume it.
 
-**Anti-leakage rules (we must write them before we look at results).**
+**Anti-leakage rules (we must write them before we look at results; updated on 3 Nov for the 70/20/10 split).**
 1. The rule that selects checkpoints is fixed first. It is the same for every variant.
-2. We select checkpoints on a selection set. We report on a different set. The two sets share no rows.
-   - Report set: `pilot_val_5k.txt` (already used for all pilot numbers).
-   - Selection set (NEW): 5,000 rows from the `val` split that are not in the report set (decision D5).
+2. We select on the validation set and report on the test set. Never the reverse. The two sets share no row and no composition.
+   - Selection set: `split_val_select_10k.txt` (rows of `split_val_20.txt`, decision D5).
+   - Report set: `split_test_eval_10k.txt` (rows of `split_test_10.txt`).
+   - The monitor list `split_val_monitor_5k.txt` gives the training curves. It is not the selection set.
 3. Proposed rule: take the K = 5 checkpoints with the lowest force error on the selection set. Use only checkpoints from the last half of the run.
 4. We report the single best checkpoint and the final checkpoint beside the ensemble, so the reader sees the gain from the ensemble.
-5. We never choose K or the rule after we see the report-set result.
+5. The test set is used once, after K, the rule, the methods and the set of runs are fixed. We never choose anything after we see a test result.
+6. `pilot_val_5k.txt` (official `val`, compositions held out from all of `train_4M`) is an extra out-of-composition check. It is reported
+   as such and is never used for a choice.
 
 ---
 
@@ -298,12 +316,12 @@ If A2 (Local-12) is late, we drop Local-12 first. We report it as not trained.
 
 | Id | Question | Proposed answer |
 |---|---|---|
-| D1 | Training rows for the 300,000-step runs | a new list of 1,200,000 rows |
+| D1 | Training rows for the long runs | changed on 3 Nov: `split_train_70.txt`, 70 percent of `train_4M` by composition ([data-split.md](data-split.md)); was a list of 1,200,000 rows |
 | D2 | Which variants get a 300,000-step run | decided: all 8 |
 | D9 | Seeds for the long runs, and what to do if the long runs of the new variants cannot finish | 2 seeds each. If a new variant cannot finish, use 200,000 steps for it or use its best saved checkpoint and say so |
 | D3 | Warmup of the long runs | 5 percent (15,000 steps) |
 | D4 | Ensemble method, K, and which steps | test both methods, K = 5, last half of the run, one run at a time |
-| D5 | Selection set for the checkpoints | 5,000 `val` rows that are not in the report set |
+| D5 | Selection set for the checkpoints | changed on 3 Nov: `split_val_select_10k.txt` from the validation set; report on `split_test_eval_10k.txt` from the test set |
 | D6 | Ocean backup date | Fri 6 Nov. Confirm against the PSC notice (the earlier note says 1 Nov) |
 | D7 | How many checkpoints to keep, and how often to save them | every 10,000 steps. Decide after we measure one checkpoint |
 | D8 | Ensemble across seeds | not in this plan. Each run is combined alone |

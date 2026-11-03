@@ -6,9 +6,13 @@ These tools implement the proposed K=5 rule in the final training plan. They do 
 
 For one run, rank checkpoints from the last half of training by selection-set force MAE. Take the lowest five; ties go to the earlier step. The best checkpoint is the first in that ranking. The final checkpoint is the last saved step. Do not tune K or the rule using the report results.
 
-The default lists are `select_val_5k.txt` and `pilot_val_5k.txt`. They must not overlap. Indices refer to the full, unchanged OMol25 validation split, in fairchem's database order. Do not pass a compacted subset as the data source. The tool records list hashes and the database file inventory. These checks detect changed lists and file sizes; they do not replace verification of the downloaded dataset against its published checksums.
+The default lists come from the 70/20/10 split of `train_4M` ([data-split.md](data-split.md)): the selection list `split_val_select_10k.txt` (rows of the validation set) and the report list `split_test_eval_10k.txt` (rows of the test set). They must not overlap; they also share no composition. Indices refer to the full, unchanged OMol25 split that the lists index, in fairchem's database order: `--data` is the `train_4M` folder for the `split_*` lists and the `val` folder for the pilot lists (`select_val_5k.txt`, `pilot_val_5k.txt`). The tool refuses a list named in `manifests/*_samples.json` when `--data` has a different number of rows than that list's split, so a list cannot be read from the wrong folder by mistake. Do not pass a compacted subset as the data source. The tool records list hashes and the database file inventory. These checks detect changed lists and file sizes; they do not replace verification of the downloaded dataset against its published checksums.
+
+Rules for the final runs: select on the validation set, report on the test set, never the reverse. The test lists are used once, after the rule, K and the methods are fixed. Pilot and Wave 1 checkpoints must not be evaluated on the `split_*` lists: they trained on `pilot_train_200k.txt`, which holds 20,240 rows of the test set ([data-split.md](data-split.md), Section 5).
 
 Energy MAE is the mean, over structures, of absolute total-energy error divided by atom count (eV/atom). Force MAE is the mean absolute error over all Cartesian force components (eV/Å). Predictions include the checkpoint's normalizer and element references. Charge and spin come from each database row. One structure is evaluated at a time, so this is an accuracy evaluator, not a throughput benchmark.
+
+Time (measured, job 50163685, one V100-32, 300 test rows of 52.6 atoms on average): Dense 0.065 s per structure in float32 and 0.074 s in float64; Local-6 0.139 s and 0.198 s. float32 and float64 MAEs agree within 8e-7 eV/Å. For the 40 final runs, `select` (8 checkpoints) and `report` (8 model evaluations) on 10,000 rows each cost about 100 V100-hours each in float32 (reasoning from these times; the table and its assumptions are in [data-split.md](data-split.md), Section 7). Proposal: `--dtype float32` for both commands. Measure `scripts/time_checkpoint_eval.py` again on another GPU type before you use it.
 
 ## Commands
 
@@ -16,9 +20,9 @@ Run from the repository root, in the fairchem 2.21 environment. Replace the exam
 
 ```bash
 python scripts/checkpoint_tools.py select \
-  --run-dir /path/to/pilot_local6_s0_run \
-  --variant local6 --seed 0 --total-steps 50000 \
-  --data /path/to/omol25/val --device cuda \
+  --run-dir /path/to/long_local6_s0_150000 \
+  --variant local6 --seed 0 --total-steps 150000 \
+  --data /path/to/omol25/train_4M --device cuda \
   --output /path/to/output/selection
 
 python scripts/checkpoint_tools.py average \
@@ -28,11 +32,21 @@ python scripts/checkpoint_tools.py average \
 python scripts/checkpoint_tools.py report \
   --selection /path/to/output/selection/selection.json \
   --averaged /path/to/output/weight_average.pt \
-  --data /path/to/omol25/val --device cuda \
+  --data /path/to/omol25/train_4M --device cuda \
   --output /path/to/output/report
+
+# extra out-of-composition check on the official val split (the pilot report set); never used for a choice
+python scripts/checkpoint_tools.py report \
+  --selection /path/to/output/selection/selection.json \
+  --averaged /path/to/output/weight_average.pt \
+  --rows manifests/pilot_val_5k.txt --eval-split official_val \
+  --data /path/to/omol25/val --device cuda \
+  --output /path/to/output/report_official_val
 ```
 
 Outputs are new files/directories; existing results are not overwritten. Selection writes full-precision metrics and a manifest of the selected files and hashes. Averaging writes an inference checkpoint and a provenance sidecar. Report evaluation writes four rows: `final`, `best`, `weight_average`, `prediction_average`. The CSV uses Yiwei's ensemble column names and `eval_split=report`.
+
+`report --rows FILE --eval-split NAME` evaluates the same four models on an extra list instead of the report list. `NAME` must not be `report`, and `--rows` needs it. On the dataset of the selection, the extra rows must not share a row with the selection rows; on another dataset (the official `val`) row numbers do not compare and no overlap check applies. `evaluation.json` records the list, its sha256, the eval_split and the data inventory. `make_ensemble_figure.py` accepts only `eval_split=report`, so the extra rows stay out of the main figure.
 
 ## What gets averaged
 

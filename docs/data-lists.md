@@ -2,6 +2,9 @@
 
 Writing style: simple English. Short sentences. One idea in each sentence.
 
+Changed on 3 Nov: the final runs use the 70/20/10 split of `train_4M` by composition ([data-split.md](data-split.md)). It replaces
+`long_train_1200k.txt` and `select_val_5k.txt` for the final runs. Both files stay in the repository for the record.
+
 ## 1. The lists
 
 | File | Split | Rows | sha256 | Seed | Relation |

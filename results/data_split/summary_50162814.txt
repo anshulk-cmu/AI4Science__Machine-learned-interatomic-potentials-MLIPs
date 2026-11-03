@@ -1,0 +1,9 @@
+2026-11-03 00:59:39 prep split data: repo /ocean/projects/che260063p/shared/repo_split/AI4Science-MLIPs, 16 workers, tables in /ocean/projects/che260063p/shared/data/omol25/split
+2026-11-03 00:59:39 START extract_train_4M
+2026-11-03 01:07:43 END   extract_train_4M exit 0 (log: /ocean/projects/che260063p/shared/runs/prep_split_50162814/logs/extract_train_4M.log)
+/ocean/projects/che260063p/shared/data/omol25/split/keys_train_4M.npz: 3986754 rows, 1127158 compositions, 3892230 calculation folders, natoms equal metadata.npz for every row, 476 s
+2026-11-03 01:07:43 START extract_val
+2026-11-03 01:11:33 END   extract_val exit 0 (log: /ocean/projects/che260063p/shared/runs/prep_split_50162814/logs/extract_val.log)
+/ocean/projects/che260063p/shared/data/omol25/split/keys_val.npz: 2762021 rows, 603008 compositions, 1643603 calculation folders, natoms equal metadata.npz for every row, 229 s
+2026-11-03 01:11:33 no manifests/split_samples.json in this code copy: lists, verify and check skipped
+2026-11-03 01:11:33 RESULT: all stages passed

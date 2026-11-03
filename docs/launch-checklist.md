@@ -54,6 +54,10 @@ $B2 status                       # GPU balance of che260063p, Ocean quota, your 
    It must print `0 differ or are missing`.
 2. Check the GPU balance against Section 5. Other work on `che260063p` uses the same SU.
 3. Do not sync while jobs run. A sync replaces every tracked file, and the next segment of a chain reads the new code.
+4. Held chains read the code of `shared/repo` when they start, not when they were submitted. After a sync of the 70/20/10 code
+   ([data-split.md](data-split.md)), a held chain trains on `split_train_70.txt` and validates on `split_val_monitor_5k.txt`. A run
+   folder whose `settings.txt` was written with other lists refuses the new segment ("settings differ"); check with
+   `ls /ocean/projects/che260063p/shared/runs/long_*/settings.txt` before you release held jobs.
 
 ## 4. Wave 1 (50,000 steps, the fixed pilot lists)
 
@@ -98,12 +102,16 @@ bash $C local12 --steps <N> --seed <S> --segments <K> --hours <H> --eval-every <
 bash $C local12 --steps <N> --seed <S> --segments <K> --hours <H> --eval-every <E> --ckpt-every <C>
 ```
 
-- `--dry-run` prints the folder, the GPU, the SU limit and every `sbatch` command. It runs `sbatch --test-only` for segment 1 only.
+- Data ([data-split.md](data-split.md)): training on `split_train_70.txt`, validation every `--eval-every` steps on
+  `split_val_monitor_5k.txt`, read from the `train_4M` folder. These are the defaults of `long_run.sh`. To use other lists, set
+  `LONG_TRAIN_LIST`, `LONG_VAL_LIST` and `LONG_VAL_SPLIT` before `submit_chain.sh`; it passes them to every segment and prints them.
+  The test lists are never read by a training job.
+- `--dry-run` prints the folder, the GPU, the SU limit, the data lists and every `sbatch` command. It runs `sbatch --test-only` for segment 1 only.
 - Without `--dry-run` it submits K jobs. Segment k+1 waits for segment k with `afterany`.
 - It refuses a second chain for the same run while jobs of the first are queued. It refuses a run with a FAILED marker.
 - The GPU follows the variant: v100-32 for Dense, Scaled Dense, Global, Frozen; h100-80 for Local-6, Element, Local+Global, Local-12.
 - Use the seeds 0 to k-1 for k long runs of a variant. `collect_final_metrics.py --expected-seeds k` accepts only these seeds.
-- When `--eval-every` divides `--steps`, the last step is validated twice: once by the spacing and once at the end of the epoch that the step limit cuts short (`docs/TRAINING.md`). In the pilots, one validation of the 5,000 report rows took at most about 6 min (Dense), 6.6 min (Global) and 9.8 min (Local-6 on an L40S). Plan for this time in the last segment.
+- When `--eval-every` divides `--steps`, the last step is validated twice: once by the spacing and once at the end of the epoch that the step limit cuts short (`docs/TRAINING.md`). In the pilots, one validation of the 5,000 report rows took at most about 6 min (Dense), 6.6 min (Global) and 9.8 min (Local-6 on an L40S). Those rows had 102 atoms on average; the monitor rows have 55, so one validation should take less (reasoning, not measured). Plan for this time in the last segment.
 
 To stop a chain: cancelling one segment does not stop the chain. The next segment waits with `afterany`, so it starts as soon as the cancelled one ends. Cancel every job of the run by its name, which is the run folder name (`chains.txt` lists the ids):
 
@@ -186,9 +194,11 @@ So keep the H100 for Local-12, Element and Local+Global.
 python scripts/collect_final_metrics.py --run-manifest runs.json --merge results/pilot_final_metrics.csv --output results/final_metrics.csv
 python scripts/pilot_statistics.py results/final_metrics.csv --require-final
 python scripts/collect_final_metrics.py --run-manifest long_runs.json --steps <N> --expected-seeds <number of seeds> --output results/long_final_metrics.csv
-python scripts/checkpoint_tools.py select --run-dir <long run folder> --variant <variant> --seed <S> --total-steps <N> --data <OMol25 val folder> --device cuda --output <new folder>
+python scripts/checkpoint_tools.py select --run-dir <long run folder> --variant <variant> --seed <S> --total-steps <N> --data <OMol25 train_4M folder> --device cuda --output <new folder>
 ```
 
+- The long-run values that `collect_final_metrics.py` collects are the training-time validation on `split_val_monitor_5k.txt`. Its summary prints the lists from `settings.txt`. They are not test results and not comparable with the pilot values on `pilot_val_5k.txt`.
+- `checkpoint_tools.py` selects on the validation list and reports on the test list, both rows of `train_4M` ([checkpoint-tools.md](checkpoint-tools.md)). Run the test report once, after every choice is fixed. The extra report on `pilot_val_5k.txt` uses `--data <val folder> --rows manifests/pilot_val_5k.txt --eval-split official_val`.
 - `collect_final_metrics.py` reads `segments.txt` of a long run by itself. If the W&B file of an interrupted segment is damaged, add `--source log`.
 - `--expected-seeds k` requires exactly the seeds 0 to k-1 of every variant in the table.
 - Runs stopped at the training stop have no final checkpoint and no final validation. Both tools refuse them by default. Add `--allow-unfinished` to `collect_final_metrics.py` and to `checkpoint_tools.py select`: they then use the latest complete validation or the step checkpoints that exist, and every output row and the summary get `partial` and `reached_step`. Report these runs as shorter training, in a separate table. A table made this way cannot be merged later.

@@ -32,6 +32,15 @@ failed training stages, wrong step budgets, ambiguous sources or duplicate rows.
 All validation finishes before the output files are replaced. An invalid input
 leaves an existing output untouched. Output paths cannot overwrite input files.
 
+## Which list the values come from
+
+The values are the last training-time validation of each run, on the run's validation list. `settings.txt` names the training and
+validation lists with their hashes (`data=`); the provenance file keeps this string per row as `data_id`, and the script prints it
+after the summary. A table never mixes data identifiers. The pilots and Wave 1 validate on `pilot_val_5k.txt` (official `val`). The
+long runs validate on `split_val_monitor_5k.txt`, 5,000 rows of the validation set of the 70/20/10 split of `train_4M`
+([data-split.md](data-split.md)). These are monitor values: they are not the test result and they are not comparable with the pilot
+values. The test result comes from `checkpoint_tools.py report` ([checkpoint-tools.md](checkpoint-tools.md)).
+
 ## Select runs explicitly
 
 Run from the repository root. Supply each run directory, not the parent folder
