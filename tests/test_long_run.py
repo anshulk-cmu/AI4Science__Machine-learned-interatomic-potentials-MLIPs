@@ -20,7 +20,7 @@ from training.checkpoints import discover  # noqa: E402
 
 BASH = shutil.which("bash")
 VARIANTS = ("dense", "global", "local6", "local12", "element", "local_global", "global_frozen", "dense_scaled")
-GPU_MIB = {"v100-32": 32768, "h100-80": 81559}      # nvidia-smi memory.total on Bridges-2 (pilot summaries)
+GPU_MIB = {"v100-32": 32768, "l40s-48": 46068, "h100-80": 81559}      # nvidia-smi memory.total on Bridges-2 (pilot summaries)
 
 FAKE_PY = r"""#!/bin/bash
 echo "$*" >> "$STUB_CALLS"
@@ -326,6 +326,21 @@ class SubmitChainTests(ShellCase):
         self.assertIn("data: train /x/a.txt, validation /x/b.txt from val", r.stdout)
         for c in self.sbatch_calls():
             self.assertIn("LONG_TRAIN_LIST=/x/a.txt,LONG_VAL_LIST=/x/b.txt,LONG_VAL_SPLIT=val", c)
+
+    def test_long_gpu_override_allows_only_l40s_for_the_44_gib_variants(self):
+        r = self.submit("element", LONG_GPU="l40s-48")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("on l40s-48: at most 141 SU", r.stdout)
+        for c in self.sbatch_calls():
+            self.assertIn("--gpus=l40s-48:1", c)
+        self.assertGreaterEqual(GPU_MIB["l40s-48"], min_mib("long_run.sh")["element"])
+        for variant, gpu in (("local12", "l40s-48"), ("dense", "l40s-48"), ("element", "v100-32"), ("element", "h100-80x")):
+            with self.subTest(variant=variant, gpu=gpu):
+                self.calls.unlink(missing_ok=True)
+                self.assertEqual(self.submit(variant, LONG_GPU=gpu).returncode, 2)
+                self.assertEqual(self.sbatch_calls(), [])
+        r = self.submit("element", LONG_GPU="h100-80")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def test_dry_run_submits_nothing(self):
         r = self.submit("local12", "--dry-run")

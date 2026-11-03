@@ -109,7 +109,7 @@ bash $C local12 --steps <N> --seed <S> --segments <K> --hours <H> --eval-every <
 - `--dry-run` prints the folder, the GPU, the SU limit, the data lists and every `sbatch` command. It runs `sbatch --test-only` for segment 1 only.
 - Without `--dry-run` it submits K jobs. Segment k+1 waits for segment k with `afterany`.
 - It refuses a second chain for the same run while jobs of the first are queued. It refuses a run with a FAILED marker.
-- The GPU follows the variant: v100-32 for Dense, Scaled Dense, Global, Frozen; h100-80 for Local-6, Element, Local+Global, Local-12.
+- The GPU follows the variant: v100-32 for Dense, Scaled Dense, Global, Frozen; h100-80 for Local-6, Element, Local+Global, Local-12. If the H100 queue is long, `LONG_GPU=l40s-48` puts Local-6, Element or Local+Global on an L40S (1 SU per hour, 46,068 MiB). Local-6 peaked at 45,241 MiB over 50,000 steps, so it is marginal there; Local+Global and Local-12 are expected to need more than 46 GB and are refused.
 - Use the seeds 0 to k-1 for k long runs of a variant. `collect_final_metrics.py --expected-seeds k` accepts only these seeds.
 - When `--eval-every` divides `--steps`, the last step is validated twice: once by the spacing and once at the end of the epoch that the step limit cuts short (`docs/TRAINING.md`). In the pilots, one validation of the 5,000 report rows took at most about 6 min (Dense), 6.6 min (Global) and 9.8 min (Local-6 on an L40S). Those rows had 102 atoms on average; the monitor rows have 55, so one validation should take less (reasoning, not measured). Plan for this time in the last segment.
 

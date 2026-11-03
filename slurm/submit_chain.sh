@@ -6,7 +6,8 @@
 # failure). Each segment decides from the run folder what to do (slurm/long_run.sh).
 # The GPU follows the variant: v100-32 for dense, dense_scaled, global, global_frozen; h100-80 for local6, element,
 # local_global, local12. --dry-run prints the plan and runs sbatch --test-only for the first segment; it submits nothing.
-# Optional environment: LONG_REPO (the code copy the jobs run), LONG_RUNS_DIR (where the run folder goes), LONG_TRAIN_LIST,
+# Optional environment: LONG_GPU=l40s-48 (local6, element, local_global only), LONG_REPO (the code copy the jobs run),
+# LONG_RUNS_DIR (where the run folder goes), LONG_TRAIN_LIST,
 # LONG_VAL_LIST, LONG_VAL_SPLIT (the data of slurm/long_run.sh; unset, it uses split_train_70 and split_val_monitor_5k of train_4M).
 umask 002                      # the run folder and chains.txt stay group-writable for the team (guide B9)
 set -uo pipefail
@@ -17,6 +18,11 @@ case "$VARIANT" in
     local6|element|local_global|local12) GPU=h100-80 RATE=2 ;;
     *) usage ;;
 esac
+# LONG_GPU=l40s-48 (1 SU/h) is allowed only for variants whose memory minimum it meets; long_run.sh still checks the size at start
+if [ -n "${LONG_GPU:-}" ] && [ "$LONG_GPU" != "$GPU" ]; then
+    [[ $LONG_GPU == l40s-48 && $VARIANT =~ ^(local6|element|local_global)$ ]] || usage
+    GPU=l40s-48 RATE=1
+fi
 shift
 declare -A ARG=([steps]="" [seed]="" [segments]="" [hours]="" [eval-every]="" [ckpt-every]="")
 DRY=0
