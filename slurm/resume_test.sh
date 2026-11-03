@@ -10,6 +10,7 @@
 #   smallval   train on the pilot training list, validate on the first 200 rows of the pilot validation list
 # A run with a DONE marker (final checkpoint and every step logged) is skipped. Probe files: NAME/probe/seg_<jobid>.csv.
 # Settings: RESUME_TEST_DIR (shared/runs/resume_test), RESUME_REPO (a copy of the code), RESUME_STEPS (400), RESUME_CKPT_EVERY (100), RESUME_SEED (0).
+# RESUME_SKIP_VERIFY: set it for the later calls of one job, after the first call checked the same lists.
 # RESUME_RANKS (1): 2 runs each segment on the two GPUs of the job, as long_run.sh does with LONG_RANKS=2 (docs/ddp.md). The probe
 #   then writes probe/rank0, probe/rank1 and probe/global; kill:STEP is refused (a SIGKILL of the launcher leaves the ranks running).
 #   Element, Local+Global and Local-12 are also tested on a V100-32: their GPU check is 31,000 MiB (the OOM monitor stops a run
@@ -48,9 +49,13 @@ if [ "${GPU_MIB:-0}" -lt "$MIN_MIB" ]; then note "RESULT: GPU too small for $VAR
 
 source "$REPO/slurm/pilot_data_overrides.sh"
 PILOT_OVERRIDES=("${DATA_OVERRIDES[@]}")
-$PY -u -B scripts/check_pilot_data.py verify --train-rows "$TRAIN_LIST" --val-rows "$VAL_LIST" "${PILOT_OVERRIDES[@]}" > "$TEST_DIR/logs/verify_$JOB.log" 2>&1
-rc=$?; grep -a -E 'PASS|FAIL|RESULT' "$TEST_DIR/logs/verify_$JOB.log" | tee -a "$SUMMARY"
-if [ $rc -ne 0 ]; then note "RESULT: the datasets do not match the fixed pilot lists; nothing was trained"; exit 1; fi
+if [ -n "${RESUME_SKIP_VERIFY:-}" ]; then
+    note "list check skipped: an earlier call of this job checked the same lists"
+else
+    $PY -u -B scripts/check_pilot_data.py verify --train-rows "$TRAIN_LIST" --val-rows "$VAL_LIST" "${PILOT_OVERRIDES[@]}" > "$TEST_DIR/logs/verify_$JOB.log" 2>&1
+    rc=$?; grep -a -E 'PASS|FAIL|RESULT' "$TEST_DIR/logs/verify_$JOB.log" | tee -a "$SUMMARY"
+    if [ $rc -ne 0 ]; then note "RESULT: the datasets do not match the fixed pilot lists; nothing was trained"; exit 1; fi
+fi
 
 SMALL_TRAIN=$TEST_DIR/small_train_2k.txt SMALL_VAL=$TEST_DIR/small_val_200.txt FULL_TRAIN=$TRAIN_LIST
 [ -s "$SMALL_TRAIN" ] || awk 'NR % 100 == 1' "$TRAIN_LIST" > "$SMALL_TRAIN"

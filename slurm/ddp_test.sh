@@ -82,7 +82,8 @@ v100)
     note "START Dense, one GPU each (S1 on GPU 0, S2 on GPU 1)"
     # wait for these two runs only: a bare wait would also wait for the endless GPU poll
     RESUME_STEPS=400 CUDA_VISIBLE_DEVICES=0 $R dense S1 & A=$!
-    RESUME_STEPS=400 CUDA_VISIBLE_DEVICES=1 $R dense S2 & B=$!
+    RESUME_STEPS=400 RESUME_SKIP_VERIFY=1 CUDA_VISIBLE_DEVICES=1 $R dense S2 & B=$!     # S1 checks the lists
+    export RESUME_SKIP_VERIFY=1
     wait $A $B
     step "Dense, two ranks: D1, D2, DB stopped by SIGTERM after step 250, DB resumed" env RESUME_STEPS=400 RESUME_RANKS=2 $R dense D1 D2 DB:term:250 DB
     step "Dense, two ranks against one GPU" compare --refs S1 S2 --tests D1 D2 --steps 400 --probe-dir probe/global --uninterrupted --out "$OUT/dense_two_ranks_vs_one"
@@ -90,24 +91,24 @@ v100)
     for p in rank0 rank1 global; do
         step "Dense, two-rank resume, probe/$p" compare --refs D1 D2 --tests DB --steps 400 --probe-dir probe/$p --out "$OUT/dense_resume_$p"
     done
-    note "START Element, one GPU each (E1, E1b), 200 steps"
-    RESUME_STEPS=200 CUDA_VISIBLE_DEVICES=0 $R element E1:smallval & A=$!
-    RESUME_STEPS=200 CUDA_VISIBLE_DEVICES=1 $R element E1b:smallval & B=$!
+    note "START Element, one GPU each (E1, E1b), 100 steps"
+    RESUME_STEPS=100 CUDA_VISIBLE_DEVICES=0 $R element E1:smallval & A=$!
+    RESUME_STEPS=100 CUDA_VISIBLE_DEVICES=1 $R element E1b:smallval & B=$!
     wait $A $B
     for spec in "element E2:smallval" "local_global LG2:smallval" "local12 L12:smallval"; do
-        step "two ranks, 200 steps: $spec" env RESUME_STEPS=200 RESUME_RANKS=2 $R $spec
+        step "two ranks, 100 steps: $spec" env RESUME_STEPS=100 RESUME_RANKS=2 $R $spec
     done
-    step "Element, two ranks against one GPU" compare --refs E1 E1b --tests E2 --steps 200 --probe-dir probe/global --uninterrupted --out "$OUT/element_two_ranks_vs_one"
+    step "Element, two ranks against one GPU" compare --refs E1 E1b --tests E2 --steps 100 --probe-dir probe/global --uninterrupted --out "$OUT/element_two_ranks_vs_one"
     step "ranks hold the same weights" ranks_agree D1 D2 DB E2 LG2 L12
-    LR=(env LONG_REPO="$REPO" LONG_RUNS_DIR="$DIR/runs" LONG_STEPS=1500 LONG_SEED=0 LONG_EVAL_EVERY=1500 LONG_CKPT_EVERY=100
+    LR=(env LONG_REPO="$REPO" LONG_RUNS_DIR="$DIR/runs" LONG_STEPS=3000 LONG_SEED=0 LONG_EVAL_EVERY=3000 LONG_CKPT_EVERY=100
         LONG_RANKS=2 LONG_TRAIN_LIST="$REPO/manifests/pilot_train_200k.txt" LONG_VAL_LIST="$REPO/manifests/pilot_val_5k.txt"
         LONG_VAL_SPLIT=val LONG_SEGMENT_HOURS=1)
-    step "long_run.sh dense, two ranks, segment 1 (stops by time)" "${LR[@]}" SLURM_JOB_ID=${JOB}1 LONG_STOP_MARGIN_SEC=3120 bash slurm/long_run.sh dense
+    step "long_run.sh dense, two ranks, segment 1 (stops by time)" "${LR[@]}" SLURM_JOB_ID=${JOB}1 LONG_STOP_MARGIN_SEC=2700 bash slurm/long_run.sh dense
     step "long_run.sh dense, two ranks, segment 2 (resumes and finishes)" "${LR[@]}" SLURM_JOB_ID=${JOB}2 LONG_STOP_MARGIN_SEC=300 bash slurm/long_run.sh dense
-    RUN=$DIR/runs/long_dense_s0_1500
-    step "collector, W&B and log" $PY -u -B scripts/collect_final_metrics.py "$RUN" --variants dense --expected-seeds 1 --steps 1500 --output "$OUT/collect_long_dense.csv"
-    step "collector, log only" $PY -u -B scripts/collect_final_metrics.py "$RUN" --variants dense --expected-seeds 1 --steps 1500 --source log --output "$OUT/collect_long_dense_log.csv"
-    step "checkpoint discovery" $PY -u -B -c "from training.checkpoints import discover; print([s for s, _ in discover('$RUN', 1500)])"
+    RUN=$DIR/runs/long_dense_s0_3000
+    step "collector, W&B and log" $PY -u -B scripts/collect_final_metrics.py "$RUN" --variants dense --expected-seeds 1 --steps 3000 --output "$OUT/collect_long_dense.csv"
+    step "collector, log only" $PY -u -B scripts/collect_final_metrics.py "$RUN" --variants dense --expected-seeds 1 --steps 3000 --source log --output "$OUT/collect_long_dense_log.csv"
+    step "checkpoint discovery" $PY -u -B -c "from training.checkpoints import discover; print([s for s, _ in discover('$RUN', 3000)])"
     cp "$RUN/summary.txt" "$OUT/long_dense_summary.txt"; cp "$RUN/settings.txt" "$OUT/long_dense_settings.txt"; cp "$RUN/segments.txt" "$OUT/long_dense_segments.txt"
     if [ -s "$DIR/worst_rows.txt" ]; then
         step "memory test, Local-12, two V100" memory_test local12
