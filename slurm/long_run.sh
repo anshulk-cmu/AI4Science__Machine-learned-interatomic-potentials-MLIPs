@@ -7,6 +7,8 @@
 #   LONG_SEGMENT_HOURS (the Slurm time limit of this segment, 1 to 48).
 # Optional: LONG_STOP_MARGIN_SEC (1800: training stops this long before the limit, so this script can still write its markers),
 #   LONG_SHARED (the project's shared folder), LONG_REPO, LONG_RUNS_DIR, LONG_PY.
+#   LONG_RANKS (1): 2 trains on two GPUs of the job with DDP (docs/ddp.md). Each step uses the batch of the one-GPU run,
+#   split over the GPUs (training/split_sampler.py). The GPU check is then per GPU. A run keeps its rank count.
 # Data (docs/data-split.md): LONG_TRAIN_LIST (manifests/split_train_70.txt) for training, LONG_VAL_LIST
 #   (manifests/split_val_monitor_5k.txt) for the validation every LONG_EVAL_EVERY steps, its rows read from the LONG_VAL_SPLIT
 #   folder (train_4M). The test rows (split_test_10.txt) are never read here.
@@ -25,6 +27,13 @@ case "$VARIANT" in
     local12) MIN_MIB=79000 ;;
     *) echo "usage: long_run.sh dense|global|local6|local12|element|local_global|global_frozen|dense_scaled"; exit 2 ;;
 esac
+RANKS=${LONG_RANKS:-1}
+if [ "$RANKS" = 2 ]; then
+    # per GPU, with half of each batch on each GPU (docs/ddp.md, measured peaks); the V100 variants keep their minimum
+    [ "$MIN_MIB" -le 31000 ] || MIN_MIB=40000
+elif [ "$RANKS" != 1 ]; then
+    echo "long_run.sh: LONG_RANKS must be 1 or 2"; exit 2
+fi
 for v in LONG_STEPS LONG_SEED LONG_EVAL_EVERY LONG_CKPT_EVERY LONG_SEGMENT_HOURS; do
     [[ ${!v:-} =~ ^(0|[1-9][0-9]*)$ ]] || { echo "long_run.sh: set $v to a whole number; it has no default"; exit 2; }
 done
@@ -69,6 +78,12 @@ PILOT_TRAIN_LIST=${LONG_TRAIN_LIST:-$REPO/manifests/split_train_70.txt} PILOT_VA
     PILOT_VAL_SPLIT=${LONG_VAL_SPLIT:-train_4M} source "$REPO/slurm/pilot_data_overrides.sh"
 DATA_NOTE="fixed lists: $(basename "$TRAIN_LIST") sha256 $(sha256sum "$TRAIN_LIST" | cut -c1-16), $(basename "$VAL_LIST") sha256 $(sha256sum "$VAL_LIST" | cut -c1-16) from $VAL_SPLIT"
 SETTINGS="variant=$VARIANT steps=$STEPS seed=$SEED data=$DATA_NOTE eval_every=$EVAL_EVERY ckpt_every=$CKPT_EVERY"
+RANK_ARGS=()
+if [ "$RANKS" != 1 ]; then
+    SETTINGS+=" ranks=$RANKS batch=one-GPU batches of 450 atoms split over $RANKS GPUs"
+    S=training.split_sampler.SplitBatchSampler
+    RANK_ARGS=(job.scheduler.ranks_per_node=$RANKS train_dataloader.batch_sampler_fn._target_=$S eval_dataloader.batch_sampler_fn._target_=$S)
+fi
 if [ ! -f "$RUN/settings.txt" ]; then
     { echo "$SETTINGS"; echo "first_job=$JOB user=${USER:-unknown} repo=$REPO"; } > "$RUN/settings.txt"
 elif [ "$(head -1 "$RUN/settings.txt")" != "$SETTINGS" ]; then
@@ -76,7 +91,14 @@ elif [ "$(head -1 "$RUN/settings.txt")" != "$SETTINGS" ]; then
 fi
 CODE=$(cd "$REPO" && cat slurm/long_run.sh configs/train.yaml configs/variant/*.yaml training/*.py local_routing/*.py | sha256sum | cut -c1-16)
 GPU_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
-note "segment start: $NAME, limit $HOURS h, GPU $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1) ${GPU_MIB} MiB, host $(hostname), code sha256 $CODE"
+if [ "$RANKS" = 1 ]; then
+    note "segment start: $NAME, limit $HOURS h, GPU $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1) ${GPU_MIB} MiB, host $(hostname), code sha256 $CODE"
+else
+    GPUS=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | wc -l)
+    GPU_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | sort -n | head -1)
+    note "segment start: $NAME, limit $HOURS h, $RANKS ranks on $GPUS GPUs $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1), smallest ${GPU_MIB} MiB, host $(hostname), code sha256 $CODE"
+    [ "$GPUS" = "$RANKS" ] || fail "LONG_RANKS=$RANKS needs $RANKS GPUs in the job, it has $GPUS"
+fi
 [ "${GPU_MIB:-0}" -ge "$MIN_MIB" ] || fail "this GPU is too small for $VARIANT (need at least $MIN_MIB MiB)"
 
 record_wandb
@@ -100,10 +122,12 @@ if [ ! -f "$CKDIR/final/.metadata" ]; then
     T0=$(date +%s)
     # Stop by time, never with runner.max_steps (the final checkpoint would carry the next epoch). --foreground sends SIGTERM to
     # the training process only, as in the resume test; fairchem catches it.
-    timeout --foreground --signal=TERM --kill-after=600 "$LIMIT" env OMOL_RUN_DIR="$TRAIN" $PY -u -B -m training.run --mode train \
+    # With 2 ranks fairchem's LOCAL launcher runs torch elastic in this process, which passes the SIGTERM to the ranks;
+    # PYTHONUNBUFFERED makes the ranks write whole lines into the one log.
+    timeout --foreground --signal=TERM --kill-after=600 "$LIMIT" env OMOL_RUN_DIR="$TRAIN" ${RANK_ARGS[@]+PYTHONUNBUFFERED=1} $PY -u -B -m training.run --mode train \
         variant=$VARIANT job.run_name=$NAME +job.timestamp_id=$NAME job.seed=$SEED training.steps=$STEPS \
         training.eval_every=$EVAL_EVERY training.ckpt_every=$CKPT_EVERY training.max_saved_checkpoints=$(( STEPS / CKPT_EVERY + 2 )) \
-        "${DATA_OVERRIDES[@]}" > "$LOG" 2>&1
+        "${DATA_OVERRIDES[@]}" ${RANK_ARGS[@]+"${RANK_ARGS[@]}"} > "$LOG" 2>&1
     RC=$?
     kill $POLL 2>/dev/null; wait $POLL 2>/dev/null
     ELAPSED=$(( $(date +%s) - T0 ))

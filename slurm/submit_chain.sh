@@ -6,7 +6,8 @@
 # failure). Each segment decides from the run folder what to do (slurm/long_run.sh).
 # The GPU follows the variant: v100-32 for dense, dense_scaled, global, global_frozen; h100-80 for local6, element,
 # local_global, local12. --dry-run prints the plan and runs sbatch --test-only for the first segment; it submits nothing.
-# Optional environment: LONG_GPU=l40s-48 (local6, element, local_global only), LONG_REPO (the code copy the jobs run),
+# Optional environment: LONG_GPU=l40s-48 (local6, element, local_global only), LONG_RANKS=2 with LONG_GPU=l40s-48 (two L40S per
+# segment, DDP, also for local12; docs/ddp.md), LONG_REPO (the code copy the jobs run),
 # LONG_RUNS_DIR (where the run folder goes), LONG_TRAIN_LIST,
 # LONG_VAL_LIST, LONG_VAL_SPLIT (the data of slurm/long_run.sh; unset, it uses split_train_70 and split_val_monitor_5k of train_4M).
 umask 002                      # the run folder and chains.txt stay group-writable for the team (guide B9)
@@ -19,10 +20,16 @@ case "$VARIANT" in
     *) usage ;;
 esac
 # LONG_GPU=l40s-48 (1 SU/h) is allowed only for variants whose memory minimum it meets; long_run.sh still checks the size at start
+RANKS=${LONG_RANKS:-1}
 if [ -n "${LONG_GPU:-}" ] && [ "$LONG_GPU" != "$GPU" ]; then
-    [[ $LONG_GPU == l40s-48 && $VARIANT =~ ^(local6|element|local_global)$ ]] || usage
+    [[ $LONG_GPU == l40s-48 && ( $VARIANT =~ ^(local6|element|local_global)$ || ( $RANKS == 2 && $VARIANT == local12 ) ) ]] || usage
     GPU=l40s-48 RATE=1
 fi
+case "$RANKS" in
+    1) GPU_NOTE=$GPU ;;
+    2) [ "$GPU" = l40s-48 ] || usage; GPU_NOTE="2 x $GPU" RATE=$(( RATE * 2 )) ;;
+    *) usage ;;
+esac
 shift
 declare -A ARG=([steps]="" [seed]="" [segments]="" [hours]="" [eval-every]="" [ckpt-every]="")
 DRY=0
@@ -47,13 +54,14 @@ NAME=long_${VARIANT}_s${SEED}_${STEPS}
 RUN=${LONG_RUNS_DIR:-$SHARED/runs}/$NAME
 EXPORT="LONG_VARIANT=$VARIANT,LONG_STEPS=$STEPS,LONG_SEED=$SEED,LONG_EVAL_EVERY=$EVAL,LONG_CKPT_EVERY=$CKPT,LONG_SEGMENT_HOURS=$HOURS,LONG_REPO=$REPO"
 for v in LONG_RUNS_DIR LONG_TRAIN_LIST LONG_VAL_LIST LONG_VAL_SPLIT; do [ -n "${!v:-}" ] && EXPORT+=",$v=${!v}"; done
-OPTS=(-A che260063p -p GPU-shared "--gpus=$GPU:1" -t "$HOURS:00:00" "--job-name=$NAME" "--export=$EXPORT")
+[ "$RANKS" = 1 ] || EXPORT+=",LONG_RANKS=$RANKS"
+OPTS=(-A che260063p -p GPU-shared "--gpus=$GPU:$RANKS" -t "$HOURS:00:00" "--job-name=$NAME" "--export=$EXPORT")
 JOBFILE=$REPO/slurm/long_run.job
 
 echo "run $NAME: $STEPS steps, seed $SEED, eval every $EVAL, checkpoint every $CKPT"
 echo "folder $RUN, code $REPO"
 echo "data: train ${LONG_TRAIN_LIST:-manifests/split_train_70.txt}, validation ${LONG_VAL_LIST:-manifests/split_val_monitor_5k.txt} from ${LONG_VAL_SPLIT:-train_4M}"
-echo "$SEGMENTS segments of at most $HOURS h on $GPU: at most $(( SEGMENTS * HOURS * RATE )) SU (only the hours used are charged)"
+echo "$SEGMENTS segments of at most $HOURS h on $GPU_NOTE: at most $(( SEGMENTS * HOURS * RATE )) SU (only the hours used are charged)"
 if [ -f "$RUN/DONE" ]; then echo "DONE marker present: this run is finished; nothing to submit"; exit 0; fi
 if [ -f "$RUN/FAILED" ]; then echo "REFUSED: $RUN/FAILED exists: $(cat "$RUN/FAILED"). Fix the cause and delete it first."; exit 1; fi
 QUEUED=$(squeue --me -h -n "$NAME" -o %i | tr '\n' ' ')
@@ -76,5 +84,5 @@ for k in $(seq 1 "$SEGMENTS"); do
     IDS+="$ID " PREV=$ID
     echo "segment $k of $SEGMENTS: job $ID"
 done
-echo "$(date '+%Y-%m-%d %H:%M:%S') ${USER:-unknown} chain $IDS($SEGMENTS x $HOURS h, $GPU)" >> "$RUN/chains.txt"
+echo "$(date '+%Y-%m-%d %H:%M:%S') ${USER:-unknown} chain $IDS($SEGMENTS x $HOURS h, $GPU_NOTE)" >> "$RUN/chains.txt"
 echo "submitted: $IDS"
