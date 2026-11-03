@@ -457,6 +457,9 @@ def main(argv=None):
         unknown_data = sum(not p["data_id"] for _, p in rows)
         print(f"Wrote {len(rows)} rows to {args.output}; missing pairs: {len(missing)}")
         print(f"Rounded log rows: {rounded}; legacy rows with unverified steps: {unverified}; unknown data IDs: {unknown_data}")
+        # The values are the training-time validation of each run, on the validation list named here (docs/data-split.md).
+        for data_id in sorted({p["data_id"] for _, p in rows if p["data_id"]}):
+            print(f"Data (training list, then the validation list that gave these values): {data_id}")
         if args.allow_unfinished:
             partial = [f"{r['variant']} seed {r['seed']} at step {r['reached_step']}" for r, _ in rows if r.get("partial")]
             print(f"PARTIAL: {len(partial)} of {len(rows)} rows stopped before {steps} steps: " + ("; ".join(partial) or "none"))

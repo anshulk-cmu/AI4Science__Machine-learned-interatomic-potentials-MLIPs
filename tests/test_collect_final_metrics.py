@@ -279,6 +279,7 @@ class CollectorTests(unittest.TestCase):
         code, stdout, stderr = self.invoke(*runs, "--merge", old, "--output", out)
         self.assertEqual(code, 0, stderr)
         self.assertIn("Wrote 40 rows", stdout)
+        self.assertIn("validation list that gave these values): fixed pilot lists", stdout)
         with out.open(newline="") as stream:
             rows = list(csv.DictReader(stream))
         self.assertEqual(len(rows), 40)
