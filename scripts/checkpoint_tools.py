@@ -39,6 +39,15 @@ def inventory(path):
     return [{"name": p.name, "bytes": p.stat().st_size} for p in files]
 
 
+def check_split(rows_path, data):
+    """A list named in manifests/*_samples.json indexes one split; refuse a dataset of another size (wrong folder)."""
+    digest = ck.sha256(rows_path)
+    for manifest in sorted((ROOT / "manifests").glob("*_samples.json")):
+        for name, entry in json.loads(manifest.read_text(encoding="utf-8"))["lists"].items():
+            if entry["sha256"] == digest and len(data) != entry["rows_in_split"]:
+                raise ValueError(f"{name} indexes {entry['split']} ({entry['rows_in_split']} rows); --data has {len(data)} rows")
+
+
 def release():
     import torch
     gc.collect()
@@ -57,8 +66,8 @@ def main():
     selection.add_argument("--variant", required=True)
     selection.add_argument("--seed", type=int, required=True)
     selection.add_argument("--k", type=int, default=5)
-    selection.add_argument("--selection-rows", type=Path, default=ROOT / "manifests/select_val_5k.txt")
-    selection.add_argument("--report-rows", type=Path, default=ROOT / "manifests/pilot_val_5k.txt")
+    selection.add_argument("--selection-rows", type=Path, default=ROOT / "manifests/split_val_select_20k.txt")
+    selection.add_argument("--report-rows", type=Path, default=ROOT / "manifests/split_test_eval_20k.txt")
     selection.add_argument("--output", type=Path, required=True, help="new directory")
     average = sub.add_parser("average")
     average.add_argument("--selection", type=Path, required=True)
@@ -67,8 +76,12 @@ def main():
     report.add_argument("--selection", type=Path, required=True)
     report.add_argument("--averaged", type=Path, required=True)
     report.add_argument("--output", type=Path, required=True, help="new directory")
+    report.add_argument("--rows", type=Path, help="an extra list fixed before selection instead of the report list, for "
+                        "example pilot_val_5k.txt of val (out-of-composition check); needs --eval-split")
+    report.add_argument("--eval-split", default="report", help="eval_split column; with --rows a new name, e.g. official_val")
     for command in (selection, report):
-        command.add_argument("--data", type=Path, required=True, help="full, unchanged OMol25 val split in manifest row order")
+        command.add_argument("--data", type=Path, required=True,
+                             help="the full, unchanged OMol25 split the lists index: train_4M for split_*, val for the pilot lists")
         command.add_argument("--device", default="cpu")
         command.add_argument("--dtype", choices=["float32", "float64"], default="float64")
     args = parser.parse_args()
@@ -90,6 +103,8 @@ def main():
         selection_rows, report_rows = ck.split_rows(args.selection_rows, args.report_rows)
         if max(selection_rows + report_rows) >= len(data):
             raise ValueError("row index outside dataset")
+        for path in (args.selection_rows, args.report_rows):
+            check_split(path, data)
         settings = (args.run_dir / "settings.txt").read_text()
         for name, expected in (("variant", args.variant), ("seed", str(args.seed)), ("steps", str(args.total_steps))):
             match = re.search(rf"(?:^|\s){name}=(\S+)", settings)
@@ -131,8 +146,19 @@ def main():
             if ck.sha256(record[field]) != record[field + "_sha256"]:
                 raise ValueError("row list changed after selection")
         _, report_rows = ck.split_rows(record["selection_rows"], record["report_rows"])
-        if inventory(args.data) != record["data_inventory"] or len(data) != record["data_rows"]:
+        same_data = inventory(args.data) == record["data_inventory"] and len(data) == record["data_rows"]
+        if (args.rows is None) != (args.eval_split == "report"):
+            raise ValueError("--eval-split is report for the report list and a new name (e.g. official_val) with --rows")
+        if args.rows:
+            # An extra list: never the selection rows; on another dataset (official val) the row numbers do not compare.
+            report_rows = ck.read_rows(args.rows)
+            if same_data and set(report_rows) & set(ck.read_rows(record["selection_rows"])):
+                raise ValueError("extra rows overlap the selection rows")
+        elif not same_data:
             raise ValueError("dataset inventory changed after selection")
+        if max(report_rows) >= len(data):
+            raise ValueError("row index outside dataset")
+        check_split(args.rows or record["report_rows"], data)
         sidecar = json.loads(args.averaged.with_suffix(args.averaged.suffix + ".json").read_text())
         if sidecar["selection_sha256"] != ck.sha256(args.selection) or sidecar["checkpoint_sha256"] != ck.sha256(args.averaged):
             raise ValueError("averaged checkpoint does not match this selection")
@@ -144,15 +170,18 @@ def main():
         for method, paths in methods.items():
             units = [ck.predictor(path, args.device, args.dtype) for path in paths]
             unit = ck.PredictionAverage(units)
-            row = dict(variant=record["variant"], seed=record["seed"], method=method, eval_split="report",
+            row = dict(variant=record["variant"], seed=record["seed"], method=method, eval_split=args.eval_split,
                        **ck.evaluate(unit, data, report_rows), **partial)
             rows.append(row)
             print(json.dumps(row), flush=True)
             del unit, units
             release()
         write_csv(args.output / "ensemble_metrics.csv", rows)
+        rows_file = args.rows or Path(record["report_rows"])
         write_json(args.output / "evaluation.json", dict(selection_sha256=ck.sha256(args.selection),
                    averaged_sha256=ck.sha256(args.averaged), dtype=args.dtype, methods=methods, **partial,
+                   eval_split=args.eval_split, rows=str(Path(rows_file).resolve()), rows_sha256=ck.sha256(rows_file),
+                   data_inventory=inventory(args.data),
                    energy_metric="mean over structures of absolute total energy error divided by atom count",
                    force_metric="mean absolute error over all Cartesian force components"))
 

@@ -205,6 +205,22 @@ class CheckpointTests(unittest.TestCase):
             rows = list(csv.DictReader(stream))
         self.assertEqual({r["method"] for r in rows}, {"final", "best", "weight_average", "prediction_average"})
         self.assertTrue(all(r["eval_split"] == "report" and r["n_structures"] == "2" for r in rows))
+        extra = self.root / "extra.txt"
+        extra.write_text("3\n")
+        cli("report", "--selection", selection, "--averaged", avg, "--data", dbpath, "--output", self.root/"extra",
+            "--rows", extra, "--eval-split", "official_val")
+        with (self.root/"extra"/"ensemble_metrics.csv").open() as stream:
+            self.assertTrue(all(r["eval_split"] == "official_val" and r["n_structures"] == "1" for r in csv.DictReader(stream)))
+        self.assertEqual(json.loads((self.root/"extra"/"evaluation.json").read_text())["rows_sha256"], ck.sha256(extra))
+        with self.assertRaisesRegex(ValueError, "eval-split"):
+            cli("report", "--selection", selection, "--averaged", avg, "--data", dbpath, "--output", self.root/"r1", "--rows", extra)
+        extra.write_text("1\n")
+        with self.assertRaisesRegex(ValueError, "overlap"):
+            cli("report", "--selection", selection, "--averaged", avg, "--data", dbpath, "--output", self.root/"r2",
+                "--rows", extra, "--eval-split", "official_val")
+        from scripts.checkpoint_tools import ROOT, check_split
+        with self.assertRaisesRegex(ValueError, "indexes val"):
+            check_split(ROOT / "manifests/pilot_val_5k.txt", range(4))
         report_rows.write_text("0\n3\n")
         with self.assertRaisesRegex(ValueError, "changed"):
             cli("report", "--selection", selection, "--averaged", avg, "--data", dbpath, "--output", self.root/"rejected")
