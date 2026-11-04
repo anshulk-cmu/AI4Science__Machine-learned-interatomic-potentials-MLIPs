@@ -1,0 +1,2 @@
+variant,seed,energy_mae_per_atom_eV,force_mae_eV_per_A,val_loss
+dense,0,0.06199803466796875,0.13961946953653584,0.23615151676975826

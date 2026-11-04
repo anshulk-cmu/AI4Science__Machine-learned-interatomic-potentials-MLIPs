@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "steps": 3000,
+  "variants": [
+    "dense"
+  ],
+  "expected_seeds": [
+    0
+  ],
+  "complete": true,
+  "missing": [],
+  "allow_unfinished": false,
+  "partial_rows": 0,
+  "csv_sha256": "6518a27df06f032b4fc5a81b2f0461785594e981a6d1294ece6bc30717b6a9e6",
+  "rows": [
+    {
+      "variant": "dense",
+      "seed": 0,
+      "steps": 3000,
+      "data_id": "fixed lists: pilot_train_200k.txt sha256 de75c47ff4dae8da, pilot_val_5k.txt sha256 7ecd0a5457118d8e from val",
+      "metadata_source": "/ocean/projects/che260063p/shared/ddp_test/runs/long_dense_s0_3000/settings.txt",
+      "last_train_exit": 0,
+      "run": "/ocean/projects/che260063p/shared/ddp_test/runs/long_dense_s0_3000",
+      "source": "/ocean/projects/che260063p/shared/ddp_test/runs/long_dense_s0_3000/train/long_dense_s0_3000/logs/wandb/offline-run-20261103_183932-long_dense_s0_3000/run-long_dense_s0_3000.wandb",
+      "precision": "full_precision_history",
+      "reached_step": 3000,
+      "source_files": [
+        "/ocean/projects/che260063p/shared/ddp_test/runs/long_dense_s0_3000/train/long_dense_s0_3000/logs/wandb/offline-run-20261103_182426-long_dense_s0_3000/run-long_dense_s0_3000.wandb",
+        "/ocean/projects/che260063p/shared/ddp_test/runs/long_dense_s0_3000/train/long_dense_s0_3000/logs/wandb/offline-run-20261103_183932-long_dense_s0_3000/run-long_dense_s0_3000.wandb",
+        "/ocean/projects/che260063p/shared/ddp_test/runs/long_dense_s0_3000/logs/train_501884231.log",
+        "/ocean/projects/che260063p/shared/ddp_test/runs/long_dense_s0_3000/logs/train_501884232.log"
+      ],
+      "step_verified": true
+    }
+  ]
+}

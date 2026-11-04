@@ -1,0 +1,124 @@
+{
+ "rows_file": "split_val_monitor_5k.txt",
+ "seed": 0,
+ "shuffle": false,
+ "rows": 5000,
+ "atoms_per_structure": {
+  "n": 5000,
+  "mean": 55.0024,
+  "std": 47.81813875758863,
+  "min": 2.0,
+  "p1": 6.0,
+  "p50": 42.0,
+  "p99": 210.02000000000044,
+  "max": 339.0
+ },
+ "one_gpu_450": {
+  "steps": 684,
+  "atoms_per_step": {
+   "n": 684,
+   "mean": 402.0643274853801,
+   "std": 44.312308191926334,
+   "min": 142.0,
+   "p1": 254.13,
+   "p50": 413.0,
+   "p99": 450.0,
+   "max": 450.0
+  },
+  "structures_per_step": {
+   "n": 684,
+   "mean": 7.309941520467836,
+   "std": 2.559894345653279,
+   "min": 2.0,
+   "p1": 2.0,
+   "p50": 7.0,
+   "p99": 14.0,
+   "max": 17.0
+  },
+  "dropped_structures": 0
+ },
+ "two_ranks_225_each": {
+  "steps": 722,
+  "atoms_per_step": {
+   "n": 722,
+   "mean": 365.5387811634349,
+   "std": 50.25267752582381,
+   "min": 228.0,
+   "p1": 237.42,
+   "p50": 370.0,
+   "p99": 443.0,
+   "max": 450.0
+  },
+  "structures_per_step": {
+   "n": 722,
+   "mean": 6.876731301939058,
+   "std": 2.5880690151095904,
+   "min": 2.0,
+   "p1": 2.0,
+   "p50": 7.0,
+   "p99": 14.0,
+   "max": 16.0
+  },
+  "dropped_structures": 42,
+  "dropped_structure_share": 0.0084,
+  "dropped_atom_share": 0.041049117856675345,
+  "padded_batches": 1
+ },
+ "split_two_ranks": {
+  "steps": 684,
+  "mismatched_steps": 0,
+  "steps_compared": 684,
+  "batches_held_by_both_ranks": 0,
+  "atoms_per_rank": {
+   "n": 1368,
+   "mean": 201.03216374269005,
+   "std": 30.487014117836164,
+   "min": 16.0,
+   "p1": 96.69,
+   "p50": 206.0,
+   "p99": 273.3099999999995,
+   "max": 339.0
+  },
+  "larger_part_atoms": {
+   "n": 684,
+   "mean": 210.2719298245614,
+   "std": 27.17329649627751,
+   "min": 86.0,
+   "p1": 140.62,
+   "p50": 212.0,
+   "p99": 312.67999999999984,
+   "max": 339.0
+  },
+  "steps_with_a_part_above_225": 146,
+  "same_length_as_one_gpu": true
+ },
+ "split_two_ranks_resumed_in_epoch1": {
+  "start_step": 228,
+  "steps": 684,
+  "mismatched_steps": 0,
+  "steps_compared": 456,
+  "batches_held_by_both_ranks": 0,
+  "atoms_per_rank": {
+   "n": 912,
+   "mean": 201.2565789473684,
+   "std": 29.593258043509373,
+   "min": 16.0,
+   "p1": 104.55,
+   "p50": 206.0,
+   "p99": 270.66999999999996,
+   "max": 335.0
+  },
+  "larger_part_atoms": {
+   "n": 456,
+   "mean": 210.50219298245614,
+   "std": 26.424337441569193,
+   "min": 86.0,
+   "p1": 143.55,
+   "p50": 213.0,
+   "p99": 293.79999999999995,
+   "max": 335.0
+  },
+  "steps_with_a_part_above_225": 102,
+  "same_length_as_one_gpu": true
+ }
+}

@@ -1,0 +1,4 @@
+log logs/train_501884231.log
+wandb train/long_dense_s0_3000/logs/wandb/offline-run-20261103_182426-long_dense_s0_3000/run-long_dense_s0_3000.wandb
+log logs/train_501884232.log
+wandb train/long_dense_s0_3000/logs/wandb/offline-run-20261103_183932-long_dense_s0_3000/run-long_dense_s0_3000.wandb

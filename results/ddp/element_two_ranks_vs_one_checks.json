@@ -1,0 +1,100 @@
+{
+  "factor": 3.0,
+  "floor": 1e-06,
+  "runs": {
+    "E2": [
+      {
+        "check": "steps 0 to N-1 all present once, after merging segments",
+        "pass": true,
+        "value": "100 steps, segments start at [0]"
+      },
+      {
+        "check": "batch_sha256 equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "epoch equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "step_in_epoch equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "structures equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "atoms equal to every reference at every step",
+        "pass": true,
+        "value": "0 mismatches, first at step None"
+      },
+      {
+        "check": "learning rate equal at every step (relative difference <= 1e-12)",
+        "pass": true,
+        "value": 0.0
+      },
+      {
+        "check": "train loss, steps 0 to 99, max relative difference",
+        "value": 1.7945751099832988e-07,
+        "noise": 1.6586288099713928e-07,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "train loss, continued in memory against resumed from disk, steps 0 to 99",
+        "value": 0.0,
+        "noise": 1.6586288099713928e-07,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "final model_state_dict, relative L2 difference",
+        "value": 4.797751544563447e-08,
+        "noise": 3.881872189930864e-08,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "final ema_state_dict, relative L2 difference",
+        "value": 1.158353246373752e-08,
+        "noise": 9.32653132688982e-09,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "val/loss, relative difference",
+        "value": 6.730175569285408e-09,
+        "noise": 4.010541970033297e-09,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "val/omol.val,omol_energy,mae, relative difference",
+        "value": 3.022755144838187e-08,
+        "noise": 5.279052178617414e-09,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "val/omol.val,omol_energy,per_atom_mae, relative difference",
+        "value": 1.5253094121210267e-08,
+        "noise": 1.5594697839295623e-09,
+        "limit": 1e-06,
+        "pass": true
+      },
+      {
+        "check": "val/omol.val,omol_forces,mae, relative difference",
+        "value": 2.6925769839266176e-08,
+        "noise": 3.1068196097020483e-09,
+        "limit": 1e-06,
+        "pass": true
+      }
+    ]
+  },
+  "verdict": "PASS"
+}

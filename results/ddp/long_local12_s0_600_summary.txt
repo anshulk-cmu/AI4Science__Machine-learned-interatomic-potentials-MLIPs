@@ -1,0 +1,23 @@
+2026-11-03 18:44:06 job 50184492: segment start: long_local12_s0_600, limit 2 h, 2 ranks on 2 GPUs NVIDIA L40S, smallest 46068 MiB, host gl003.ib.bridges2.psc.edu, code sha256 d45e27880425c1ab
+PASS  split_train_70.txt: list sha256 equals manifest
+PASS  split_train_70.txt: list size equals manifest
+PASS  split_train_70.txt: dataset rows equal list
+PASS  split_train_70.txt: rows read from the train_4M folder
+PASS  split_train_70.txt: split size equals manifest
+PASS  split_val_monitor_5k.txt: list sha256 equals manifest
+PASS  split_val_monitor_5k.txt: list size equals manifest
+PASS  split_val_monitor_5k.txt: dataset rows equal list
+PASS  split_val_monitor_5k.txt: rows read from the train_4M folder
+PASS  split_val_monitor_5k.txt: split size equals manifest
+RESULT: all checks passed
+2026-11-03 18:44:25 job 50184492: START train from complete step 0, stop by time after 6580 s (log: /ocean/projects/che260063p/shared/ddp_test/runs/long_local12_s0_600/logs/train_50184492.log)
+2026-11-03 18:59:23 job 50184492: END   train exit 0 (training process 0; 0 = final checkpoint written, 124 = stopped by time as planned), complete checkpoints up to step 300, 898 s, peak GPU memory 26949 MiB
+OOM events: 0 train (0 recovered), 0 eval (0 recovered); no batch was skipped
+  val/loss: 0.8120
+  val/omol.val,omol_energy,per_atom_mae: 0.1974
+  val/omol.val,omol_forces,mae: 0.4872
+2026-11-03 18:59:23 job 50184492: final checkpoint: /ocean/projects/che260063p/shared/ddp_test/runs/long_local12_s0_600/train/long_local12_s0_600/checkpoints/final/inference_ckpt.pt
+2026-11-03 18:59:23 job 50184492: START size_consistency
+2026-11-03 19:00:15 job 50184492: END   size_consistency (log: /ocean/projects/che260063p/shared/ddp_test/runs/long_local12_s0_600/logs/size_consistency_50184492.log)
+checkpoints/final/inference_ckpt.pt  Delta meV  8 A: 0.0606766 [routing-connected]  10 A: 0.00675395 [routing-connected]  15 A: 2.79397e-06 [disconnected]  25 A: 2.79397e-06 [disconnected]  100 A: 2.79397e-06 [disconnected]
+2026-11-03 19:00:15 job 50184492: RESULT: all stages passed

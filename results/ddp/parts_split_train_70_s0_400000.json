@@ -1,0 +1,157 @@
+{
+ "rows_file": "split_train_70.txt",
+ "seed": 0,
+ "steps": 400000,
+ "edges_6A_per_row": {
+  "n": 2791057,
+  "mean": 1791.453655729711,
+  "std": 2133.156350218843,
+  "min": 0.0,
+  "p1": 30.0,
+  "p50": 1044.0,
+  "p99": 9698.879999999888,
+  "max": 26308.0
+ },
+ "largest_rank_parts": [
+  {
+   "edges": 26308,
+   "atoms": 282,
+   "structures": 1,
+   "step": 320473,
+   "rank": 0
+  },
+  {
+   "edges": 26022,
+   "atoms": 286,
+   "structures": 1,
+   "step": 24394,
+   "rank": 0
+  },
+  {
+   "edges": 25342,
+   "atoms": 300,
+   "structures": 1,
+   "step": 2978,
+   "rank": 0
+  },
+  {
+   "edges": 25322,
+   "atoms": 282,
+   "structures": 1,
+   "step": 201189,
+   "rank": 0
+  },
+  {
+   "edges": 25268,
+   "atoms": 300,
+   "structures": 1,
+   "step": 7026,
+   "rank": 0
+  },
+  {
+   "edges": 25140,
+   "atoms": 282,
+   "structures": 1,
+   "step": 288689,
+   "rank": 0
+  },
+  {
+   "edges": 24772,
+   "atoms": 300,
+   "structures": 1,
+   "step": 107890,
+   "rank": 0
+  },
+  {
+   "edges": 24762,
+   "atoms": 286,
+   "structures": 1,
+   "step": 394773,
+   "rank": 0
+  },
+  {
+   "edges": 24762,
+   "atoms": 286,
+   "structures": 1,
+   "step": 114983,
+   "rank": 0
+  },
+  {
+   "edges": 24734,
+   "atoms": 285,
+   "structures": 1,
+   "step": 111921,
+   "rank": 0
+  },
+  {
+   "edges": 24704,
+   "atoms": 263,
+   "structures": 1,
+   "step": 258516,
+   "rank": 0
+  },
+  {
+   "edges": 24510,
+   "atoms": 282,
+   "structures": 1,
+   "step": 317812,
+   "rank": 0
+  },
+  {
+   "edges": 24494,
+   "atoms": 283,
+   "structures": 1,
+   "step": 167418,
+   "rank": 0
+  },
+  {
+   "edges": 24328,
+   "atoms": 242,
+   "structures": 1,
+   "step": 70368,
+   "rank": 0
+  },
+  {
+   "edges": 23922,
+   "atoms": 239,
+   "structures": 1,
+   "step": 286480,
+   "rank": 0
+  },
+  {
+   "edges": 23712,
+   "atoms": 252,
+   "structures": 1,
+   "step": 241594,
+   "rank": 0
+  },
+  {
+   "edges": 23562,
+   "atoms": 256,
+   "structures": 1,
+   "step": 75460,
+   "rank": 0
+  },
+  {
+   "edges": 23538,
+   "atoms": 252,
+   "structures": 1,
+   "step": 52502,
+   "rank": 0
+  },
+  {
+   "edges": 23226,
+   "atoms": 281,
+   "structures": 1,
+   "step": 331705,
+   "rank": 0
+  },
+  {
+   "edges": 23176,
+   "atoms": 282,
+   "structures": 1,
+   "step": 329515,
+   "rank": 0
+  }
+ ]
+}

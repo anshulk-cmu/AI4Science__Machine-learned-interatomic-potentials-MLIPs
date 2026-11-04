@@ -1,0 +1,2 @@
+variant=dense steps=3000 seed=0 data=fixed lists: pilot_train_200k.txt sha256 de75c47ff4dae8da, pilot_val_5k.txt sha256 7ecd0a5457118d8e from val eval_every=3000 ckpt_every=100 ranks=2 batch=one-GPU batches of 450 atoms split over 2 GPUs
+first_job=501884231 user=akumar45 repo=/ocean/projects/che260063p/shared/ddp_repo_parent/AI4Science-MLIPs

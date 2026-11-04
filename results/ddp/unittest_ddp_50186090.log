@@ -1,0 +1,51 @@
+Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. GPU execution will not be available.
+test_a_batch_with_fewer_structures_than_ranks_goes_whole_to_every_rank (tests.test_ddp.SplitBatchTests.test_a_batch_with_fewer_structures_than_ranks_goes_whole_to_every_rank) ... ok
+test_parts_are_balanced_disjoint_and_keep_the_batch_order (tests.test_ddp.SplitBatchTests.test_parts_are_balanced_disjoint_and_keep_the_batch_order) ... ok
+test_every_step_holds_exactly_the_one_gpu_batch (tests.test_ddp.SplitSamplerTests.test_every_step_holds_exactly_the_one_gpu_batch) ... ok
+test_length_order_and_resume_follow_the_one_gpu_sampler (tests.test_ddp.SplitSamplerTests.test_length_order_and_resume_follow_the_one_gpu_sampler) ... ok
+test_stats_report_what_225_atoms_per_rank_would_drop (tests.test_ddp.SplitSamplerTests.test_stats_report_what_225_atoms_per_rank_would_drop) ... ok
+test_an_oom_on_one_rank_stops_it_at_once_and_the_other_rank_is_released (tests.test_ddp.TwoProcessTests.test_an_oom_on_one_rank_stops_it_at_once_and_the_other_rank_is_released) ... Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, CUDA driver not available (NVRTC compilation available)
+   Devices:
+     "cpu"      : "x86_64"
+   Kernel cache:
+     /jet/home/akumar45/.cache/warp/1.18.0
+Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. GPU execution will not be available.
+Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. GPU execution will not be available.
+[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, CUDA driver not available (NVRTC compilation available)
+   Devices:
+     "cpu"      : "x86_64"
+   Kernel cache:
+     /jet/home/akumar45/.cache/warp/1.18.0
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, CUDA driver not available (NVRTC compilation available)
+   Devices:
+     "cpu"      : "x86_64"
+   Kernel cache:
+     /jet/home/akumar45/.cache/warp/1.18.0
+ok
+test_eval_counts_a_shared_batch_once_and_reduces_the_loss_probe_and_logs (tests.test_ddp.TwoProcessTests.test_eval_counts_a_shared_batch_once_and_reduces_the_loss_probe_and_logs) ... Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. GPU execution will not be available.
+Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. GPU execution will not be available.
+[Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, CUDA driver not available (NVRTC compilation available)
+   Devices:
+     "cpu"      : "x86_64"
+   Kernel cache:
+     /jet/home/akumar45/.cache/warp/1.18.0
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, CUDA driver not available (NVRTC compilation available)
+   Devices:
+     "cpu"      : "x86_64"
+   Kernel cache:
+     /jet/home/akumar45/.cache/warp/1.18.0
+ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 90.966s
+
+OK
