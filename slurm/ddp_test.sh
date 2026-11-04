@@ -1,15 +1,17 @@
 #!/bin/bash
-# Tests of the two-rank mode (docs/ddp.md). Usage: ddp_test.sh cpu|v100|l40s, from a code copy (never shared/repo while chains run).
+# Tests of the two-rank mode (docs/ddp.md). Usage: ddp_test.sh cpu|v100|l40s|loss, from a code copy (never shared/repo while chains run).
 #   cpu   the unit tests on Linux (with the two-process gloo tests) and the batch statistics of the real lists; writes worst_rows.txt
 #   v100  on 2 x V100-32: Dense one-GPU against two-rank runs, a two-rank run stopped by SIGTERM and resumed, Element one-GPU
 #         against two ranks, Local+Global and Local-12 on two ranks, long_run.sh with LONG_RANKS=2 stopped by time and resumed,
 #         the collector on that run, and the memory test on worst_rows.txt when it exists
 #   l40s  on 2 x L40S: long_run.sh with LONG_RANKS=2 for Local+Global and Local-12 on the real lists, and the memory test
+#   loss  on 2 x V100-32: train/loss in the log of a two-rank run against a one-GPU run, and a two-rank run stopped and
+#         resumed on one GPU (the rank change of docs/ddp.md Section 6)
 # Everything goes to DDP_DIR (shared/ddp_test): resume/ (probe runs), runs/ (long_run.sh), results/, logs/.
 umask 002
 export PYTHONNOUSERSITE=1
 set -uo pipefail
-STAGE=${1:?usage: ddp_test.sh cpu|v100|l40s}
+STAGE=${1:?usage: ddp_test.sh cpu|v100|l40s|loss}
 SHARED=/ocean/projects/che260063p/shared
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 DIR=${DDP_DIR:-$SHARED/ddp_test}
@@ -125,7 +127,33 @@ l40s)
         step "memory test, Local+Global, two L40S" memory_test local_global
     fi
     ;;
-*) echo "usage: ddp_test.sh cpu|v100|l40s"; exit 2 ;;
+loss)
+    export RESUME_TEST_DIR=$DIR/resume RESUME_REPO=$REPO RESUME_SEED=0 RESUME_CKPT_EVERY=100 RESUME_STEPS=300
+    R="bash slurm/resume_test.sh"
+    step "Dense, one GPU: S1" env CUDA_VISIBLE_DEVICES=0 $R dense S1:smallval
+    export RESUME_SKIP_VERIFY=1
+    step "Dense, two ranks: D1, and DX stopped by SIGTERM after step 150" env RESUME_RANKS=2 $R dense D1:smallval DX:term:150:smallval
+    rm -f "$DIR/resume/DX/train/DX/.distributed-shared-file"      # as long_run.sh does before every segment
+    step "DX resumed on one GPU" env CUDA_VISIBLE_DEVICES=0 $R dense DX:smallval
+    step "train/loss of the log, D1 against S1" $PY - "$DIR/resume/logs" "$JOB" <<'EOF'
+import ast, re, sys
+def losses(name):
+    out = {}
+    for line in open(f"{sys.argv[1]}/{name}_{sys.argv[2]}.log", encoding="utf-8", errors="replace"):
+        m = re.search(r"INFO:root:(\{'train/loss'.*\})\s*$", line)
+        if m:
+            d = ast.literal_eval(m.group(1))
+            out[d["train/step"]] = d["train/loss"]
+    return out
+one, two = losses("S1"), losses("D1")
+rel = [abs(two[s] - one[s]) / abs(one[s]) for s in sorted(one)]
+ok = sorted(one) == sorted(two) == list(range(300)) and max(rel) <= 2.5e-6
+print(f"{'PASS' if ok else 'FAIL'}  logged train/loss, two ranks against one GPU, {len(rel)} steps: step 0 {rel[0]:.2e}, largest {max(rel):.2e} (limit 2.5e-6, 3 x the one-GPU noise of docs/ddp.md 4.2)")
+sys.exit(0 if ok else 1)
+EOF
+    step "DX (two ranks, then one GPU) against S1 and D1" compare --refs S1 D1 --tests DX --steps 300 --probe-dir probe/global --out "$OUT/rank_change"
+    ;;
+*) echo "usage: ddp_test.sh cpu|v100|l40s|loss"; exit 2 ;;
 esac
 [ -n "$POLL" ] && kill $POLL 2>/dev/null
 note "RESULT: $([ $FAILED -eq 0 ] && echo every step exited 0 || echo at least one step failed)"
