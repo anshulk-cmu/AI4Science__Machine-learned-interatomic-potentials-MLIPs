@@ -1,0 +1,2 @@
+variant=dense steps=3200 seed=0 data=fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M eval_every=3200 ckpt_every=100
+first_job=50192540 user=akumar45 repo=/ocean/projects/che260063p/shared/chain_test/main/AI4Science-MLIPs

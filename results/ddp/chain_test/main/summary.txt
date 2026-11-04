@@ -1,0 +1,39 @@
+2026-11-03 21:07:00 job 50192540: segment start: long_dense_s0_3200, limit 1 h, GPU Tesla V100-SXM2-32GB 32768 MiB, host v001.ib.bridges2.psc.edu, code sha256 fd4826bf47746deb
+PASS  split_train_70.txt: list sha256 equals manifest
+PASS  split_train_70.txt: list size equals manifest
+PASS  split_train_70.txt: dataset rows equal list
+PASS  split_train_70.txt: rows read from the train_4M folder
+PASS  split_train_70.txt: split size equals manifest
+PASS  split_val_monitor_5k.txt: list sha256 equals manifest
+PASS  split_val_monitor_5k.txt: list size equals manifest
+PASS  split_val_monitor_5k.txt: dataset rows equal list
+PASS  split_val_monitor_5k.txt: rows read from the train_4M folder
+PASS  split_val_monitor_5k.txt: split size equals manifest
+RESULT: all checks passed
+2026-11-03 21:07:19 job 50192540: START train from complete step 0, stop by time after 1780 s (log: /ocean/projects/che260063p/shared/chain_test/runs_main/long_dense_s0_3200/logs/train_50192540.log)
+2026-11-03 21:37:04 job 50192540: END   train exit 124 (training process 124; 0 = final checkpoint written, 124 = stopped by time as planned), complete checkpoints up to step 3100, 1784 s, peak GPU memory 15064 MiB
+2026-11-03 21:37:04 job 50192540: RESULT: stopped by time; complete checkpoints up to step 3100 of 3200; the next segment resumes from there
+2026-11-03 21:50:35 job 50192541: segment start: long_dense_s0_3200, limit 1 h, GPU Tesla V100-SXM2-32GB 32768 MiB, host v001.ib.bridges2.psc.edu, code sha256 fd4826bf47746deb
+PASS  split_train_70.txt: list sha256 equals manifest
+PASS  split_train_70.txt: list size equals manifest
+PASS  split_train_70.txt: dataset rows equal list
+PASS  split_train_70.txt: rows read from the train_4M folder
+PASS  split_train_70.txt: split size equals manifest
+PASS  split_val_monitor_5k.txt: list sha256 equals manifest
+PASS  split_val_monitor_5k.txt: list size equals manifest
+PASS  split_val_monitor_5k.txt: dataset rows equal list
+PASS  split_val_monitor_5k.txt: rows read from the train_4M folder
+PASS  split_val_monitor_5k.txt: split size equals manifest
+RESULT: all checks passed
+2026-11-03 21:50:54 job 50192541: START train from complete step 3100, stop by time after 1781 s (log: /ocean/projects/che260063p/shared/chain_test/runs_main/long_dense_s0_3200/logs/train_50192541.log)
+2026-11-03 21:55:46 job 50192541: END   train exit 0 (training process 0; 0 = final checkpoint written, 124 = stopped by time as planned), complete checkpoints up to step 3100, 292 s, peak GPU memory 10864 MiB
+OOM events: 0 train (0 recovered), 0 eval (0 recovered); no batch was skipped
+  val/loss: 0.2740
+  val/omol.val,omol_energy,per_atom_mae: 0.0865
+  val/omol.val,omol_forces,mae: 0.1548
+2026-11-03 21:55:46 job 50192541: final checkpoint: /ocean/projects/che260063p/shared/chain_test/runs_main/long_dense_s0_3200/train/long_dense_s0_3200/checkpoints/final/inference_ckpt.pt
+2026-11-03 21:55:46 job 50192541: START size_consistency
+2026-11-03 21:56:11 job 50192541: END   size_consistency (log: /ocean/projects/che260063p/shared/chain_test/runs_main/long_dense_s0_3200/logs/size_consistency_50192541.log)
+checkpoints/final/inference_ckpt.pt  Delta meV  8 A: 2.79397e-06 [disconnected]  10 A: 2.79397e-06 [disconnected]  15 A: 2.79397e-06 [disconnected]  25 A: 2.79397e-06 [disconnected]  100 A: 2.79397e-06 [disconnected]
+2026-11-03 21:56:11 job 50192541: RESULT: all stages passed
+2026-11-03 21:56:17 job 50192542: DONE marker present: the run is finished, nothing to do

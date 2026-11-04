@@ -238,6 +238,33 @@ each. Seconds per step from fairchem's step line of rank 0: time = atoms on rank
 - `train/loss` is the loss of the whole step (Section 3), as `make_accuracy_figure.py` and
   `size_consistency_along_training.py` expect; the validation values, including `val/loss`, are global. The runs of Section
   4.5 ran before this change and logged rank 0's share; their speed numbers do not depend on it.
+- Job 50192548 (2 x V100-32, Dense, 300 steps, `slurm/ddp_test.sh loss`): the logged `train/loss` of a two-rank run against a
+  one-GPU run: step 0 3.7e-8, largest 1.5e-6 over 300 steps (criterion 2.5e-6, set before the run): PASS. A two-rank run
+  stopped after step 151 and resumed on one GPU from `step_100` against the one-GPU and the two-rank run: PASS on every check
+  of Section 4.3 (loss 1.0e-6 against N 1.5e-6, weights 1.6e-7 against N 2.1e-7). Files: `results/ddp/loss_test_50192548.out`,
+  `results/ddp/rank_change_checks.json`.
+
+### 4.7 A real one-GPU chain with the new code (`LONG_RANKS` unset)
+
+The live runs will read this code at their next segment. So a real chain ran through `slurm/submit_chain.sh`,
+`slurm/long_run.job` and `slurm/long_run.sh` of this branch, and the same chain with the code of `main` (8ebe5fe), on GPU-small
+(V100-32): Dense, the real lists, 3,200 steps, 3 segments of 1 h, a checkpoint every 100 steps, from separate code copies and
+a test runs folder. A test-only `sbatch` stand-in on `PATH` changed only the partition (GPU-shared to GPU-small), the job name
+(`long_*` to `chainnew_*` or `chainmain_*`) and the folder of the job output; it then called the real `sbatch`.
+
+| | New code: jobs 50192537, 50192538, 50192539 | Main code: jobs 50192540, 50192541, 50192542 |
+|---|---|---|
+| Segment 1 | stopped by time after 1,558 s (limit of the 1 h job minus the 1,800 s margin); checkpoints to step 2100 | after 1,784 s; to step 3100 |
+| Segment 2 (afterany, then queued for GPU-small) | resumed from step 2100, finished, final checkpoint, 2 validations, size check (Delta 1.9e-6 meV), DONE | resumed from step 3100, the same (Delta 2.8e-6 meV), DONE |
+| Segment 3 | "DONE marker present", 3 s | the same |
+| Final validation (log, rounded) | val/loss 0.2740, energy 0.0865, force 0.1548 | 0.2740, 0.0865, 0.1548 |
+
+After the job ids, times, stop step, code hash and the float floor of the size check are masked, `settings.txt`,
+`segments.txt`, `chains.txt` and `summary.txt` of the two chains are the same. The earlier chain smoke (job 50116336,
+`docs/launch-checklist.md` Section 6) ran its three segments inside one job; this test used three Slurm jobs and the real
+`afterany` dependency, and shows the same records (stop by time, resume, final, size check, DONE, then an immediate exit).
+Files: `results/ddp/chain_test/`. The two segments stopped at different steps because the main-code chain ran second and
+read the same rows from a warm page cache.
 
 ## 5. Out-of-memory errors with two ranks
 
@@ -292,8 +319,8 @@ change is a manual override:
 Why this is safe (reasoning, and one test): the two-rank checkpoint holds the same state as a one-GPU checkpoint (model, EMA,
 optimizer, scheduler and step counters are the same on both ranks, and DCP reads them at any number of ranks), and the
 one-GPU sampler continues with the same batch at the same step, because the split sampler uses the one-GPU order and
-position. Job 50192548 tests it: a two-rank run stopped after step 150 and resumed on one GPU, compared with one-GPU and
-two-rank runs (`slurm/ddp_test.sh loss`). The other direction (one GPU to two ranks) is the same edit in reverse: add the text
+position. Job 50192548 tested it with `slurm/resume_test.sh`: a two-rank run stopped after step 151 and resumed on one GPU
+passed every check against one-GPU and two-rank runs (Section 4.6). The `settings.txt` edit itself was not run. The other direction (one GPU to two ranks) is the same edit in reverse: add the text
 to the first line. The alternative without an override is a new run folder (another `--steps` or `LONG_RUNS_DIR`), which
 starts again at step 0.
 
@@ -310,7 +337,9 @@ starts again at step 0.
 - **Not tested on the GPUs:** a real Slurm time limit (the tests stop by `timeout`, as `long_run.sh` does), a resume on another
   node, Local-6 on two ranks (same code as Element and Local+Global), and a kill of the launcher alone (its ranks would keep
   running until the job ends; `resume_test.sh` refuses `kill:STEP` with two ranks).
-- **Logs.** `train/loss` became the whole-step loss after the GPU runs of Section 4; job 50192548 checks it on the GPUs.
+- **Logs.** `train/loss` became the whole-step loss after the main GPU runs of Section 4; job 50192548 checked it on the GPUs.
+- **Tests.** `tests/test_ddp.py` has 13 tests. On native Windows the 3 two-process tests skip (no gloo device); on Linux
+  (job 50192700) all 13 ran and passed.
 - **One seed.** The batch statistics and the largest-part check use seed 0, the seed of the planned runs.
 
 ## 8. Files, jobs and cost
@@ -336,6 +365,10 @@ starts again at step 0.
 | 50188423 | equivalence, resume, Element, long_run.sh, collector, OOM stop | GPU-small, 2 x V100-32 | 69 min | about 2.3 SU |
 | 50184492 | Local+Global, Local-12, memory test | GPU-shared, 2 x L40S | 49 min | about 1.65 SU |
 | 50190325 | largest rank parts over 400,000 steps | RM-shared, 16 cores | 7 min 52 s | about 2.1 RM SU |
+| 50192546, 50192700 | test_ddp on Linux (the first found two stale test stand-ins; 13 of 13 passed in the second) | RM-shared, 4 cores | 5 min each | about 0.7 RM SU |
+| 50192548 | logged `train/loss`, two ranks resumed on one GPU | GPU-small, 2 x V100-32 | 10 min 9 s | about 0.34 SU |
+| 50192537 to 50192539 | one-GPU chain, new code | GPU-small, 1 x V100-32 | 30 min 11 s, 12 min 15 s, 3 s | about 0.71 SU |
+| 50192540 to 50192542 | one-GPU chain, main code | GPU-small, 1 x V100-32 | 30 min 9 s, 5 min 39 s, 3 s | about 0.60 SU |
 
 The GPU charges are elapsed time x 2 GPUs x 1 SU per GPU-hour (reasoning; see the job_info values in the run log).
 

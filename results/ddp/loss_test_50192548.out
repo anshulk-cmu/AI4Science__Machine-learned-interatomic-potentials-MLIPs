@@ -1,0 +1,81 @@
++ cd /ocean/projects/che260063p/shared/chain_test
++ DDP_DIR=/ocean/projects/che260063p/shared/chain_test/ddp
++ bash /ocean/projects/che260063p/shared/chain_test/new/AI4Science-MLIPs/slurm/ddp_test.sh loss
+2026-11-03 21:40:24 job 50192548: stage loss, host v001.ib.bridges2.psc.edu, 10 cores, 503 GB, code /ocean/projects/che260063p/shared/chain_test/new/AI4Science-MLIPs, GPUs: Tesla V100-SXM2-32GB, 32768 MiB;Tesla V100-SXM2-32GB, 32768 MiB;
+2026-11-03 21:40:24 job 50192548: START Dense, one GPU: S1
+2026-11-03 21:40:24 job 50192548: variant dense, ranks 1, steps 300, checkpoint every 100, seed 0, host v001.ib.bridges2.psc.edu, GPU Tesla V100-SXM2-32GB 32768 MiB, specs: S1:smallval
+PASS  pilot_train_200k.txt: list sha256 equals manifest
+PASS  pilot_train_200k.txt: list size equals manifest
+PASS  pilot_train_200k.txt: dataset rows equal list
+PASS  pilot_train_200k.txt: rows read from the train_4M folder
+PASS  pilot_train_200k.txt: split size equals manifest
+PASS  pilot_val_5k.txt: list sha256 equals manifest
+PASS  pilot_val_5k.txt: list size equals manifest
+PASS  pilot_val_5k.txt: dataset rows equal list
+PASS  pilot_val_5k.txt: rows read from the val folder
+PASS  pilot_val_5k.txt: split size equals manifest
+RESULT: all checks passed
+2026-11-03 21:40:50 job 50192548: S1: start (0 complete checkpoints on disk, store file absent), stop none , data smallval
+2026-11-03 21:44:31 job 50192548: S1: python exit 0, last logged step 299, checkpoints: final step_0 step_100 step_200 
+2026-11-03 21:44:31 job 50192548: S1: DONE
+2026-11-03 21:44:31 job 50192548: RESULT: all runs behaved as planned
+2026-11-03 21:44:31 job 50192548: END   Dense, one GPU: S1: exit 0
+2026-11-03 21:44:31 job 50192548: START Dense, two ranks: D1, and DX stopped by SIGTERM after step 150
+2026-11-03 21:44:31 job 50192548: variant dense, ranks 2, steps 300, checkpoint every 100, seed 0, host v001.ib.bridges2.psc.edu, GPU Tesla V100-SXM2-32GB 32768 MiB, specs: D1:smallval DX:term:150:smallval
+2026-11-03 21:44:31 job 50192548: list check skipped: an earlier call of this job checked the same lists
+2026-11-03 21:44:31 job 50192548: D1: start (0 complete checkpoints on disk, store file absent), stop none , data smallval
+2026-11-03 21:46:55 job 50192548: D1: python exit 0, last logged step 299, checkpoints: final step_0 step_100 step_200 
+2026-11-03 21:46:55 job 50192548: D1: DONE
+2026-11-03 21:46:55 job 50192548: DX: start (0 complete checkpoints on disk, store file absent), stop term 150, data smallval
+2026-11-03 21:48:15 job 50192548: DX: sent SIGTERM after step 151
+2026-11-03 21:48:21 job 50192548: DX: python exit 1, last logged step 151, checkpoints: preemption_state step_0 step_100 
+2026-11-03 21:48:21 job 50192548: DX: not finished
+2026-11-03 21:48:21 job 50192548: RESULT: all runs behaved as planned
+2026-11-03 21:48:21 job 50192548: END   Dense, two ranks: D1, and DX stopped by SIGTERM after step 150: exit 0
+2026-11-03 21:48:21 job 50192548: START DX resumed on one GPU
+2026-11-03 21:48:21 job 50192548: variant dense, ranks 1, steps 300, checkpoint every 100, seed 0, host v001.ib.bridges2.psc.edu, GPU Tesla V100-SXM2-32GB 32768 MiB, specs: DX:smallval
+2026-11-03 21:48:21 job 50192548: list check skipped: an earlier call of this job checked the same lists
+2026-11-03 21:48:21 job 50192548: DX: start (2 complete checkpoints on disk, store file absent), stop none , data smallval
+2026-11-03 21:50:15 job 50192548: DX: python exit 0, last logged step 299, checkpoints: final preemption_state step_0 step_100 step_200 
+2026-11-03 21:50:15 job 50192548: DX: DONE
+2026-11-03 21:50:15 job 50192548: RESULT: all runs behaved as planned
+2026-11-03 21:50:15 job 50192548: END   DX resumed on one GPU: exit 0
+2026-11-03 21:50:15 job 50192548: START train/loss of the log, D1 against S1
+PASS  logged train/loss, two ranks against one GPU, 300 steps: step 0 3.68e-08, largest 1.50e-06 (limit 2.5e-6, 3 x the one-GPU noise of docs/ddp.md 4.2)
+2026-11-03 21:50:15 job 50192548: END   train/loss of the log, D1 against S1: exit 0
+2026-11-03 21:50:16 job 50192548: START DX (two ranks, then one GPU) against S1 and D1
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "x86_64"
+     "cuda:0"   : "Tesla V100-SXM2-32GB" (32 GiB, sm_70, mempool enabled)
+     "cuda:1"   : "Tesla V100-SXM2-32GB" (32 GiB, sm_70, mempool enabled)
+   CUDA peer access:
+     Supported fully (all-directional)
+   Kernel cache:
+     /ocean/projects/che260063p/shared/cache/warp/1.18.0
+PASS  DX: steps 0 to N-1 all present once, after merging segments (300 steps, segments start at [0, 100])
+PASS  DX: run was resumed (two or more segments) ([0, 100])
+PASS  DX: batch_sha256 equal to every reference at every step (0 mismatches, first at step None)
+PASS  DX: epoch equal to every reference at every step (0 mismatches, first at step None)
+PASS  DX: step_in_epoch equal to every reference at every step (0 mismatches, first at step None)
+PASS  DX: structures equal to every reference at every step (0 mismatches, first at step None)
+PASS  DX: atoms equal to every reference at every step (0 mismatches, first at step None)
+PASS  DX: learning rate equal at every step (relative difference <= 1e-12) (0.0)
+PASS  DX: train loss, steps 100 to 299, max relative difference (value 1.003e-06, noise 1.503e-06, limit 4.510e-06)
+PASS  DX: train loss, continued in memory against resumed from disk, steps 100 to 151 (value 1.116e-07, noise 1.006e-06, limit 3.018e-06)
+PASS  DX: final model_state_dict, relative L2 difference (value 1.639e-07, noise 2.080e-07, limit 1.000e-06)
+PASS  DX: final ema_state_dict, relative L2 difference (value 4.616e-08, noise 5.122e-08, limit 1.000e-06)
+PASS  DX: val/loss, relative difference (value 1.672e-08, noise 2.055e-08, limit 1.000e-06)
+PASS  DX: val/omol.val,omol_energy,mae, relative difference (value 3.265e-07, noise 4.684e-07, limit 1.405e-06)
+PASS  DX: val/omol.val,omol_energy,per_atom_mae, relative difference (value 1.404e-07, noise 2.167e-07, limit 1.000e-06)
+PASS  DX: val/omol.val,omol_forces,mae, relative difference (value 9.357e-09, noise 7.156e-09, limit 1.000e-06)
+RESULT: PASS
+2026-11-03 21:50:29 job 50192548: END   DX (two ranks, then one GPU) against S1 and D1: exit 0
+/ocean/projects/che260063p/shared/chain_test/new/AI4Science-MLIPs/slurm/ddp_test.sh: line 27:  2153 Terminated              ( while true; do
+    nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits >> "$DIR/logs/gpu_${STAGE}_$JOB.txt"; sleep 5;
+done )
+2026-11-03 21:50:29 job 50192548: RESULT: every step exited 0
+/ocean/projects/che260063p/shared/chain_test/new/AI4Science-MLIPs/slurm/ddp_test.sh: line 26:  2153 Terminated              ( while true; do
+    nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits >> "$DIR/logs/gpu_${STAGE}_$JOB.txt"; sleep 5;
+done )
