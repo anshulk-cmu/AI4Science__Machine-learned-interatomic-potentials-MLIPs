@@ -31,12 +31,16 @@ def is_oom(exc: BaseException) -> bool:
     return isinstance(exc, torch.OutOfMemoryError) or (isinstance(exc, RuntimeError) and "out of memory" in str(exc).lower())
 
 
+FINGERPRINT_KEYS = ("natoms", "atomic_numbers", "pos", "charge", "spin")
+
+
 def batch_fingerprint(data) -> str:
-    """sha256 of the atom counts, atomic numbers and positions of a batch. Not the sid: an OMol25 row has no sid in its
-    data, so fairchem stores an empty string for every structure."""
+    """sha256 of the atom counts, atomic numbers, positions, charges and spins of a batch. Not the sid: an OMol25 row has
+    no sid in its data, so fairchem stores an empty string for every structure."""
     h = hashlib.sha256()
-    for key in ("natoms", "atomic_numbers", "pos"):
-        h.update(data[key].detach().cpu().contiguous().numpy().tobytes())
+    for key in FINGERPRINT_KEYS:
+        if key in data:
+            h.update(key.encode("utf-8") + data[key].detach().cpu().contiguous().numpy().tobytes())
     return h.hexdigest()
 
 

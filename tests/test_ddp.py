@@ -98,6 +98,21 @@ class FingerprintTests(unittest.TestCase):
         self.assertEqual(set_hash(structure_hashes(a)), set_hash(structure_hashes(Batch(["b"], [2])) + structure_hashes(Batch(["a"], [3]))))
         self.assertNotEqual(set_hash(structure_hashes(a)), set_hash(structure_hashes(b)))
 
+    def test_charge_and_spin_tell_same_geometry_structures_apart(self):
+        from training.guarded_unit import batch_fingerprint
+        from training.resume_probe import structure_hashes
+
+        def with_state(charge, spin):
+            b = Batch(["a"], [3])
+            b.update(charge=torch.tensor([charge]), spin=torch.tensor([spin]))
+            return b
+
+        base = with_state(0, 1)
+        for other in (with_state(1, 1), with_state(0, 3)):
+            self.assertNotEqual(batch_fingerprint(base), batch_fingerprint(other))
+            self.assertNotEqual(structure_hashes(base), structure_hashes(other))
+        self.assertEqual(batch_fingerprint(base), batch_fingerprint(with_state(0, 1)))
+
 
 def gloo_works():
     try:

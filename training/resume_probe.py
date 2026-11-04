@@ -37,12 +37,16 @@ def batch_hash(data) -> str:
 
 
 def structure_hashes(data) -> list[str]:
-    """sha256 of the atomic numbers and positions of each structure (OMol25 rows have an empty sid, see guarded_unit.py)."""
+    """sha256 of the atomic numbers, positions, charge and spin of each structure (OMol25 rows have an empty sid, see
+    guarded_unit.py)."""
     out, start = [], 0
-    for n in data["natoms"].tolist():
+    for i, n in enumerate(data["natoms"].tolist()):
         h = hashlib.sha256()
         for key in ("atomic_numbers", "pos"):
             h.update(data[key][start:start + n].detach().cpu().contiguous().numpy().tobytes())
+        for key in ("charge", "spin"):
+            if key in data:
+                h.update(key.encode("utf-8") + data[key][i:i + 1].detach().cpu().contiguous().numpy().tobytes())
         out.append(h.hexdigest())
         start += n
     return out
