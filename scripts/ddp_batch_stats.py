@@ -101,6 +101,38 @@ def pair_counts(data, rows):
     return out
 
 
+def _edges_chunk(args):
+    return [e6 for _, e6, _ in pair_counts(*args)]
+
+
+def row_edges(data, rows, workers):
+    """Message edges (pairs closer than 6 A) of every row, in the dataset order (ascending rows)."""
+    from multiprocessing import Pool
+
+    chunks = np.array_split(np.sort(rows), workers * 8)
+    with Pool(workers) as pool:
+        return np.concatenate([np.array(c, dtype=np.int64) for c in pool.map(_edges_chunk, [(data, c) for c in chunks])])
+
+
+def largest_parts(edges, natoms, seed, steps):
+    """The rank parts of the first `steps` steps of the split sampler (epochs follow each other), most edges first."""
+    ds = Counts(natoms)
+    parts = [SplitBatchSampler(ds, 450, 2, r, seed) for r in (0, 1)]
+    out, step, epoch = [], 0, 0
+    while step < steps:
+        for p in parts:
+            p.set_epoch_and_start_iteration(epoch, 0)
+        for p0, p1 in zip(*parts):
+            for r, p in enumerate((p0, p1)):
+                out.append((int(edges[p].sum()), int(natoms[p].sum()), len(p), step, r))
+            step += 1
+            if step == steps:
+                break
+        epoch += 1
+    out.sort(reverse=True)
+    return [dict(edges=e, atoms=a, structures=n, step=s, rank=r) for e, a, n, s, r in out[:20]]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--index", type=Path, required=True, help="<data root>/pilot/<split>_index.npz")
@@ -111,10 +143,21 @@ def main():
     ap.add_argument("--worst", type=int, default=0, help="pair counts for this many of the largest structures")
     ap.add_argument("--data", type=Path, help="the split folder, for --worst")
     ap.add_argument("--worst-out", type=Path, help="row list of the structures with the most pairs, for --worst")
+    ap.add_argument("--part-steps", type=int, default=0, help="count the 6 A pairs of every row and report the largest rank "
+                    "parts over this many steps (needs --data)")
+    ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
 
     rows = read_rows(args.rows)                    # the dataset holds the listed rows in ascending order
     natoms = np.load(args.index)["natoms"][np.sort(rows)].astype(np.int64)
+    if args.part_steps:
+        edges = row_edges(args.data, rows, args.workers)
+        top = largest_parts(edges, natoms, args.seed, args.part_steps)
+        result = {"rows_file": args.rows.name, "seed": args.seed, "steps": args.part_steps, "edges_6A_per_row": summary(edges),
+                  "largest_rank_parts": top}
+        args.out.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+        print(f"{args.rows.name} seed {args.seed}, {args.part_steps} steps: largest rank part {top[0]}")
+        return
     result = {"rows_file": args.rows.name, "seed": args.seed, "shuffle": not args.eval, **stats(natoms, args.seed, not args.eval)}
     if args.worst:
         largest = np.sort(rows)[np.argsort(-natoms, kind="stable")[:args.worst]]

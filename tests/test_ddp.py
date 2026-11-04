@@ -65,6 +65,16 @@ class SplitSamplerTests(unittest.TestCase):
         first_whole, first_part = next(iter(one)), next(iter(part))
         self.assertTrue(set(first_part) <= set(first_whole))
 
+    def test_largest_parts_cover_every_step_across_epochs(self):
+        counts = natoms(1500)
+        edges = counts * 30
+        steps = len(bs.MaxAtomDistributedBatchSampler(bs.Counts(counts), 450, 1, 0, 2)) + 7      # into the second epoch
+        top = bs.largest_parts(edges, counts, seed=2, steps=steps)
+        self.assertEqual(top[0]["edges"], max(t["edges"] for t in top))
+        self.assertEqual(top[0]["edges"], 30 * top[0]["atoms"])
+        self.assertTrue(all(0 <= t["step"] < steps and t["rank"] in (0, 1) for t in top))
+        self.assertGreaterEqual(top[0]["atoms"], int(counts.max()))      # the largest structure is a part, alone or not
+
     def test_stats_report_what_225_atoms_per_rank_would_drop(self):
         counts = natoms()
         out = bs.stats(counts, seed=0, shuffle=True)
