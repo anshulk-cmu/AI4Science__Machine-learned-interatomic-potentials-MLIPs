@@ -110,6 +110,9 @@ bash $C local12 --steps <N> --seed <S> --segments <K> --hours <H> --eval-every <
 - Without `--dry-run` it submits K jobs. Segment k+1 waits for segment k with `afterany`.
 - It refuses a second chain for the same run while jobs of the first are queued. It refuses a run with a FAILED marker.
 - The GPU follows the variant: v100-32 for Dense, Scaled Dense, Global, Frozen; h100-80 for Local-6, Element, Local+Global, Local-12. If the H100 queue is long, `LONG_GPU=l40s-48` puts Local-6, Element or Local+Global on an L40S (1 SU per hour, 46,068 MiB). Local-6 peaked at 45,241 MiB over 50,000 steps, so it is marginal there; Local+Global and Local-12 are expected to need more than 46 GB and are refused.
+- `LONG_RANKS=2 LONG_GPU=l40s-48` runs each segment on two L40S with DDP, also for Local-12 ([ddp.md](ddp.md)). Each step uses the
+  same 450-atom batch as one GPU, split over the two GPUs. 2 SU per hour. A run keeps its rank count: a segment with another
+  `LONG_RANKS` stops with "settings differ". Read the measured memory and the risks in [ddp.md](ddp.md) first.
 - Use the seeds 0 to k-1 for k long runs of a variant. `collect_final_metrics.py --expected-seeds k` accepts only these seeds.
 - When `--eval-every` divides `--steps`, the last step is validated twice: once by the spacing and once at the end of the epoch that the step limit cuts short (`docs/TRAINING.md`). In the pilots, one validation of the 5,000 report rows took at most about 6 min (Dense), 6.6 min (Global) and 9.8 min (Local-6 on an L40S). Those rows had 102 atoms on average; the monitor rows have 55, so one validation should take less (reasoning, not measured). Plan for this time in the last segment.
 
@@ -156,12 +159,14 @@ Measured on the pilots (50,000 steps, a validation every 5,000 steps): mean seco
 | Element | h100-80 | 0.629 (median 0.577) | 200-step smoke run, steps 20 to 199, no validation pause |
 | Local+Global | h100-80 | 0.655 (median 0.611) | 200-step smoke run, as above |
 | Local-12 | h100-80 | 1.059 (median 0.921) | 200-step smoke run, as above |
+| Local+Global | 2 x l40s-48 (`LONG_RANKS=2`) | 0.742 (median 0.693) | 1,000-step test on the real lists, steps 20 to 999, no validation pause ([ddp.md](ddp.md)) |
+| Local-12 | 2 x l40s-48 (`LONG_RANKS=2`) | 0.663 (median 0.607) | 600-step test, as above; it ran after Local+Global on the same rows, so a warm page cache may have helped |
 
 The smoke numbers come from the first 200 batches of one seed. Use them as estimates. For comparison, the Local-6 pilots had a
 median of 0.70 to 0.80 s per step over 50,000 steps. So Local-12 is about 1.2 to 1.3 times Local-6, and Element and Local+Global
 are not slower than Local-6 (reasoning from the medians). The pilot means include the validation pauses; the smoke means do not.
 
-Hours of one run, about `N x s / 3600`. SU: hours x 1 (v100-32) or hours x 2 (h100-80). This is an estimate for a new N; validation every E steps changes it a little.
+Hours of one run, about `N x s / 3600`. SU: hours x 1 (v100-32) or hours x 2 (h100-80, or 2 x l40s-48). This is an estimate for a new N; validation every E steps changes it a little.
 
 Disk (measured on the pilots): one checkpoint is 140 MB (Dense, Scaled Dense) or 865 MB (all MoE variants). A run keeps `N / C + 2` checkpoints.
 

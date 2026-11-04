@@ -106,6 +106,9 @@ Frozen, Scaled Dense, Element, Local+Global and Local-12 times are guesses. A sh
 
 - Dense and Scaled Dense: about 55 to 65 h. Global and Frozen: about 60 to 65 h. Local-6, Element and Local+Global: about 70 to 80 h (assumed for the new ones). Local-12: not known, we assume about 90 h.
 - The limit of one job is 48 h. So each long run needs 2 chained jobs (3 if there is a delay or a failure).
+- Added 3 Nov: when the H100 queue is long, Local+Global and Local-12 can run on two L40S per segment (`LONG_RANKS=2`,
+  [ddp.md](ddp.md)). Each step keeps the one-GPU batch, so the update is the one-GPU update; the cost is 2 SU per hour, as on one
+  H100.
 - Each job saves checkpoints. The next job starts from the last saved checkpoint.
 
 ---

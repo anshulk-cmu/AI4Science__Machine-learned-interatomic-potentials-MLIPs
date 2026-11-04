@@ -192,6 +192,9 @@ Measured later (pilot summaries on Ocean, `nvidia-smi` every 5 s over the whole 
 45,241 MiB on the H100, and Dense and Global at 14,810 to 16,414 MiB on the V100. So an L40S (46,068 MiB) is only marginal for
 Local-6. The long-run and Wave 1 job files use `h100-80` for every Local variant (`docs/launch-checklist.md`).
 
+Two GPUs: `LONG_RANKS=2` trains one long-run segment on two L40S with DDP. Each step keeps the one-GPU batch of 450 atoms and
+splits it over the two GPUs (`training/split_sampler.py`). Method, measured memory and speed, and risks: [ddp.md](ddp.md).
+
 Peaks are from the 20-step smoke test (`nvidia-smi`, so they include the allocator cache), run with the settings in the next
 section (expandable segments, cache cleared every 50 steps). Without them the same runs showed 19.5 GiB (Dense) and 20.0 GiB
 (Global); Local-6 stayed at 26.3 GiB. Memory is not linear in the
@@ -215,8 +218,9 @@ cleanup, not a filter. **No batch is ever skipped.**
   after its retries.
 - `gc_every: 50` collects Python garbage and empties the CUDA cache every 50 steps.
 - `training/run.py` sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` to reduce fragmentation (override by setting it).
-- Single process only.
-- Drill: `OMOL_GPU_MEMORY_FRACTION=0.35` caps the GPU memory of a run so some batches cannot fit. The smoke job (`slurm/smoke_train.sh`)
+- With two ranks (`LONG_RANKS=2`, `docs/ddp.md`) there is no retry: an out-of-memory error stops the run at once, because the
+  other rank already waits in a collective of the same step. The validation counts a batch that both ranks hold once.
+- Drill (one process only): `OMOL_GPU_MEMORY_FRACTION=0.35` caps the GPU memory of a run so some batches cannot fit. The smoke job (`slurm/smoke_train.sh`)
   runs it for every variant and checks that every event is cleaned up and retried, and that a batch that still does not fit stops the run
   with "does not fit this GPU". The drill therefore may end with a failed run by design.
 
