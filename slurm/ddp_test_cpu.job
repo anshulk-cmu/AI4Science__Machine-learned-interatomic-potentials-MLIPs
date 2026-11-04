@@ -9,6 +9,8 @@
 #SBATCH --mail-type=ALL,TIME_LIMIT_80
 #SBATCH --mail-user=anshulk@andrew.cmu.edu
 # made by make_sbatch.py from the Bridges-2 guide; estimated at most 12 SU
+# Runs the copy that `b2.py syncrepo <this repository> /ocean/projects/che260063p/shared/ddp_repo_parent` makes; that copy and
+# shared/ddp_test were deleted after the runs of 2026-11-03 (docs/ddp.md), so make the copy again before a rerun.
 # files created here are owned by the Unix group in effect at submission (p. 7):
 # submit after 'newgrp che260063p' or run 'chgrp -R che260063p /ocean/projects/che260063p/shared/ddp_test' afterwards
 umask 002                      # files stay group-writable for the project team (guide B9)
