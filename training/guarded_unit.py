@@ -9,6 +9,7 @@ With more than one rank (docs/ddp.md) a retry is not safe: the other ranks alrea
 (the loss sample count, the DDP gradient buckets), and a retry would pair its collectives with theirs. So an out-of-memory
 error stops the run at once, and torch elastic stops the other ranks. The eval step counts a batch that every rank holds
 (training/split_sampler.py) only once, val/loss is reduced over the ranks, and ranks above 0 log warnings and errors only.
+The step log (train/loss) gives the loss of the whole step, as one GPU would log it for the same batch, not rank 0's part.
 """
 from __future__ import annotations
 
@@ -103,9 +104,46 @@ class GuardedTrainEvalUnit(MLIPTrainEvalUnit):
                            f"Last error: {message}")
 
     def train_step(self, state, data) -> None:
-        self._run("train", lambda: MLIPTrainEvalUnit.train_step(self, state, data), data)
+        if distutils.get_world_size() == 1:
+            self._run("train", lambda: MLIPTrainEvalUnit.train_step(self, state, data), data)
+        else:
+            self._ranked_train_step(state, data)
         if self.gc_every and self.train_progress.num_steps_completed % self.gc_every == 0:
             free_memory()
+
+    def _ranked_train_step(self, state, data) -> None:
+        """fairchem's step, with its step log held back and written here with the loss of the whole step.
+
+        fairchem logs this rank's scalar loss L_r = sum_t (W / n_t(B)) * sum_{i in B_r} l_t(i) (DDPMTLoss, the count n_t is
+        over the whole step). The one-GPU loss of the step is L(B) = sum_t (1 / n_t(B)) * sum_{i in B} l_t(i) = mean_r L_r,
+        also for a one-structure batch that every rank holds, because its count is then W * n_t(B) (docs/ddp.md, Section 3).
+        """
+        p = self.train_progress
+        step, lr, before = p.num_steps_completed, self.scheduler.get_lr()[0], self.previous_wall_time
+        epoch = p.num_epochs_completed + p.num_steps_completed_in_epoch / float(len(state.train_state.dataloader))
+        logger, level = self.logger, logging.getLogger().level
+        self.logger = None
+        logging.getLogger().setLevel(max(level, logging.WARNING))
+        try:
+            self._run("train", lambda: MLIPTrainEvalUnit.train_step(self, state, data), data)
+        finally:
+            self.logger = logger
+            logging.getLogger().setLevel(level)
+        world = distutils.get_world_size()
+        loss = torch.tensor(self.last_loss, dtype=torch.float64, device=distutils.get_device_for_local_rank())
+        torch.distributed.all_reduce(loss)
+        seconds = float(self.previous_wall_time - before)
+        atoms, samples = int(data["natoms"].sum()), int(data["natoms"].numel())
+        log = {"train/loss": loss.item() / world, "train/lr": lr, "train/step": step, "train/epoch": epoch,
+               "train/samples_per_second(approx)": samples * world / seconds,
+               "train/atoms_per_second(approx)": atoms * world / seconds,
+               "train/num_atoms_on_rank": atoms, "train/num_samples_on_rank": samples}
+        if self.logger:
+            if self.clip_grad_norm is not None:
+                self.logger.log({"train/grad_norm": self.last_grad_norm}, step=step)
+            self.logger.log(log, step=step, commit=True)
+        if step % self.print_every == 0:
+            logging.info(log)
 
     def eval_step(self, state, data) -> None:
         if distutils.get_world_size() == 1:

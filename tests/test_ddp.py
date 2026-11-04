@@ -114,6 +114,51 @@ class FingerprintTests(unittest.TestCase):
         self.assertEqual(batch_fingerprint(base), batch_fingerprint(with_state(0, 1)))
 
 
+def omol_tasks():
+    """Energy and force tasks as in configs/train.yaml, without element references."""
+    from fairchem.core.modules.loss import DDPMTLoss, L2NormLoss, PerAtomMAELoss
+    from fairchem.core.modules.normalization.normalizer import Normalizer
+    from fairchem.core.units.mlip_unit.mlip_unit import OutputSpec, Task
+
+    def task(name, level, prop, dim, loss):
+        return Task(name=name, level=level, property=prop, out_spec=OutputSpec(dim=dim, dtype="float32"),
+                    normalizer=Normalizer(mean=0.0, rmsd=1.433569), datasets=["omol"], loss_fn=DDPMTLoss(loss, "mean", 1.0),
+                    element_references=None, train_on_free_atoms=False, eval_on_free_atoms=False)
+
+    return [task("omol_energy", "system", "energy", [1], PerAtomMAELoss()), task("omol_forces", "atom", "forces", [3], L2NormLoss())]
+
+
+class LossBatch(dict):
+    """The batch fields compute_loss reads, for some structures of one generated batch."""
+
+    def __init__(self, full, idx):
+        n = full["natoms"]
+        starts = torch.cumsum(n, 0) - n
+        atoms = torch.cat([torch.arange(starts[i], starts[i] + n[i]) for i in idx])
+        super().__init__(natoms=n[idx], omol_energy=full["energy"][idx], omol_forces=full["forces"][atoms])
+        self.natoms, self.fixed, self.pos = n[idx], torch.zeros(len(atoms), dtype=torch.long), full["forces"][atoms]
+        self.dataset_name = ["omol"] * len(idx)
+        self.pred = {"omol_energy": {"energy": full["pred_energy"][idx]}, "omol_forces": {"forces": full["pred_forces"][atoms]}}
+
+
+LOSS_BATCHES = ([5, 300, 3, 41, 12], [320], [7, 9, 280, 2, 30, 11, 6])     # one large structure in each
+
+
+def loss_batch(sizes, seed):
+    g = torch.Generator().manual_seed(seed)
+    n = torch.tensor(sizes)
+    return {"natoms": n, "energy": torch.randn(len(sizes), generator=g) * 50, "forces": torch.randn(int(n.sum()), 3, generator=g),
+            "pred_energy": torch.randn(len(sizes), generator=g) * 50, "pred_forces": torch.randn(int(n.sum()), 3, generator=g)}
+
+
+def one_gpu_loss(full):
+    """The scalar loss fairchem's train step logs on one GPU (no process group: DDPMTLoss counts only this batch)."""
+    from fairchem.core.units.mlip_unit.mlip_unit import compute_loss
+
+    b = LossBatch(full, list(range(len(full["natoms"]))))
+    return float(sum(compute_loss(omol_tasks(), b.pred, b).values()).item())
+
+
 def gloo_works():
     try:
         torch.distributed.ProcessGroupGloo.create_device(hostname="127.0.0.1")
@@ -225,6 +270,103 @@ def case_eval_probe_logs(rank, tmp):
     return seen
 
 
+class Records(list):
+    """A logging handler that keeps the messages of the records it gets."""
+
+    level, filters = 0, []
+
+    def handle(self, record):
+        self.append(record.msg)
+
+
+def ranked_unit(rank):
+    import logging
+    from training import guarded_unit as gu
+
+    unit = bare_unit(gu.GuardedTrainEvalUnit)
+    unit.clip_grad_norm, unit.print_every, unit.previous_wall_time = 10.0, 1, 100.0
+    unit.scheduler = types.SimpleNamespace(get_lr=lambda: [1e-4])
+    wandb = []
+    unit.logger = types.SimpleNamespace(log=lambda d, step=None, commit=False: wandb.append(dict(d))) if rank == 0 else None
+    records = Records()
+    logging.getLogger().handlers[:] = [records]
+    logging.getLogger().setLevel(logging.INFO if rank == 0 else logging.WARNING)     # as GuardedTrainEvalUnit sets it
+    return unit, wandb, records
+
+
+def fairchem_step(part):
+    """A stand-in for fairchem's train step: the real compute_loss of this rank's part (DDPMTLoss all-reduces the
+    counts), and fairchem's own step log, which the unit must hold back."""
+    import logging
+    from fairchem.core.units.mlip_unit.mlip_unit import compute_loss
+
+    def step(self, state, data):
+        self.last_loss = float(sum(compute_loss(omol_tasks(), part.pred, part).values()).item())
+        self.previous_wall_time += 2.0
+        if self.logger:
+            self.logger.log({"train/loss": self.last_loss, "from": "fairchem"}, step=0, commit=True)
+        logging.info({"train/loss": self.last_loss, "from": "fairchem"})
+
+    return step
+
+
+def case_step_loss(rank, tmp):
+    from fairchem.core.units.mlip_unit.mlip_unit import MLIPTrainEvalUnit
+    from training.split_sampler import split_batch
+
+    unit, wandb, records = ranked_unit(rank)
+    state = types.SimpleNamespace(train_state=types.SimpleNamespace(dataloader=[0] * 10))
+    parts = []
+    for k, sizes in enumerate(LOSS_BATCHES):
+        part = LossBatch(loss_batch(sizes, k), split_batch(list(range(len(sizes))), sizes, 2)[rank])
+        parts.append(len(part["natoms"]))
+        with mock.patch.object(MLIPTrainEvalUnit, "train_step", fairchem_step(part)):
+            unit.train_step(state, part)
+    return {"parts": parts, "lines": [m for m in records if isinstance(m, dict)], "wandb": wandb}
+
+
+class WholeStepLossTests(unittest.TestCase):
+    def test_mean_of_the_rank_losses_is_the_one_gpu_loss_and_rank_0_alone_is_not(self):
+        # docs/ddp.md Section 3, with fairchem's compute_loss and DDPMTLoss; the all-reduce of the counts is played here
+        from fairchem.core.common import distutils
+        from fairchem.core.units.mlip_unit.mlip_unit import compute_loss
+        from training.split_sampler import split_batch
+
+        for k, sizes in enumerate(LOSS_BATCHES):
+            full = loss_batch(sizes, k)
+            parts = [LossBatch(full, p) for p in split_batch(list(range(len(sizes))), sizes, 2)]
+            losses = []
+            for r, part in enumerate(parts):
+                other = parts[1 - r]["natoms"]
+                extra = iter([len(other), int(other.sum())])            # energy counts structures, forces atoms
+                with mock.patch.object(distutils, "get_world_size", return_value=2), \
+                        mock.patch.object(distutils, "all_reduce", side_effect=lambda n, device=None: n + next(extra)):
+                    losses.append(float(sum(compute_loss(omol_tasks(), part.pred, part).values())))
+            want = one_gpu_loss(full)
+            self.assertAlmostEqual(sum(losses) / 2 / want, 1.0, delta=1e-6)
+            if len(sizes) > 1:
+                self.assertGreater(abs(losses[0] / want - 1), 0.1)        # the rank-0 value logged before this fix
+
+
+class OneProcessStepLogTests(unittest.TestCase):
+    def test_one_process_keeps_fairchems_step_log_and_runs_no_collective(self):
+        import logging
+        from fairchem.core.units.mlip_unit.mlip_unit import MLIPTrainEvalUnit
+
+        root = logging.getLogger()
+        self.addCleanup(setattr, root, "handlers", root.handlers[:])
+        self.addCleanup(root.setLevel, root.level)
+        unit, wandb, records = ranked_unit(0)
+        full = loss_batch(LOSS_BATCHES[0], 0)
+        part = LossBatch(full, list(range(len(LOSS_BATCHES[0]))))
+        with mock.patch.object(MLIPTrainEvalUnit, "train_step", fairchem_step(part)), \
+                mock.patch.object(torch.distributed, "all_reduce", side_effect=AssertionError("collective")) as reduce:
+            unit.train_step(None, part)
+        reduce.assert_not_called()
+        self.assertEqual(records, [{"train/loss": one_gpu_loss(full), "from": "fairchem"}])
+        self.assertEqual(wandb, [{"train/loss": one_gpu_loss(full), "from": "fairchem"}])
+
+
 def worker(rank, store, case, out):
     os.environ["CURRRENT_DEVICE_TYPE"] = "cpu"          # fairchem's distutils name, misspelled upstream
     torch.distributed.init_process_group("gloo", init_method=f"file://{store}", rank=rank, world_size=2,
@@ -259,6 +401,19 @@ class TwoProcessTests(unittest.TestCase):
         self.assertNotEqual(r1["outcome"], "finished")                 # its collective failed when rank 0 left
         # released within the 30 s process-group timeout of rank 0's error (in a real run torch elastic kills it after 30 s)
         self.assertLess(r1["at"] - r0["at"], 45, r1["outcome"])
+
+    def test_train_loss_is_the_one_gpu_loss_of_the_whole_step(self):
+        (r0, r1), _, _ = self.spawn("case_step_loss")
+        expected = [one_gpu_loss(loss_batch(sizes, k)) for k, sizes in enumerate(LOSS_BATCHES)]
+        self.assertEqual([p0 + p1 for p0, p1 in zip(r0["parts"], r1["parts"])], [5, 2, 7])    # the one structure is on both ranks
+        losses = [d["train/loss"] for d in r0["lines"]]
+        for got, want in zip(losses, expected):
+            self.assertAlmostEqual(got / want, 1.0, delta=1e-6)
+        self.assertEqual(len(losses), 3)
+        self.assertEqual([d["train/loss"] for d in r0["wandb"] if "train/loss" in d], losses)
+        self.assertFalse(any(d.get("from") == "fairchem" for d in r0["lines"] + r0["wandb"]))   # fairchem's rank-0 line held back
+        self.assertEqual(r1["lines"], [])
+        self.assertEqual(sum("train/grad_norm" in d for d in r0["wandb"]), 3)
 
     def test_eval_counts_a_shared_batch_once_and_reduces_the_loss_probe_and_logs(self):
         (r0, r1), _, tmp = self.spawn("case_eval_probe_logs")
