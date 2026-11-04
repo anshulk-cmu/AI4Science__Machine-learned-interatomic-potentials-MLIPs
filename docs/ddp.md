@@ -20,9 +20,9 @@ one GPU. Each GPU gets about half of it.
 | Launch | fairchem LOCAL mode, one process | fairchem LOCAL mode with `job.scheduler.ranks_per_node=2`: fairchem runs torch elastic (`elastic_launch`) in the training process, which starts two rank processes, one per GPU (NCCL) | `launchers/slurm_launch.py` `local_launch` |
 | Batches | `MaxAtomDistributedBatchSampler`, 450 atoms | `training/split_sampler.py`: the batch of the one-GPU sampler (same seed, same 450 atoms, same order, same resume position), split in two parts balanced by atom count | `train_dataloader` and `eval_dataloader` `batch_sampler_fn._target_` |
 | Loss and update | DDPMTLoss, AdamW, clip 10, EMA | the same (Section 3) | `modules/loss.py` |
-| Validation | all batches on one GPU | each batch split over the two GPUs; a batch that both GPUs hold counts once (found by its atom content: OMol25 rows have an empty sid); `val/loss` reduced over the GPUs; the log gives the number of rows | `training/guarded_unit.py` |
+| Validation | all batches on one GPU | each batch split over the two GPUs; a batch that both GPUs hold counts once (found by its atom content, charge and spin: OMol25 rows have an empty sid); `val/loss` reduced over the GPUs; the log gives the number of rows | `training/guarded_unit.py` |
 | Out-of-memory error | clean up and retry twice, then stop | stop at once, no retry (Section 5) | `training/guarded_unit.py` |
-| Log | one line per step | the same: rank 1 logs warnings and errors only | `training/guarded_unit.py` |
+| Log | one line per step | the same: one line per step from rank 0, with the loss of the whole step (Section 3); rank 1 logs warnings and errors only | `training/guarded_unit.py` |
 | Checkpoint | DCP, one process | DCP, both ranks write; rank 0 writes `.metadata` last and the inference checkpoint | `units/mlip_unit/mlip_unit.py` `save_state` |
 | Stop by time | `timeout` sends SIGTERM to the training process | the same; the elastic agent passes SIGTERM to both ranks, waits 30 s, then kills them | torch `elastic/agent/server/api.py` |
 | Size check after the last segment | one process, GPU 0 | the same | `slurm/long_run.sh` |
@@ -68,8 +68,13 @@ What is not the same (reasoning):
 
 - The sums run in another order: per rank, then over the two GPUs. The result differs at the level of float32 rounding.
   Section 4 measures it against the noise of two runs on one GPU.
-- `train/loss` in the log and in W&B is the loss of rank 0, L_0 of (2), not L(B). L(B) is the mean of L_0 and L_1.
-  `scripts/size_consistency_along_training.py` reads this value. The validation values are global.
+- Nothing else in the update. The logs: fairchem logs L_r of (2) on each rank, the share of one rank. From (2),
+  L_0 + L_1 = W L(B) for two parts, and L_0 = L_1 = L(B) for a batch that both ranks hold. So the loss of the whole step is
+  the plain mean of the rank losses; no weight by atoms or structures is needed, because DDPMTLoss already divides by the
+  count of the whole step. `training/guarded_unit.py` holds back fairchem's step log on rank 0, takes the mean with one
+  all-reduce, and rank 0 logs `train/loss` = L(B) with the same keys (log and W&B). With one process nothing changes and no
+  collective runs. Until commit c553773 the log held L_0. Rank 0 always gets the largest structure, so L_0 was off by 42 to
+  78 percent on test batches with one large structure (`tests/test_ddp.py`).
 - `train/atoms_per_second(approx)` is the rank-0 atom count times 2 over the step time.
 
 ## 4. Measured
@@ -210,10 +215,13 @@ each. Seconds per step from fairchem's step line of rank 0: time = atoms on rank
 
 - Start-up: the list check took 3.7 min (Local+Global) and 0.3 min (Local-12, warm cache). Each rank built the 381,159
   batches of `split_train_70.txt` in 9.6 s.
-- Local-12 cannot be cheaper than Local+Global per step. It ran second and read the same rows, so the page cache likely
-  helped it (reasoning, not measured). The H100 smoke ran Local-12 first and Local+Global last, so its medians may carry the
-  same effect. In a long run most rows are read once. So plan with about 0.70 to 0.75 s per step for both variants on
-  2 x L40S, about 80 to 85 h for 400,000 steps plus 41 validations (reasoning from the table).
+- Local-12's 0.607 s per step may be a warm-cache figure. Local-12 cannot be cheaper than Local+Global per step; it ran
+  second and read the same rows, so the page cache likely helped it (reasoning, not measured). The speed of Local-12 with a
+  cold cache on 2 x L40S is not measured.
+- Plan with 0.70 to 0.75 s per step for both variants on 2 x L40S: about 80 to 85 h for 400,000 steps plus 41 validations.
+  For Local-12 also allow up to 1.6 times that, as on the H100, where Local-12 (run first, cold) took 1.51 times the median
+  of Local+Global: up to about 1.2 s per step and 130 h, so 3 segments of 47 h plus a spare, or 4 plus a spare at the upper
+  end (reasoning from the tables).
 - One validation of the 5,000 monitor rows ran twice at the end of each run; the wall time of one validation was not
   separated from start-up and checkpoints (1,312 s minus 742 s of steps covers start-up, 3 checkpoints and 2 validations).
 
@@ -227,7 +235,9 @@ each. Seconds per step from fairchem's step line of rank 0: time = atoms on rank
 - `collect_final_metrics.py` read the two-segment two-rank run with W&B and log (they agree) and with `--source log`.
   `training.checkpoints.discover` (used by `checkpoint_tools.py`) found steps 0 to 3000. The checkpoint holds the same
   `inference_ckpt.pt` as on one GPU (rank 0 converts the DCP files of both ranks).
-- `train/loss` is rank 0's part (Section 3); the validation values, including `val/loss`, are global.
+- `train/loss` is the loss of the whole step (Section 3), as `make_accuracy_figure.py` and
+  `size_consistency_along_training.py` expect; the validation values, including `val/loss`, are global. The runs of Section
+  4.5 ran before this change and logged rank 0's share; their speed numbers do not depend on it.
 
 ## 5. Out-of-memory errors with two ranks
 
@@ -264,13 +274,35 @@ LONG_RANKS=2 LONG_GPU=l40s-48 bash $C local12 --steps <N> --seed <S> --segments 
   path checks in the launcher process; the two rank processes start by spawn and import `training.run` without running
   `main` (reasoning from Python's spawn method; both ranks trained in every test).
 
+### Change the rank count of a run (for example after an out-of-memory stop on two L40S)
+
+A two-rank run that stops with "OOM: train batch ran out of memory on rank r of 2" meets the same batch again after every
+resume on two L40S (the batch order is fixed). It can continue on one H100. `settings.txt` refuses this on purpose, so the
+change is a manual override:
+
+1. Make sure no segment of the run is queued or running: `squeue --me -n long_<variant>_s<S>_<N>`. Cancel the rest of the
+   chain with `scancel -n long_<variant>_s<S>_<N>` if needed.
+2. In the run folder: `cp settings.txt settings_two_ranks.txt` (keep the record), then remove the rank part from the first line:
+   `sed -i '1s/ ranks=2 batch=one-GPU batches of 450 atoms split over 2 GPUs$//' settings.txt`.
+   Check with `head -1 settings.txt`: the line must now end with `ckpt_every=<C>`.
+3. Delete the `FAILED` marker: `rm FAILED`.
+4. Submit a new chain with the same `--steps`, `--seed`, `--eval-every` and `--ckpt-every`, without `LONG_RANKS` and without
+   `LONG_GPU` (so on `h100-80`). The first segment resumes from the last complete checkpoint.
+
+Why this is safe (reasoning, and one test): the two-rank checkpoint holds the same state as a one-GPU checkpoint (model, EMA,
+optimizer, scheduler and step counters are the same on both ranks, and DCP reads them at any number of ranks), and the
+one-GPU sampler continues with the same batch at the same step, because the split sampler uses the one-GPU order and
+position. Job 50192548 tests it: a two-rank run stopped after step 150 and resumed on one GPU, compared with one-GPU and
+two-rank runs (`slurm/ddp_test.sh loss`). The other direction (one GPU to two ranks) is the same edit in reverse: add the text
+to the first line. The alternative without an override is a new run folder (another `--steps` or `LONG_RUNS_DIR`), which
+starts again at step 0.
+
 ## 7. Risks and what was not verified
 
 - **An out-of-memory stop cannot be passed on two L40S.** The batch order is fixed, so a resumed run meets the same batch
   again. For seed 0 the largest rank part of all 400,000 steps is the structure of the memory test, which left 5.7 GB free per
-  GPU (Section 4.4). Allocator fragmentation over 48 h was not measured. If a run still stops this way, it cannot move to one
-  GPU: `settings.txt` pins the rank count. The update is the same on one GPU (Section 3), so changing the rank count would be
-  safe, but that is reasoning, not tested.
+  GPU (Section 4.4). Allocator fragmentation over 48 h was not measured. If a run still stops this way, it can move to one
+  H100 by the manual override of Section 6.
 - **Long horizon.** The equivalence and resume tests ran 400 steps (Dense) and 100 steps (Element). Two runs of 400,000 steps
   drift apart from float rounding, on one GPU as on two.
 - **Speed.** Measured over 600 and 1,000 steps, after a start with a warm or a cold page cache (Section 4.5). Not measured:
@@ -278,7 +310,7 @@ LONG_RANKS=2 LONG_GPU=l40s-48 bash $C local12 --steps <N> --seed <S> --segments 
 - **Not tested on the GPUs:** a real Slurm time limit (the tests stop by `timeout`, as `long_run.sh` does), a resume on another
   node, Local-6 on two ranks (same code as Element and Local+Global), and a kill of the launcher alone (its ranks would keep
   running until the job ends; `resume_test.sh` refuses `kill:STEP` with two ranks).
-- **Logs.** `train/loss` is rank 0's part, not the loss of the whole step (Section 3).
+- **Logs.** `train/loss` became the whole-step loss after the GPU runs of Section 4; job 50192548 checks it on the GPUs.
 - **One seed.** The batch statistics and the largest-part check use seed 0, the seed of the planned runs.
 
 ## 8. Files, jobs and cost
@@ -306,3 +338,12 @@ LONG_RANKS=2 LONG_GPU=l40s-48 bash $C local12 --steps <N> --seed <S> --segments 
 | 50190325 | largest rank parts over 400,000 steps | RM-shared, 16 cores | 7 min 52 s | about 2.1 RM SU |
 
 The GPU charges are elapsed time x 2 GPUs x 1 SU per GPU-hour (reasoning; see the job_info values in the run log).
+
+Two jobs ended as FAILED in Slurm. Both are benign:
+
+- 50184447: every step passed except my own unit test of the out-of-memory release, which timed the start-up of two
+  processes (127 s) instead of the release of the waiting rank. The behaviour checks of that test passed. The test was fixed
+  (commit 3d936b9), and jobs 50186090 and 50188427 passed it.
+- 50188423: every check passed except the last step, the memory test on 2 x V100-32. It ran out of memory as expected (the
+  worst structure needs about 39 GiB, a V100 has 31.7 GiB), and it showed the stop-together path on real GPUs (Section 5).
+  The same test passed on 2 x L40S (job 50184492).
