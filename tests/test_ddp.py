@@ -168,6 +168,7 @@ def gloo_works():
 
 
 OOM = torch.OutOfMemoryError("CUDA out of memory. Tried to allocate 2.00 GiB")
+STATE = types.SimpleNamespace(train_state=types.SimpleNamespace(dataloader=[0] * 10))   # an epoch of 10 steps
 
 
 def bare_unit(cls):
@@ -180,6 +181,8 @@ def bare_unit(cls):
     unit.optimizer = types.SimpleNamespace(param_groups=[{"lr": 1e-4}], zero_grad=lambda **k: None)
     unit.logger, unit.last_grad_norm = None, 1.5
     unit.train_progress = types.SimpleNamespace(num_steps_completed=0, num_epochs_completed=0, num_steps_completed_in_epoch=0)
+    unit.scheduler, unit.previous_wall_time = types.SimpleNamespace(get_lr=lambda: [1e-4]), 0.0
+    unit.clip_grad_norm, unit.print_every = None, 1
     return unit
 
 
@@ -209,7 +212,7 @@ def case_oom(rank, tmp):
     t0 = time.time()
     with mock.patch.object(MLIPTrainEvalUnit, "train_step", step), mock.patch.object(gu, "free_memory") as free:
         try:
-            unit.train_step(None, Batch(["a"], [5]))
+            unit.train_step(STATE, Batch(["a"], [5]))
             outcome = "finished"
         except Exception as exc:
             outcome = f"{type(exc).__name__}: {exc}"
@@ -256,12 +259,13 @@ def case_eval_probe_logs(rank, tmp):
 
     def train_step(self, state, data):
         self.last_loss = 1.0 + rank
+        self.previous_wall_time += 1.0          # as fairchem's step does
 
     batches = [Batch(["a"] if rank == 0 else ["b", "c"], [5] if rank == 0 else [2, 3]), Batch(["d"], [7])]
     with mock.patch.object(MLIPTrainEvalUnit, "train_step", train_step):
         for step, data in enumerate(batches):
             probe.train_progress.num_steps_completed = step
-            probe.train_step(None, data)
+            probe.train_step(STATE, data)
 
     logging.getLogger().setLevel(logging.INFO)
     with mock.patch.object(MLIPTrainEvalUnit, "__init__", lambda self, *a, **k: None), mock.patch.object(gu, "lr_scaled", lambda f: f):
@@ -315,13 +319,12 @@ def case_step_loss(rank, tmp):
     from training.split_sampler import split_batch
 
     unit, wandb, records = ranked_unit(rank)
-    state = types.SimpleNamespace(train_state=types.SimpleNamespace(dataloader=[0] * 10))
     parts = []
     for k, sizes in enumerate(LOSS_BATCHES):
         part = LossBatch(loss_batch(sizes, k), split_batch(list(range(len(sizes))), sizes, 2)[rank])
         parts.append(len(part["natoms"]))
         with mock.patch.object(MLIPTrainEvalUnit, "train_step", fairchem_step(part)):
-            unit.train_step(state, part)
+            unit.train_step(STATE, part)
     return {"parts": parts, "lines": [m for m in records if isinstance(m, dict)], "wandb": wandb}
 
 
