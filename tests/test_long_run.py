@@ -440,6 +440,28 @@ class TwoRankLongRunTests(LongRunTests.__base__):
         self.assertFalse(self.runs.exists())
         self.assertEqual(self.calls_text(), "")
 
+    def test_one_rank_keeps_the_one_gpu_memory_floors(self):
+        floors = min_mib("long_run.sh")
+        self.assertEqual((floors["local12"], floors["local6"], floors["element"], floors["local_global"]), (79000, 44000, 44000, 44000))
+        l40s = dict(STUB_GPU_MIB=GPU_MIB["l40s-48"])
+        for ranks in ({}, {"LONG_RANKS": 1}):
+            with self.subTest(ranks=ranks):
+                r = self.segment(641, variant="local12", STUB_TRAIN="finish", **l40s, **ranks)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn("too small for local12 (need at least 79000 MiB)", (self.folder("local12") / "FAILED").read_text(encoding="utf-8"))
+                self.assertNotIn("-m training.run", self.calls_text())
+                shutil.rmtree(self.runs)
+        for variant in ("local6", "element", "local_global"):
+            with self.subTest(variant=variant):
+                r = self.segment(642, variant=variant, STUB_TRAIN="finish", STUB_GPU_MIB=GPU_MIB["v100-32"])
+                self.assertEqual(r.returncode, 1)
+                self.assertIn(f"too small for {variant} (need at least 44000 MiB)", (self.folder(variant) / "FAILED").read_text(encoding="utf-8"))
+                r = self.segment(643, variant=variant, STUB_TRAIN="finish", **l40s)
+                self.assertEqual(r.returncode, 1)                      # the FAILED marker of the V100 attempt stops it
+                (self.folder(variant) / "FAILED").unlink()
+                r = self.segment(644, variant=variant, STUB_TRAIN="finish", **l40s)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
 
 class TwoRankSubmitTests(SubmitChainTests.__base__):
     ARGS = SubmitChainTests.ARGS
