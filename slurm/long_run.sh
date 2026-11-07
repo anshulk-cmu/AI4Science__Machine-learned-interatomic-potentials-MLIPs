@@ -19,6 +19,9 @@
 # Exit 0: stopped by time as planned, the run is done, or the job got a stop signal (USR1 or TERM: preemption or the time
 #   limit; the script never writes FAILED then, and Slurm requeues the job or the next segment resumes). 1: failure. 2: bad settings.
 # Before each training start the step checkpoints are pruned to every 10,000th step plus the two newest complete ones.
+# The braces make bash read the whole script before it runs: a code update during a segment (NFS, another node) then cannot
+# cut the running script short.
+{
 umask 002
 export PYTHONNOUSERSITE=1
 set -uo pipefail
@@ -210,3 +213,4 @@ fi
 note "RESULT: all stages passed"
 date '+%Y-%m-%d %H:%M:%S' > "$RUN/DONE"
 exit 0
+}

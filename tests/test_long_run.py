@@ -39,7 +39,7 @@ case "$1" in
         echo "PASS  stub list"; echo "RESULT: all checks passed"; exit ${STUB_VERIFY_RC:-0} ;;
     audit/check_checkpoint.py) echo "$2  Delta meV  8 A: 0 [disconnected]"; exit ${STUB_SIZE_RC:-0} ;;
     scripts/check_frozen_router.py) echo "PASS  router frozen"; exit 0 ;;
-    -m) ;;
+    -m) [ -n "${STUB_CLOBBER:-}" ] && : > "$STUB_CLOBBER" ;;      # the script file is replaced while training runs
     *) echo "unexpected call $*"; exit 9 ;;
 esac
 for a in "$@"; do
@@ -323,6 +323,14 @@ class LongRunTests(ShellCase):
         self.assertEqual([s for s in segments if s.startswith("log ")], ["log logs/train_721.log", "log logs/train_721r1.log"])
         self.assertTrue((self.folder() / "logs" / "train_721.log").exists() and (self.folder() / "DONE").exists())
         self.assertIn("job 721r1: START train from complete step 10,", (self.folder() / "summary.txt").read_text(encoding="utf-8"))
+
+    def test_a_code_update_during_training_does_not_cut_the_segment_short(self):
+        copy = self.tmp / "long_run.sh"
+        shutil.copy(ROOT / "slurm" / "long_run.sh", copy)
+        r = self.run_script(posix(copy), "dense", **{**self.SETTINGS, "SLURM_JOB_ID": 731, "STUB_TRAIN": "finish", "STUB_CLOBBER": posix(copy)})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(copy.stat().st_size, 0)
+        self.assertTrue((self.folder() / "DONE").exists())
 
     def test_prune_keeps_every_10000th_step_and_the_two_newest_complete_ones(self):
         ck = self.runs / "long_dense_s0_40000" / "train" / "long_dense_s0_40000" / "checkpoints"
