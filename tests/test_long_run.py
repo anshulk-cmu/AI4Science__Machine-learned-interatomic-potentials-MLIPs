@@ -21,13 +21,22 @@ from training.checkpoints import discover  # noqa: E402
 BASH = shutil.which("bash")
 VARIANTS = ("dense", "global", "local6", "local12", "element", "local_global", "global_frozen", "dense_scaled")
 GPU_MIB = {"v100-32": 32768, "l40s-48": 46068, "h100-80": 81559}      # nvidia-smi memory.total on Bridges-2 (pilot summaries)
+# smallest nvidia-smi memory.total in each Babel feature class (L40S and H100 measured on Bridges-2, the others product sizes)
+FEATURE_MIB = {"VRAM_40GB": 40960, "VRAM_48GB": 46068, "VRAM_80GB": 81559, "VRAM_96GB": 97887, "VRAM_141GB": 143771}
+FEAT_40 = "VRAM_40GB|VRAM_48GB|VRAM_80GB|VRAM_96GB|VRAM_141GB"
+FEAT_48 = "VRAM_48GB|VRAM_80GB|VRAM_96GB|VRAM_141GB"
+FEAT_80 = "VRAM_80GB|VRAM_96GB|VRAM_141GB"
+BABEL = ("-A bapoczos -p preempt --qos=preempt_qos -N 1 --gres=gpu:{ranks} --constraint={feat} --cpus-per-gpu=4 --mem-per-gpu=32G "
+         "--requeue --signal=B:USR1@90 --open-mode=append -t 47:00:00 --job-name={name} --output={shared}/logs/slurm-%x-%j.out "
+         "--mail-type=ALL,TIME_LIMIT_80 --mail-user=anshulk@andrew.cmu.edu ")
 
 FAKE_PY = r"""#!/bin/bash
 echo "$*" >> "$STUB_CALLS"
 [ -n "${STUB_ENV:-}" ] && echo "PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-unset} $3 $4" >> "$STUB_ENV"
 shift 2
 case "$1" in
-    scripts/check_pilot_data.py) echo "PASS  stub list"; echo "RESULT: all checks passed"; exit ${STUB_VERIFY_RC:-0} ;;
+    scripts/check_pilot_data.py) [ -n "${STUB_VERIFY_TERM:-}" ] && kill -TERM 0
+        echo "PASS  stub list"; echo "RESULT: all checks passed"; exit ${STUB_VERIFY_RC:-0} ;;
     audit/check_checkpoint.py) echo "$2  Delta meV  8 A: 0 [disconnected]"; exit ${STUB_SIZE_RC:-0} ;;
     scripts/check_frozen_router.py) echo "PASS  router frozen"; exit 0 ;;
     -m) ;;
@@ -49,6 +58,11 @@ case "$STUB_TRAIN" in
     oom) save step_0; save step_$(( ${last:-0} + CKPT )); kill -KILL $$ ;;
     latekill) save step_0; save step_$(( ${last:-0} + CKPT )); sleep 2; kill -KILL $$ ;;
     killjob) save step_0; save step_$(( ${last:-0} + CKPT )); kill -KILL 0 ;;
+    # preempt: Slurm sends TERM to every process of the job; usr1: scancel -s USR1 --batch reaches the batch script only
+    # (the parent of timeout). fairchem exits 1 on its own SIGTERM path.
+    preempt|usr1) save step_0; save step_$(( ${last:-0} + CKPT )); trap 'echo "stub got TERM" >> "$STUB_CALLS"; exit 1' TERM
+          if [ "$STUB_TRAIN" = preempt ]; then kill -TERM 0; else kill -USR1 "$(awk '{print $4}' /proc/$PPID/stat)"; fi
+          sleep 30 & wait $!; exit 5 ;;
     stop) n=$(( ${last:-0} + CKPT )); save step_0; save step_$n
           echo "{'train/loss': 0.2, 'train/step': $(( n - 1 ))}"
           printf 'Finished aggregating metrics: \n  val/omol.val,omol_energy,per_atom_mae: 0.0200\n  val/omol.val,omol_forces,mae: 0.0500\n  val/loss: 0.0800\n'
@@ -102,6 +116,7 @@ class ShellCase(unittest.TestCase):
             path.chmod(0o755)
         self.calls = self.tmp / "calls.txt"
         self.runs = self.tmp / "runs"
+        (self.tmp / "shared").mkdir()
 
     def run_script(self, script, *args, **env):
         base = {k: v for k, v in os.environ.items() if not k.startswith(("LONG_", "STUB_", "SLURM_"))}
@@ -278,6 +293,45 @@ class LongRunTests(ShellCase):
         self.assertEqual(self.calls_text().count("-m training.run"), n)
         self.assertEqual(self.calls_text().count("check_frozen_router.py"), 2)
 
+    def test_a_stop_signal_never_writes_failed_and_the_next_segment_resumes(self):
+        for job, mode in ((701, "preempt"), (702, "usr1")):
+            with self.subTest(mode=mode):
+                before = self.calls_text().count("stub got TERM")
+                r = self.segment(job, STUB_TRAIN=mode)
+                self.assertGreater(self.calls_text().count("stub got TERM"), before)     # the training process got TERM
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertFalse((self.folder() / "FAILED").exists())
+                self.assertFalse((self.folder() / "DONE").exists())
+                self.assertIn(f"job {job}: END   train stopped by a signal (preemption or time limit)",
+                              (self.folder() / "summary.txt").read_text(encoding="utf-8"))
+        r = self.segment(703, STUB_VERIFY_TERM=1, STUB_TRAIN="crash")        # TERM while the data check runs
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse((self.folder() / "FAILED").exists())
+        self.assertIn("job 703: END   stopped by a signal (the datasets do not match",
+                      (self.folder() / "summary.txt").read_text(encoding="utf-8"))
+        r = self.segment(704, STUB_TRAIN="finish")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue((self.folder() / "DONE").exists())
+        self.assertIn("job 704: START train from complete step 20,", (self.folder() / "summary.txt").read_text(encoding="utf-8"))
+
+    def test_prune_keeps_every_10000th_step_and_the_two_newest_complete_ones(self):
+        ck = self.runs / "long_dense_s0_40000" / "train" / "long_dense_s0_40000" / "checkpoints"
+        for step in (0, 10000, 20000, 20010, 20020, 20030):
+            (ck / f"step_{step}").mkdir(parents=True)
+            (ck / f"step_{step}" / ".metadata").touch()
+        (ck / "step_20040").mkdir()                                       # half written, no .metadata
+        (ck / "preemption_state").mkdir()
+        for d in ck.iterdir():                                            # a copy made the highest step the oldest folder
+            os.utime(d, (1000 if d.name == "step_20030" else 2000,) * 2)
+        r = self.segment(711, STUB_TRAIN="stop", LONG_STEPS=40000, LONG_EVAL_EVERY=40000, LONG_STOP_MARGIN_SEC=3590)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("START train from complete step 20030,", r.stdout)
+        self.assertEqual(sorted(p.name for p in ck.iterdir()),
+                         sorted(["preemption_state"] + [f"step_{s}" for s in (0, 10000, 20000, 20020, 20030, 20040)]))
+        self.assertTrue((ck / "step_20040" / ".metadata").exists())       # written by this segment
+        newest = (ck / "step_20030").stat().st_mtime                      # touched before training, so fairchem loads it
+        self.assertGreater(newest, max((ck / f"step_{s}").stat().st_mtime for s in (10000, 20000, 20020)))
+
 
 class SubmitChainTests(ShellCase):
     ARGS = ["--steps", 300000, "--seed", 1, "--segments", 3, "--hours", 47, "--eval-every", 10000, "--ckpt-every", 10000]
@@ -297,6 +351,9 @@ class SubmitChainTests(ShellCase):
         for args in (self.ARGS[:-1], self.ARGS + ["--bogus", 1], [a if a != 47 else 49 for a in self.ARGS]):
             self.assertEqual(self.submit(args=args).returncode, 2)
         self.assertEqual(self.submit("local24").returncode, 2)
+        for env, rc in ((dict(LONG_SHARED=""), 2), (dict(LONG_PY=""), 2), (dict(LONG_SHARED=posix(self.tmp / "absent")), 1)):
+            with self.subTest(env=env):
+                self.assertEqual(self.submit(**env).returncode, rc)
         self.assertEqual(self.sbatch_calls(), [])
 
     def test_chain_uses_afterany_and_the_variant_gpu(self):
@@ -311,16 +368,18 @@ class SubmitChainTests(ShellCase):
                 self.assertNotIn("--dependency", calls[0])
                 self.assertIn(f"--dependency=afterany:{ids[0]}", calls[1])
                 self.assertIn(f"--dependency=afterany:{ids[1]}", calls[2])
-                gpu = "h100-80" if variant in ("local6", "local12", "element", "local_global") else "v100-32"
+                feat = {"element": FEAT_80, "local12": FEAT_80, "local6": FEAT_48, "local_global": FEAT_48}.get(variant, FEAT_40)
                 for c in calls:
-                    self.assertIn(f"-A che260063p -p GPU-shared --gpus={gpu}:1 -t 47:00:00 --job-name=long_{variant}_s1_300000", c)
+                    self.assertIn(BABEL.format(ranks=1, feat=feat, name=f"long_{variant}_s1_300000", shared=posix(self.tmp / "shared")), c)
                     for setting in (f"LONG_VARIANT={variant}", "LONG_STEPS=300000", "LONG_SEED=1", "LONG_EVAL_EVERY=10000",
-                                    "LONG_CKPT_EVERY=10000", "LONG_SEGMENT_HOURS=47"):
+                                    "LONG_CKPT_EVERY=10000", "LONG_SEGMENT_HOURS=47", "LONG_SHARED=" + posix(self.tmp / "shared"),
+                                    "LONG_PY=" + posix(self.bin / "python")):
                         self.assertIn(setting, c)
                     self.assertTrue(c.endswith("slurm/long_run.job"))
                     self.assertNotIn("afterok", c)
+                    self.assertNotIn("--exclude", c)
                 self.assertIn(" ".join(ids), (self.runs / f"long_{variant}_s1_300000" / "chains.txt").read_text(encoding="utf-8"))
-                self.assertGreaterEqual(GPU_MIB[gpu], min_mib("long_run.sh")[variant])
+                self.assertGreaterEqual(min(FEATURE_MIB[f] for f in feat.split("|")), min_mib("long_run.sh")[variant])
                 self.assertNotIn("LONG_VAL_LIST", calls[0])
 
     def test_list_variables_reach_the_segments(self):
@@ -330,28 +389,23 @@ class SubmitChainTests(ShellCase):
         for c in self.sbatch_calls():
             self.assertIn("LONG_TRAIN_LIST=/x/a.txt,LONG_VAL_LIST=/x/b.txt,LONG_VAL_SPLIT=val", c)
 
-    def test_long_gpu_override_allows_only_l40s_for_the_44_gib_variants(self):
-        r = self.submit("element", LONG_GPU="l40s-48")
+    def test_feature_and_exclude_overrides(self):
+        r = self.submit("element", LONG_FEAT="VRAM_48GB", LONG_EXCLUDE="babel-x9-28,babel-x9-24")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("on l40s-48: at most 141 SU", r.stdout)
+        self.assertIn("3 segments of at most 47 h on 1 GPU(s) of one node, feature VRAM_48GB; Babel charges no SU", r.stdout)
         for c in self.sbatch_calls():
-            self.assertIn("--gpus=l40s-48:1", c)
-        self.assertGreaterEqual(GPU_MIB["l40s-48"], min_mib("long_run.sh")["element"])
-        for variant, gpu in (("local12", "l40s-48"), ("dense", "l40s-48"), ("element", "v100-32"), ("element", "h100-80x")):
-            with self.subTest(variant=variant, gpu=gpu):
-                self.calls.unlink(missing_ok=True)
-                self.assertEqual(self.submit(variant, LONG_GPU=gpu).returncode, 2)
-                self.assertEqual(self.sbatch_calls(), [])
-        r = self.submit("element", LONG_GPU="h100-80")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("--constraint=VRAM_48GB --cpus-per-gpu=4", c)
+            self.assertIn("--exclude=babel-x9-28,babel-x9-24 --export=", c)
+        self.assertGreaterEqual(FEATURE_MIB["VRAM_48GB"], min_mib("long_run.sh")["element"])
 
     def test_dry_run_submits_nothing(self):
         r = self.submit("local12", "--dry-run")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("at most 282 SU", r.stdout)
+        self.assertIn(f"3 segments of at most 47 h on 1 GPU(s) of one node, feature {FEAT_80}; Babel charges no SU", r.stdout)
         calls = self.sbatch_calls()
         self.assertEqual(len(calls), 1)
-        self.assertTrue(calls[0].startswith("--test-only "))
+        self.assertTrue(calls[0].startswith("--test-only " + BABEL.format(ranks=1, feat=FEAT_80, name="long_local12_s1_300000",
+                                                                         shared=posix(self.tmp / "shared"))))
         self.assertFalse(self.runs.exists())
 
     def test_refuses_a_second_chain_and_a_failed_run(self):
@@ -467,29 +521,28 @@ class TwoRankSubmitTests(SubmitChainTests.__base__):
     ARGS = SubmitChainTests.ARGS
     submit, sbatch_calls = SubmitChainTests.submit, SubmitChainTests.sbatch_calls
 
-    def test_two_l40s_per_segment_at_two_su_per_hour(self):
+    def test_two_gpus_of_one_node_with_48_gb_or_more(self):
         for variant in ("local12", "local_global", "local6", "element"):
             with self.subTest(variant=variant):
                 self.calls.unlink(missing_ok=True)
-                r = self.submit(variant, LONG_RANKS=2, LONG_GPU="l40s-48")
+                r = self.submit(variant, LONG_RANKS=2)
                 self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-                self.assertIn("3 segments of at most 47 h on 2 x l40s-48: at most 282 SU", r.stdout)
+                self.assertIn(f"3 segments of at most 47 h on 2 GPU(s) of one node, feature {FEAT_48}", r.stdout)
                 calls = self.sbatch_calls()
                 self.assertEqual(len(calls), 3)
                 for c in calls:
-                    self.assertIn("--gpus=l40s-48:2 ", c)
+                    self.assertIn(BABEL.format(ranks=2, feat=FEAT_48, name=f"long_{variant}_s1_300000", shared=posix(self.tmp / "shared")), c)
                     self.assertIn(",LONG_RANKS=2", c)
-                self.assertIn("(3 x 47 h, 2 x l40s-48)", (self.runs / f"long_{variant}_s1_300000" / "chains.txt").read_text(encoding="utf-8"))
-        r = self.submit("local12", "--dry-run", LONG_RANKS=2, LONG_GPU="l40s-48")
+                self.assertIn(f"(3 x 47 h, 2 x {FEAT_48}, Babel)",
+                              (self.runs / f"long_{variant}_s1_300000" / "chains.txt").read_text(encoding="utf-8"))
+                self.assertGreaterEqual(FEATURE_MIB["VRAM_48GB"], 40000)
+        r = self.submit("local12", "--dry-run", LONG_RANKS=2)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertTrue(self.sbatch_calls()[-1].startswith("--test-only ") and "--gpus=l40s-48:2 " in self.sbatch_calls()[-1])
+        self.assertTrue(self.sbatch_calls()[-1].startswith("--test-only ") and "--gres=gpu:2 " in self.sbatch_calls()[-1])
 
-    def test_every_other_rank_and_gpu_combination_is_refused(self):
-        for variant, env in (("local12", dict(LONG_RANKS=2)), ("local12", dict(LONG_RANKS=2, LONG_GPU="h100-80")),
-                             ("local12", dict(LONG_RANKS=1, LONG_GPU="l40s-48")), ("local12", dict(LONG_GPU="l40s-48")),
-                             ("dense", dict(LONG_RANKS=2, LONG_GPU="l40s-48")), ("dense", dict(LONG_RANKS=2)),
-                             ("local_global", dict(LONG_RANKS=2, LONG_GPU="v100-32")),
-                             ("element", dict(LONG_RANKS=3, LONG_GPU="l40s-48")), ("element", dict(LONG_RANKS="x", LONG_GPU="l40s-48"))):
+    def test_every_other_rank_count_is_refused(self):
+        for variant, env in (("dense", dict(LONG_RANKS=2)), ("global_frozen", dict(LONG_RANKS=2)),
+                             ("element", dict(LONG_RANKS=3)), ("element", dict(LONG_RANKS="x")), ("local12", dict(LONG_RANKS=0))):
             with self.subTest(variant=variant, env=env):
                 self.calls.unlink(missing_ok=True)
                 self.assertEqual(self.submit(variant, **env).returncode, 2)
@@ -498,7 +551,8 @@ class TwoRankSubmitTests(SubmitChainTests.__base__):
 
 @unittest.skipUnless(BASH and shutil.which("git"), "needs bash and git")
 class SingleGpuUnchangedTests(ShellCase):
-    """With LONG_RANKS unset or 1, the scripts call python and sbatch exactly as before this change (commit 8ebe5fe)."""
+    """With LONG_RANKS unset or 1, long_run.sh calls python exactly as before the DDP change (commit 8ebe5fe).
+    The Babel port changed every sbatch option of submit_chain.sh on purpose, so that script is not compared."""
     BEFORE = "8ebe5fe"
 
     def old_script(self, name):
@@ -542,20 +596,9 @@ class SingleGpuUnchangedTests(ShellCase):
                     self.assertEqual((before["rc"], before["calls"], before["files"]), (after["rc"], after["calls"], after["files"]))
                     self.assertIn("-m training.run", after["calls"])
                     # the code hash covers the changed scripts; the stop time and elapsed seconds depend on the clock
-                    vary = re.compile(r"code sha256 \w+|\d+ s\b")
+                    # the driver line is new on the Babel branch
+                    vary = re.compile(r"code sha256 \w+|\d+ s\b|^job \d+: driver .*\n", re.M)
                     self.assertEqual(vary.sub("", before["stdout"]), vary.sub("", after["stdout"]))
-
-    def test_submit_chain_is_unchanged(self):
-        old = self.old_script("submit_chain.sh")
-        args = ["--steps", 300000, "--seed", 1, "--segments", 3, "--hours", 47, "--eval-every", 10000, "--ckpt-every", 10000]
-        for variant, env in (("dense", {}), ("local12", {}), ("element", {"LONG_GPU": "l40s-48"}), ("local6", {"LONG_RANKS": 1}),
-                             ("local12", {"LONG_GPU": "l40s-48"}), ("global", {"LONG_TRAIN_LIST": "/x/a.txt"})):
-            for extra in ([], ["--dry-run"]):
-                with self.subTest(variant=variant, env=env, extra=extra):
-                    before = self.record(old, [variant, *args, *extra], env)
-                    after = self.record(ROOT / "slurm/submit_chain.sh", [variant, *args, *extra], env)
-                    self.assertEqual(before, after)
-                    self.assertEqual(after["rc"] == 0, "--gpus=" in after["calls"])
 
 
 class LaunchFileTests(unittest.TestCase):
@@ -599,8 +642,11 @@ class LaunchFileTests(unittest.TestCase):
 
     def test_long_run_job_file(self):
         text = (ROOT / "slurm" / "long_run.job").read_text(encoding="utf-8")
-        for line in ("#SBATCH -A che260063p", "#SBATCH --mail-type=ALL,TIME_LIMIT_80", "#SBATCH --mail-user=anshulk@andrew.cmu.edu"):
+        for line in ("#SBATCH -A bapoczos", "#SBATCH -p preempt", "#SBATCH --qos=preempt_qos", "#SBATCH --gres=gpu:1", "#SBATCH --requeue",
+                     "#SBATCH --signal=B:USR1@90", "#SBATCH --open-mode=append", "#SBATCH --output=/data/user_data/anshulk/mlip/logs/",
+                     "#SBATCH --mail-type=ALL,TIME_LIMIT_80", "#SBATCH --mail-user=anshulk@andrew.cmu.edu", "\nexec bash "):
             self.assertIn(line, text)
+        self.assertNotIn("ocean", text)
         self.assertTrue(text.rstrip().endswith('/slurm/long_run.sh" "${LONG_VARIANT:-}"'))
 
 
