@@ -16,7 +16,9 @@
 #   segments.txt (ordered training logs and W&B files, read by scripts/collect_final_metrics.py), logs/, train/<name>/checkpoints.
 # The run is finished only when checkpoints/final/.metadata exists. Then this segment runs the size-consistency check and writes
 #   DONE. A segment that finds DONE exits at once. A real failure writes FAILED, and every later segment exits at once.
-# Exit 0: stopped by time as planned, or the run is done. 1: failure. 2: bad settings.
+# Exit 0: stopped by time as planned, the run is done, or the job got a stop signal (USR1 or TERM: preemption or the time
+#   limit; the script never writes FAILED then, and Slurm requeues the job or the next segment resumes). 1: failure. 2: bad settings.
+# Before each training start the step checkpoints are pruned to every 10,000th step plus the two newest complete ones.
 umask 002
 export PYTHONNOUSERSITE=1
 set -uo pipefail
@@ -45,7 +47,11 @@ if (( STEPS < 1 || EVAL_EVERY < 1 || CKPT_EVERY < 1 || EVAL_EVERY > STEPS || CKP
     exit 2
 fi
 START=$(date +%s)
-ROOT=${LONG_SHARED:-/ocean/projects/che260063p/shared}
+[ -n "${LONG_SHARED:-}" ] || { echo "long_run.sh: set LONG_SHARED (the project folder, for example /data/user_data/anshulk/mlip)"; exit 2; }
+PREEMPT=0 TPID=""
+# USR1 (--signal=B:USR1@90) or TERM means preemption or the time limit: pass it to the training process, never write FAILED
+trap 'PREEMPT=1; [ -n "$TPID" ] && kill -TERM "$TPID" 2>/dev/null' USR1 TERM
+ROOT=$LONG_SHARED
 REPO=${LONG_REPO:-$ROOT/repo/AI4Science-MLIPs}
 PY=${LONG_PY:-$ROOT/envs/mlip/bin/python}
 NAME=long_${VARIANT}_s${SEED}_${STEPS}
@@ -61,8 +67,25 @@ mkdir -p "$LOGS" "$TRAIN" || exit 1
 cd "$REPO" || exit 1
 now() { date '+%Y-%m-%d %H:%M:%S'; }
 note() { echo "$(now) job $JOB: $*" | tee -a "$SUMMARY"; }
-fail() { echo "$(now) job $JOB: $*" > "$RUN/FAILED"; note "RESULT: FAILED: $*. The later segments of this chain exit at once."; exit 1; }
-last_complete() { ls -d "$CKDIR"/step_*/.metadata 2>/dev/null | sed -E 's#.*/step_([0-9]+)/\.metadata$#\1#' | sort -n | tail -1; }
+fail() {
+    if [ $PREEMPT -eq 1 ]; then note "END   stopped by a signal ($*); no FAILED marker, the next attempt resumes"; exit 0; fi
+    echo "$(now) job $JOB: $*" > "$RUN/FAILED"; note "RESULT: FAILED: $*. The later segments of this chain exit at once."; exit 1
+}
+complete_steps() { ls -d "$CKDIR"/step_*/.metadata 2>/dev/null | sed -E 's#.*/step_([0-9]+)/\.metadata$#\1#' | sort -n; }
+last_complete() { complete_steps | tail -1; }
+# keep every 10,000th step (the checkpoint ranking needs them) and the two newest complete steps; only one segment of a run is alive
+prune_ckpts() {
+    local keep d k
+    keep=$(complete_steps | tail -2)
+    for d in "$CKDIR"/step_*; do
+        [ -d "$d" ] || continue
+        k=${d##*step_}
+        [[ $k =~ ^[0-9]+$ ]] || continue
+        (( k % 10000 == 0 )) && continue
+        grep -qx "$k" <<< "$keep" && continue
+        rm -rf "$d"
+    done
+}
 # A segment killed together with this script cannot list its own W&B file, so every segment lists the ones still missing.
 # The folder names carry the start time, so sorted order is segment order.
 record_wandb() {
@@ -99,6 +122,7 @@ else
     note "segment start: $NAME, limit $HOURS h, $RANKS ranks on $GPUS GPUs $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1), smallest ${GPU_MIB} MiB, host $(hostname), code sha256 $CODE"
     [ "$GPUS" = "$RANKS" ] || fail "LONG_RANKS=$RANKS needs $RANKS GPUs in the job, it has $GPUS"
 fi
+note "driver $(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1), $(scontrol show job "$JOB" 2>/dev/null | grep -o 'Restarts=[0-9]*' || echo 'Restarts unknown')"
 [ "${GPU_MIB:-0}" -ge "$MIN_MIB" ] || fail "this GPU is too small for $VARIANT (need at least $MIN_MIB MiB)"
 
 record_wandb
@@ -111,7 +135,10 @@ if [ ! -f "$CKDIR/final/.metadata" ]; then
     [ $rc -eq 0 ] || fail "the datasets do not match the fixed lists (log: $LOGS/verify_$JOB.log)"
 
     rm -f "$TRAIN/$NAME/.distributed-shared-file"     # a killed segment leaves it; only one segment of a run is alive at a time
+    prune_ckpts
     BEFORE=$(last_complete); BEFORE=${BEFORE:-0}
+    # fairchem resumes from the newest folder by mtime, and a copy can reorder the times: make the highest complete step the newest
+    [ -d "$CKDIR/step_$BEFORE" ] && touch "$CKDIR/step_$BEFORE"
     LIMIT=$(( START + HOURS * 3600 - MARGIN - $(date +%s) ))
     (( LIMIT > 0 )) || fail "no time is left for training; raise LONG_SEGMENT_HOURS or lower LONG_STOP_MARGIN_SEC"
     LOG=$LOGS/train_$JOB.log
@@ -127,12 +154,21 @@ if [ ! -f "$CKDIR/final/.metadata" ]; then
     timeout --foreground --signal=TERM --kill-after=600 "$LIMIT" env OMOL_RUN_DIR="$TRAIN" ${RANK_ARGS[@]+PYTHONUNBUFFERED=1} $PY -u -B -m training.run --mode train \
         variant=$VARIANT job.run_name=$NAME +job.timestamp_id=$NAME job.seed=$SEED training.steps=$STEPS \
         training.eval_every=$EVAL_EVERY training.ckpt_every=$CKPT_EVERY training.max_saved_checkpoints=$(( STEPS / CKPT_EVERY + 2 )) \
-        "${DATA_OVERRIDES[@]}" ${RANK_ARGS[@]+"${RANK_ARGS[@]}"} > "$LOG" 2>&1
-    RC=$?
+        "${DATA_OVERRIDES[@]}" ${RANK_ARGS[@]+"${RANK_ARGS[@]}"} > "$LOG" 2>&1 &
+    TPID=$!
+    # a stop signal before this point ends the segment here; after it, the trap passes it on to the training process
+    [ $PREEMPT -eq 1 ] && kill -TERM "$TPID" 2>/dev/null
+    wait "$TPID"; RC=$?
+    while kill -0 "$TPID" 2>/dev/null; do wait "$TPID"; RC=$?; done     # a trapped signal ends the first wait early
+    TPID=""
     kill $POLL 2>/dev/null; wait $POLL 2>/dev/null
     ELAPSED=$(( $(date +%s) - T0 ))
     AFTER=$(last_complete); AFTER=${AFTER:-0}
     record_wandb
+    if [ $PREEMPT -eq 1 ] && [ ! -f "$CKDIR/final/.metadata" ]; then
+        note "END   train stopped by a signal (preemption or time limit) after $ELAPSED s, training process $RC, complete checkpoints up to step $AFTER; Slurm requeues this job, or the next segment resumes"
+        exit 0
+    fi
     # The stage status is 0 only when the final checkpoint exists: fairchem exits 1 on its own SIGTERM path (resume-test.md Section 7).
     # timeout returns 124 when it stopped the run, also after its KILL. 137 (killed) counts as a stop by time only within 120 s of
     # the limit; earlier it is a failure, for example the kernel's out-of-memory killer.
