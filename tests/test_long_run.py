@@ -28,7 +28,7 @@ FEAT_48 = "VRAM_48GB|VRAM_80GB|VRAM_96GB|VRAM_141GB"
 FEAT_80 = "VRAM_80GB|VRAM_96GB|VRAM_141GB"
 BABEL = ("-A bapoczos -p preempt --qos=preempt_qos -N 1 --gres=gpu:{ranks} --constraint={feat} --cpus-per-gpu=4 --mem-per-gpu=32G "
          "--requeue --signal=B:USR1@90 --open-mode=append -t 47:00:00 --job-name={name} --output={shared}/logs/slurm-%x-%j.out "
-         "--mail-type=ALL,TIME_LIMIT_80 --mail-user=anshulk@andrew.cmu.edu ")
+         "--mail-type=BEGIN,END,FAIL --mail-user=anshulk@andrew.cmu.edu ")
 
 FAKE_PY = r"""#!/bin/bash
 echo "$*" >> "$STUB_CALLS"
@@ -662,7 +662,7 @@ class LaunchFileTests(unittest.TestCase):
         text = (ROOT / "slurm" / "long_run.job").read_text(encoding="utf-8")
         for line in ("#SBATCH -A bapoczos", "#SBATCH -p preempt", "#SBATCH --qos=preempt_qos", "#SBATCH --gres=gpu:1", "#SBATCH --requeue",
                      "#SBATCH --signal=B:USR1@90", "#SBATCH --open-mode=append", "#SBATCH --output=/data/user_data/anshulk/mlip/logs/",
-                     "#SBATCH --mail-type=ALL,TIME_LIMIT_80", "#SBATCH --mail-user=anshulk@andrew.cmu.edu", "\nexec bash "):
+                     "#SBATCH --mail-type=BEGIN,END,FAIL", "#SBATCH --mail-user=anshulk@andrew.cmu.edu", "\nexec bash "):
             self.assertIn(line, text)
         self.assertNotIn("ocean", text)
         self.assertTrue(text.rstrip().endswith('/slurm/long_run.sh" "${LONG_VARIANT:-}"'))

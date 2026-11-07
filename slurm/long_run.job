@@ -13,7 +13,7 @@
 #SBATCH --open-mode=append
 #SBATCH --job-name=long_run
 #SBATCH --output=/data/user_data/anshulk/mlip/logs/slurm-%x-%j.out
-#SBATCH --mail-type=ALL,TIME_LIMIT_80
+#SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=anshulk@andrew.cmu.edu
 # One segment of a long run on CMU Babel (babel/mlipOnBabel.md of the course workspace, Section 3.3). Submit it only through
 # slurm/submit_chain.sh, which sets --gres, --constraint, -t, --job-name, --output, the afterany dependency and every LONG_*

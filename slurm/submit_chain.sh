@@ -59,7 +59,7 @@ for v in LONG_RUNS_DIR LONG_TRAIN_LIST LONG_VAL_LIST LONG_VAL_SPLIT; do [ -n "${
 [ "$RANKS" = 1 ] || EXPORT+=",LONG_RANKS=$RANKS"
 OPTS=(-A bapoczos -p preempt --qos=preempt_qos -N 1 "--gres=gpu:$RANKS" "--constraint=$FEAT" --cpus-per-gpu=4 --mem-per-gpu=32G
       --requeue --signal=B:USR1@90 --open-mode=append -t "$HOURS:00:00" "--job-name=$NAME" "--output=$SHARED/logs/slurm-%x-%j.out"
-      --mail-type=ALL,TIME_LIMIT_80 --mail-user=anshulk@andrew.cmu.edu ${LONG_EXCLUDE:+"--exclude=$LONG_EXCLUDE"} "--export=$EXPORT")
+      --mail-type=BEGIN,END,FAIL --mail-user=anshulk@andrew.cmu.edu ${LONG_EXCLUDE:+"--exclude=$LONG_EXCLUDE"} "--export=$EXPORT")
 JOBFILE=$REPO/slurm/long_run.job
 
 echo "run $NAME: $STEPS steps, seed $SEED, eval every $EVAL, checkpoint every $CKPT"
