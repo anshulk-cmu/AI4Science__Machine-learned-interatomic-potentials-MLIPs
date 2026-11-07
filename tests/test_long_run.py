@@ -314,6 +314,16 @@ class LongRunTests(ShellCase):
         self.assertTrue((self.folder() / "DONE").exists())
         self.assertIn("job 704: START train from complete step 20,", (self.folder() / "summary.txt").read_text(encoding="utf-8"))
 
+    def test_a_requeued_attempt_keeps_the_log_of_the_first(self):
+        r = self.segment(721, STUB_TRAIN="preempt")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        r = self.segment(721, STUB_TRAIN="finish", SLURM_RESTART_COUNT=1)       # Slurm requeues with the same job id
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        segments = (self.folder() / "segments.txt").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([s for s in segments if s.startswith("log ")], ["log logs/train_721.log", "log logs/train_721r1.log"])
+        self.assertTrue((self.folder() / "logs" / "train_721.log").exists() and (self.folder() / "DONE").exists())
+        self.assertIn("job 721r1: START train from complete step 10,", (self.folder() / "summary.txt").read_text(encoding="utf-8"))
+
     def test_prune_keeps_every_10000th_step_and_the_two_newest_complete_ones(self):
         ck = self.runs / "long_dense_s0_40000" / "train" / "long_dense_s0_40000" / "checkpoints"
         for step in (0, 10000, 20000, 20010, 20020, 20030):

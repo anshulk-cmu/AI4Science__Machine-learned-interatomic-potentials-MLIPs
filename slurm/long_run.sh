@@ -61,6 +61,8 @@ CKDIR=$TRAIN/$NAME/checkpoints
 LOGS=$RUN/logs
 SUMMARY=$RUN/summary.txt
 JOB=${SLURM_JOB_ID:-manual}
+# a requeued attempt keeps the Slurm job id: the suffix keeps the training log of every attempt
+[[ ${SLURM_RESTART_COUNT:-0} =~ ^[1-9][0-9]*$ ]] && JOB+=r$SLURM_RESTART_COUNT
 export OMOL_DATA_ROOT=$ROOT/data/omol25 OMOL_CACHE_DIR=$ROOT/cache
 export FAIRCHEM_CACHE_DIR=$ROOT/cache/fairchem WARP_CACHE_PATH=$ROOT/cache/warp
 mkdir -p "$LOGS" "$TRAIN" || exit 1
@@ -122,7 +124,7 @@ else
     note "segment start: $NAME, limit $HOURS h, $RANKS ranks on $GPUS GPUs $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1), smallest ${GPU_MIB} MiB, host $(hostname), code sha256 $CODE"
     [ "$GPUS" = "$RANKS" ] || fail "LONG_RANKS=$RANKS needs $RANKS GPUs in the job, it has $GPUS"
 fi
-note "driver $(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1), $(scontrol show job "$JOB" 2>/dev/null | grep -o 'Restarts=[0-9]*' || echo 'Restarts unknown')"
+note "driver $(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1), $(scontrol show job "${SLURM_JOB_ID:-}" 2>/dev/null | grep -o 'Restarts=[0-9]*' || echo 'Restarts unknown')"
 [ "${GPU_MIB:-0}" -ge "$MIN_MIB" ] || fail "this GPU is too small for $VARIANT (need at least $MIN_MIB MiB)"
 
 record_wandb
