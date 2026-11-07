@@ -112,7 +112,7 @@ if [ ! -f "$RUN/settings.txt" ]; then
 elif [ "$(head -1 "$RUN/settings.txt")" != "$SETTINGS" ]; then
     note "RESULT: these settings differ from the first segment's ($RUN/settings.txt); nothing was started"; exit 2
 fi
-CODE=$(cd "$REPO" && cat slurm/long_run.sh configs/train.yaml configs/variant/*.yaml training/*.py local_routing/*.py | sha256sum | cut -c1-16)
+CODE=$(export LC_ALL=C; cd "$REPO" && cat slurm/long_run.sh configs/train.yaml configs/variant/*.yaml training/*.py local_routing/*.py | sha256sum | cut -c1-16)
 GPU_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
 if [ "$RANKS" = 1 ]; then
     note "segment start: $NAME, limit $HOURS h, GPU $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1) ${GPU_MIB} MiB, host $(hostname), code sha256 $CODE"
