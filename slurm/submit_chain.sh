@@ -57,7 +57,7 @@ RUN=${LONG_RUNS_DIR:-$SHARED/runs}/$NAME
 EXPORT="LONG_VARIANT=$VARIANT,LONG_STEPS=$STEPS,LONG_SEED=$SEED,LONG_EVAL_EVERY=$EVAL,LONG_CKPT_EVERY=$CKPT,LONG_SEGMENT_HOURS=$HOURS,LONG_REPO=$REPO,LONG_SHARED=$SHARED,LONG_PY=$LONG_PY"
 for v in LONG_RUNS_DIR LONG_TRAIN_LIST LONG_VAL_LIST LONG_VAL_SPLIT; do [ -n "${!v:-}" ] && EXPORT+=",$v=${!v}"; done
 [ "$RANKS" = 1 ] || EXPORT+=",LONG_RANKS=$RANKS"
-OPTS=(-A bapoczos -p preempt --qos=preempt_qos -N 1 "--gres=gpu:$RANKS" "--constraint=$FEAT" --cpus-per-gpu=4 --mem-per-gpu=32G
+OPTS=(-A bapoczos -p preempt --qos=preempt_qos -N 1 "--gres=gpu:$RANKS" "--constraint=$FEAT" "--cpus-per-gpu=${LONG_CPUS:-4}" --mem-per-gpu=32G
       --requeue --signal=B:USR1@90 --open-mode=append -t "$HOURS:00:00" "--job-name=$NAME" "--output=$SHARED/logs/slurm-%x-%j.out"
       --mail-type=BEGIN,END,FAIL --mail-user=anshulk@andrew.cmu.edu ${LONG_EXCLUDE:+"--exclude=$LONG_EXCLUDE"} "--export=$EXPORT")
 JOBFILE=$REPO/slurm/long_run.job
