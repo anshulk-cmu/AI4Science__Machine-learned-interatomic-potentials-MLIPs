@@ -54,6 +54,7 @@ last=$(ls -d "$C"/step_*/.metadata 2>/dev/null | sed -E 's#.*/step_([0-9]+)/.*#\
 save() { mkdir -p "$C/$1" && touch "$C/$1/inference_ckpt.pt" "$C/$1/.metadata"; }
 case "$STUB_TRAIN" in
     crash) echo "Traceback: stub crash"; exit 3 ;;
+    nccl) save step_0; save step_$(( ${last:-0} + CKPT )); echo "[rank0]:[E1109] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=1)"; exit 1 ;;
     noprogress) exec sleep 60 ;;
     oom) save step_0; save step_$(( ${last:-0} + CKPT )); kill -KILL $$ ;;
     latekill) save step_0; save step_$(( ${last:-0} + CKPT )); sleep 2; kill -KILL $$ ;;
@@ -237,6 +238,15 @@ class LongRunTests(ShellCase):
         r = self.segment(202, STUB_TRAIN="finish")
         self.assertEqual(r.returncode, 1)
         self.assertEqual(len(self.calls_text().splitlines()), n)
+
+    def test_an_nccl_timeout_never_writes_failed_and_the_next_segment_resumes(self):
+        r = self.segment(211, STUB_TRAIN="nccl")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse((self.folder() / "FAILED").exists())
+        self.assertIn("job 211: END   train NCCL collective timeout", (self.folder() / "summary.txt").read_text(encoding="utf-8"))
+        r = self.segment(212, STUB_TRAIN="finish")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue((self.folder() / "DONE").exists())
 
     def test_no_new_checkpoint_in_a_segment_stops_the_chain(self):
         r = self.segment(301, STUB_TRAIN="noprogress", LONG_STOP_MARGIN_SEC=3590)

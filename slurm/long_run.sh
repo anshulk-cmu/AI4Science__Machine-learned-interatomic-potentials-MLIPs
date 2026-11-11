@@ -189,6 +189,11 @@ if [ ! -f "$CKDIR/final/.metadata" ]; then
         exit 0
     fi
     [ $STATUS -eq 0 ] || [ $RC -ne 137 ] || fail "the training process was killed (exit 137) after $ELAPSED s, $(( LIMIT - ELAPSED )) s before the stop by time; out of memory or killed by the system (log: $LOG)"
+    # An NCCL collective that timed out is a hang of the node, not of the run: no FAILED, the next segment resumes elsewhere.
+    if [ $STATUS -ne 0 ] && grep -aq 'Watchdog caught collective operation timeout' "$LOG"; then
+        note "END   train NCCL collective timeout after $ELAPSED s on $(hostname), complete checkpoints up to step $AFTER; no FAILED marker, the next segment resumes"
+        exit 0
+    fi
     [ $STATUS -eq 0 ] || { grep -a -E 'Traceback|Error' "$LOG" | head -3 | tee -a "$SUMMARY"; fail "training exited $RC without the final checkpoint (log: $LOG)"; }
 fi
 
