@@ -5,7 +5,7 @@ my part of the midterm baseline: the **audit of released models**, which needs n
 The audit was run and checked on 2026-10-04. The forcing test and the neon probe (section 7) were run on 2026-10-05.
 Errors found in a review were corrected on 2026-10-08.
 
-- `README.md` this explanation
+- `README.md` this explanation (the audit of released models only; the results of the long training runs are in `../README.md`, section "Results of the long runs", and `../docs/babel.md`)
 - `results.md`, `summary.csv`, `flatness.csv`, `comparison.csv` the final tables (a snapshot)
 - `figures/` the plots (a snapshot)
 - Not in this folder: the code is in `../audit/` and the raw per-run energies are in `../results/`. The tables and

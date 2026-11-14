@@ -1,5 +1,7 @@
 # Training
 
+The 400,000 step runs of the final project were trained on CMU Babel, not Bridges-2. For their paths, launch commands and the problems met there see [`babel.md`](babel.md).
+
 ## Environment
 
 Use Linux or WSL2, Python 3.12, `fairchem-core==2.21.0`, and the

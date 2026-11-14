@@ -1,7 +1,7 @@
 # Local Composition Routing for Mixture-of-Experts Interatomic Potentials
 
 Course project for CMU 11-785 Introduction to Deep Learning, Fall 2026 (AI4Science track, machine-learned interatomic potentials).
-Team 6: Anshul Kumar, Pragati Bhattad, Yiwei Xia. Status: midterm report submitted (23 October 2026).
+Team 6: Anshul Kumar, Pragati Bhattad, Yiwei Xia. Status (14 November 2026): midterm report submitted (23 October); all 8 long training runs (seed 0, 400,000 steps) are finished on CMU Babel; the test on the held-out rows and the final report are next.
 
 ## Summary
 
@@ -14,6 +14,27 @@ We propose local composition routing: the router sees a smooth, bounded average 
 structure. Our main model, Local-6, uses a 6 angstrom radius. The question of the project is whether Local-6 keeps the accuracy that
 routing adds over a model without experts, while being size consistent. We audit released models without training, and we train
 Dense, Global (UMA-style routing), Local-6, and two controls on a fixed subset of OMol25 with the `fairchem` code.
+
+## Results of the long runs (final training)
+
+Eight variants, one seed (0), 400,000 steps each, trained on the 70 percent training list of `train_4M` (split by composition, `docs/data-split.md`). Errors are the last validation on the fixed 5,000-row monitor list. The test rows (10 percent split, 399,276 rows) have not been used yet. The gap is the additivity error of two far-apart Al and Ni slabs at a gap of 8 angstrom, from `audit/check_checkpoint.py`. Raw numbers: `results/long_runs_validation.csv`.
+
+| Model | Energy MAE per atom (eV) | Force MAE (eV/A) | Gap of two far-apart slabs (meV) |
+|---|---:|---:|---|
+| Dense | 0.0054 | 0.0290 | 3e-6 (zero) |
+| Scaled Dense | 0.0050 | 0.0282 | 4e-6 (zero) |
+| Frozen | 0.0051 | 0.0279 | 3e-6 (zero) |
+| Global | 0.0049 | 0.0274 | -62,350, the same at 8 to 100 A |
+| Element | **0.0047** | **0.0262** | 3e-6 (zero) |
+| **Local-6** | 0.0049 | 0.0273 | 3e-6 (zero) at 8 to 100 A |
+| Local+Global | 0.0050 | 0.0276 | -9,226, the same at 8 to 100 A |
+| Local-12 | 0.0050 | 0.0275 | 3,916 at 8 A, 320 at 10 A, 3e-6 (zero) from 15 A |
+
+- **Measured.** Local-6 has the same errors as Global (0.0049 and 0.0273 against 0.0049 and 0.0274) and a zero gap at every tested distance. Global has a gap of -62 eV that does not shrink with distance.
+- **Measured.** Element routing (radius 0) has the lowest errors and a zero gap. Local-12 is not additive inside its own 12 A radius, as expected, and is zero from 15 A. Local+Global keeps a gap, 7 times smaller than Global.
+- **Measured.** Scaled Dense, a Dense model with the start scale and step size of Frozen, reaches 0.0050 and 0.0282 without any experts.
+- **Interpreted.** Much of the accuracy gain of Global over Dense is reached without a router, so the gain should not be credited to routing alone. The size-consistency result is the clearer one: Local-6 and Element remove the gap of Global at no cost in accuracy.
+- Details of the runs, the failures on Babel and the exact launch commands: [`docs/babel.md`](docs/babel.md).
 
 ## Results at the midterm
 
@@ -42,7 +63,8 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 - Short training: about 1/800 to 1/870 of an official run, on a 200,000-structure subset of the 4M training split. The target normalizer (1.433569) is a placeholder taken from an official run.
 - Size consistency along training uses one ideal Al + Ni geometry; the audit of released models uses 21 geometries.
 - Global and Local-6 were trained on different GPU types (V100 and H100), so their training times are not comparable. The inference timings use the same GPU type for all models, on shared nodes.
-- Element, Local-12 and Local+Global routing are not trained yet. All three have configs and backbone tests; see [the Element router notes](docs/element-router.md), [the Local-12 notes](docs/local12.md) and [the Local+Global notes](docs/local-global-router.md) for their pending training acceptance. The additivity test covers neutral singlet pairs only; we train on all charges and spins.
+- (Midterm) Element, Local-12 and Local+Global routing were not trained at the midterm; they are trained in the long runs above. All three have configs and backbone tests; see [the Element router notes](docs/element-router.md), [the Local-12 notes](docs/local12.md) and [the Local+Global notes](docs/local-global-router.md) for their pending training acceptance. The additivity test covers neutral singlet pairs only; we train on all charges and spins.
+- Long runs: one seed per model; validation numbers only (the test rows are not used yet); the runs resumed many times after preemptions on mixed GPU types (L40S, L40, A6000, 6000 Ada, A100); the size-consistency check uses one slab pair.
 
 ## Repository layout
 
@@ -53,16 +75,15 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 | `local_routing/` | Local composition, router interface, receiving-atom adapter and reference linear experts |
 | `training/` | Entry point for the fairchem training CLI, the Local-6, Local-12 and Element backbone (`local_moe.py`), the Local+Global backbone (`local_global_moe.py`), checkpoint selection and averaging (`checkpoints.py`), the frozen-router and scaled-Dense variants, the out-of-memory guard and the step-based scheduler |
 | `configs/` | Training configuration: `train.yaml`, data configuration, the variants `dense`, `global`, `local6`, `local12`, `element`, `local_global`, `global_frozen`, `dense_scaled`, element references |
-| `slurm/` | Bridges-2 job files and scripts: environment, data download, smoke tests, pilots, Wave 1 (`wave1_*.job`), long runs as chained segments (`long_run.sh`, `submit_chain.sh`), size consistency, router check, timing, molecular evaluation |
+| `slurm/` | Bridges-2 and Babel job files and scripts (the long runs on Babel use `long_run.sh`, `long_run.job` and `submit_chain.sh`, see `docs/babel.md`): environment, data download, smoke tests, pilots, Wave 1 (`wave1_*.job`), long runs as chained segments (`long_run.sh`, `submit_chain.sh`), size consistency, router check, timing, molecular evaluation |
 | `scripts/` | Data preparation and audit, pilot sample lists, size consistency along training, router check, inference timing, curve comparison, the pilot statistics (`pilot_statistics.py`, input `results/pilot_final_metrics.csv`) and the report figures and tables (`make_midterm_figures.py`, `audit_summary_table.py`) |
 | `manifests/` | The OMol25 data manifest and the fixed training and validation lists with their hashes, including the 70/20/10 split of `train_4M` by composition for the final runs (`split_*.txt`, `docs/data-split.md`) |
 | `results/` | Raw and summary result files (CSV) and figures behind every number in the reports |
-| `tests/` | Unit tests (301): routing, the 8 variants, the long-run chain, checkpoint tools, final metrics and statistics, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
+| `tests/` | Unit tests (329, 3 skipped): routing, the 8 variants, the long-run chain, checkpoint tools, final metrics and statistics, audit code, training configuration, frozen router, scaled Dense, router check, molecular checks, timing |
 | `docs/` | Detailed reports: `TRAINING.md` (setup and run), `local-routing.md`, `size-consistency-training.md`, `router-check.md`, `frozen-router.md`, `scaled-dense.md`, `molecular-evaluation.md`, `inference-timing.md`, `final-training-plan.md`, `data-split.md` (the 70/20/10 split of the final runs), `launch-checklist.md` (how to start the final training) |
 | `requirements.txt`, `requirements-training.txt`, `requirements-mace.txt` | Environments: UMA, ORB-v3 and fairchem (Python 3.12, PyTorch 2.8 with CUDA 12.8); extra training packages; a separate environment for MACE |
 
-Model weights, checkpoints, the OMol25 data and the run folders are not in the repository. They live on the Bridges-2 file system of the
-project; see `docs/TRAINING.md` for the paths and for how the data is prepared.
+Model weights, checkpoints, the OMol25 data and the run folders are not in the repository. They live on CMU Babel (`/data/user_data/anshulk/mlip`; the Bridges-2 copy went offline on 9 November 2026); see `docs/babel.md` and `docs/TRAINING.md` for the paths and for how the data is prepared.
 
 ## Reproducing the results
 
@@ -83,7 +104,7 @@ See [the figure guide](docs/final-figures.md) for training curves, descriptive
 long-run plots and `make_ensemble_figure.py` report-set comparisons.
 
 1. Create the environments from the requirements files; the steps are in the header of each file. The UMA weights are gated on Hugging Face: log in and accept the license first. Never commit a token.
-2. Run the tests: `python -m unittest discover -s tests`. All 301 tests pass on Windows (2026-11-03). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
+2. Run the tests: `python -m unittest discover -s tests`. All 329 tests pass on Windows, 3 skipped (2026-11-14). One configuration-hash test stores hashes measured on Windows and may need its hashes refreshed on Linux.
 3. The audit, the pilots and every follow-up experiment have a job file in `slurm/` and a report in `docs/` or `audit/` that gives the exact commands, the job identifiers, the settings and the files that hold the results. Start with `docs/TRAINING.md`.
 4. A run writes `settings.txt` and `summary.txt`; check that `settings.txt` shows the steps, the seed, the variant and the sample list hashes you expect before you trust the run.
 

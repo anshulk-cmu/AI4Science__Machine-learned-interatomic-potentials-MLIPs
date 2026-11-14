@@ -1,6 +1,6 @@
 # Final training plan, 5 seeds, long runs, checkpoint ensemble
 
-Status: PLAN ONLY. Nothing in this file has been run or submitted.
+Status update, 14 November 2026: the plan was changed and run. The 8 variants were trained for 400,000 steps (not 300,000) with ONE seed (0), not five, on a 70/20/10 split of `train_4M`, and on CMU Babel after Bridges-2 went offline. Five seeds and the checkpoint ensemble were not run. The user decided on 12 November 2026 to finish one full end-to-end project on seed 0 first and to add seeds only afterwards. Results: `README.md` and `results/long_runs_validation.csv`; how the runs were launched: `docs/babel.md`. The text below is the original plan, kept as written on 28 October 2026.
 Written: Wed 28 Oct 2026. Owner of the plan: Anshul. Work owners are named in Section 8.
 Dates are proposals. The team must confirm them.
 
