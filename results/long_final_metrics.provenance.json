@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "steps": 400000,
+  "variants": [
+    "dense",
+    "global",
+    "element",
+    "local6",
+    "local12",
+    "local_global",
+    "frozen",
+    "dense_scaled"
+  ],
+  "expected_seeds": [
+    0
+  ],
+  "complete": true,
+  "missing": [],
+  "allow_unfinished": false,
+  "partial_rows": 0,
+  "csv_sha256": "d702f4d675bcedfaead9594e866c03604c5cda5165e2eb4cffd2ede39a68954a",
+  "rows": [
+    {
+      "variant": "dense",
+      "seed": 0,
+      "steps": 400000,
+      "data_id": "fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M",
+      "metadata_source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_s0_400000\\settings.txt",
+      "last_train_exit": 0,
+      "run": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_s0_400000",
+      "source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_s0_400000\\logs\\train_11079519.log",
+      "precision": "rounded_train_log",
+      "reached_step": 400000,
+      "source_files": [
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_s0_400000\\logs\\train_50164872.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_s0_400000\\logs\\train_11079519.log"
+      ],
+      "step_verified": true
+    },
+    {
+      "variant": "global",
+      "seed": 0,
+      "steps": 400000,
+      "data_id": "fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M",
+      "metadata_source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_s0_400000\\settings.txt",
+      "last_train_exit": 0,
+      "run": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_s0_400000",
+      "source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_s0_400000\\logs\\train_11079510.log",
+      "precision": "rounded_train_log",
+      "reached_step": 400000,
+      "source_files": [
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_s0_400000\\logs\\train_50164869.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_s0_400000\\logs\\train_11079509.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_s0_400000\\logs\\train_11079510.log"
+      ],
+      "step_verified": true
+    },
+    {
+      "variant": "element",
+      "seed": 0,
+      "steps": 400000,
+      "data_id": "fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M",
+      "metadata_source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\settings.txt",
+      "last_train_exit": 0,
+      "run": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000",
+      "source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11111754r2.log",
+      "precision": "rounded_train_log",
+      "reached_step": 400000,
+      "source_files": [
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_50181962.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11079482.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11079483.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11079484.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11096274.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11096275.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11096276.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11096276r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11096276r2.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11096276r3.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11096276r4.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11111754.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11111754r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_element_s0_400000\\logs\\train_11111754r2.log"
+      ],
+      "step_verified": true
+    },
+    {
+      "variant": "local6",
+      "seed": 0,
+      "steps": 400000,
+      "data_id": "fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M",
+      "metadata_source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\settings.txt",
+      "last_train_exit": 0,
+      "run": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000",
+      "source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11117446.log",
+      "precision": "rounded_train_log",
+      "reached_step": 400000,
+      "source_files": [
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_50195938.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11079494.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11096259.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11096259r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11096259r2.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11100730.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11100730r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11100730r2.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11111749.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11117444.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11117445.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11117445r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11117445r2.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local6_s0_400000\\logs\\train_11117446.log"
+      ],
+      "step_verified": true
+    },
+    {
+      "variant": "local12",
+      "seed": 0,
+      "steps": 400000,
+      "data_id": "fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M",
+      "metadata_source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\settings.txt",
+      "last_train_exit": 0,
+      "run": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000",
+      "source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11117452r2.log",
+      "precision": "rounded_train_log",
+      "reached_step": 400000,
+      "source_files": [
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_50195929.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11079504.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11096269.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11096270.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11096270r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11096270r2.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11117452.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11117452r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local12_s0_400000\\logs\\train_11117452r2.log"
+      ],
+      "step_verified": true
+    },
+    {
+      "variant": "local_global",
+      "seed": 0,
+      "steps": 400000,
+      "data_id": "fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M",
+      "metadata_source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\settings.txt",
+      "last_train_exit": 0,
+      "run": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000",
+      "source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11117449.log",
+      "precision": "rounded_train_log",
+      "reached_step": 400000,
+      "source_files": [
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_50195934.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11079499.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11096264.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11096265.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11096265r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11096265r2.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11096265r3.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11096265r4.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11096265r5.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_local_global_s0_400000\\logs\\train_11117449.log"
+      ],
+      "step_verified": true
+    },
+    {
+      "variant": "frozen",
+      "seed": 0,
+      "steps": 400000,
+      "data_id": "fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M",
+      "metadata_source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000\\settings.txt",
+      "last_train_exit": 0,
+      "run": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000",
+      "source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000\\logs\\train_11079515.log",
+      "precision": "rounded_train_log",
+      "reached_step": 400000,
+      "source_files": [
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000\\logs\\train_50164866.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000\\logs\\train_11079514.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000\\logs\\train_11079514r1.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000\\logs\\train_11079514r2.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000\\logs\\train_11079514r3.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_global_frozen_s0_400000\\logs\\train_11079515.log"
+      ],
+      "step_verified": true
+    },
+    {
+      "variant": "dense_scaled",
+      "seed": 0,
+      "steps": 400000,
+      "data_id": "fixed lists: split_train_70.txt sha256 f57e446a78c48625, split_val_monitor_5k.txt sha256 4aa3aae414296dfb from train_4M",
+      "metadata_source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_scaled_s0_400000\\settings.txt",
+      "last_train_exit": 0,
+      "run": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_scaled_s0_400000",
+      "source": "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_scaled_s0_400000\\logs\\train_11079522r1.log",
+      "precision": "rounded_train_log",
+      "reached_step": 400000,
+      "source_files": [
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_scaled_s0_400000\\logs\\train_50164875.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_scaled_s0_400000\\logs\\train_11079522.log",
+        "D:\\CMU-Projects-Class\\AI4Science-MLIPs\\finalRuns\\long_dense_scaled_s0_400000\\logs\\train_11079522r1.log"
+      ],
+      "step_verified": true
+    }
+  ]
+}

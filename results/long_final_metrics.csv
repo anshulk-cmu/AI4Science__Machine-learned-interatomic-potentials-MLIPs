@@ -1,0 +1,9 @@
+variant,seed,energy_mae_per_atom_eV,force_mae_eV_per_A,val_loss
+dense,0,0.0054,0.029,0.0442
+global,0,0.0049,0.0274,0.0417
+element,0,0.0047,0.0262,0.0398
+local6,0,0.0049,0.0273,0.0416
+local12,0,0.005,0.0275,0.042
+local_global,0,0.005,0.0276,0.0421
+frozen,0,0.0051,0.0279,0.0426
+dense_scaled,0,0.005,0.0282,0.0429
