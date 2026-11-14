@@ -102,8 +102,8 @@ def run(a):
             if len(energy) != len(batch) or len(forces) != sum(len(at) for _, at in batch):
                 raise ValueError("prediction does not match the batch")
             start = 0
-            for (index, at), e in zip(batch, energy):
-                f, target_f, target_e = forces[start:start + len(at)], at.get_forces(), at.get_potential_energy()
+            for (index, at), e in zip(batch, energy.tolist()):        # python floats: numpy 2 repr is np.float64(...)
+                f, target_f, target_e = forces[start:start + len(at)], at.get_forces(), float(at.get_potential_energy())
                 start += len(at)
                 if f.shape != target_f.shape or not np.isfinite(f).all() or not np.isfinite(target_f).all() \
                         or not math.isfinite(e + target_e):
