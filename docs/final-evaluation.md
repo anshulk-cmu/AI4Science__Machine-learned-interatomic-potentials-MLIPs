@@ -104,7 +104,26 @@ Reading (reasoning, from the tables above):
   Only Element and Scaled Dense keep a small energy gain on test. The energy error has a heavy tail (Global has the largest SE), so
   the energy MAE of 10,000 rows is less stable than the force MAE.
 
-SIZE_CONSISTENCY
+## 4. Size consistency on 21 geometries
+
+Gap Delta = E(Al + Ni) - E(Al) - E(Ni) for the final checkpoints, float64, charge 0, spin 1 (task `omol`), on the ideal slabs (run 0)
+and the 20 rattled runs of the audit protocol (`audit/check_checkpoint.py --runs 20`, the fragments Al_a and Ni_a of `run_audit.py`,
+rattle 0.05 A), gaps 8, 10, 15, 25, 50 and 100 A. Script `slurm/size_consistency_final.sh`; table
+`results/final_size_consistency.csv` (one row per model, run and gap) from `scripts/size_consistency_table.py`. Measured.
+
+| Model | Mean Delta over 21 runs (meV) | SD (meV) | Range (meV) | Change with the gap inside one run |
+|---|---:|---:|---|---|
+| Dense, Scaled Dense, Frozen, Element, Local-6 | 2.7e-6 to 3.0e-6 | about 5e-7 | 1.9e-6 to 3.7e-6 | 0 (float64 rounding of a 256-atom energy) |
+| Global | -63,711 | 428 | -64,291 to -62,350 | 0: the same value at 8 and at 100 A |
+| Local+Global | -9,577 | 110 | -9,724 to -9,226 | 0: the same value at 8 and at 100 A |
+| Local-12 at 8 A | 3,950 | 32 | 3,885 to 4,004 | falls to 325 (SD 7) at 10 A and to 2.7e-6 from 15 A |
+
+- Run 0 equals the single check of the training jobs (`results/long_runs_validation.csv`): Global -62,350.3, Local+Global -9,226.24,
+  Local-12 3,916.17 at 8 A and 320.07 at 10 A.
+- Global and Local+Global: the gap is flat in distance and its size moves with the geometry by under 1 percent. The status column of
+  the script says "disconnected" for them because it checks graph and routing radii only; a global router has no finite radius.
+- Local-12 is connected through its 12 A routing radius at 8 and 10 A (status "routing-connected") and exactly additive beyond it.
+  Local-6 is additive at every gap from 8 A, like Dense.
 
 ## 5. Training curves
 
