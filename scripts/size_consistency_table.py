@@ -10,7 +10,7 @@ import re
 import statistics
 from pathlib import Path
 
-LINE = re.compile(r"run (\d+)\s+Delta meV\s+(.*)$")
+LINE = re.compile(r"run (\d+)\s+Delta meV\s+(.*)$", re.M)
 GAP = re.compile(r"(\d+) A: (\S+) \[([a-z-]+)\]")
 
 
@@ -37,6 +37,12 @@ def main():
         v = [r["delta_meV"] for r in own]
         print(f"{key[0]},{key[1]},{len(v)},{statistics.mean(v):.6g},{statistics.stdev(v):.3g},{min(v):.6g},{max(v):.6g},"
               f"{'/'.join(sorted({r['status'] for r in own}))}")
+    print("variant,largest change of Delta with the gap within one run (meV)")      # 0 means flat in distance
+    for variant in sorted({r["variant"] for r in rows}):
+        runs = {r["run"] for r in rows if r["variant"] == variant}
+        spread = max(max(d) - min(d) for d in ([r["delta_meV"] for r in rows if (r["variant"], r["run"]) == (variant, k)]
+                                               for k in runs))
+        print(f"{variant},{spread:.6g}")
 
 
 if __name__ == "__main__":
