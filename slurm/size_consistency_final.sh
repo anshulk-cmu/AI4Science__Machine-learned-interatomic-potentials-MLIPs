@@ -10,6 +10,7 @@
 #SBATCH --time=2:00:00
 #SBATCH --constraint=VRAM_48GB|VRAM_80GB|VRAM_96GB|VRAM_141GB
 #SBATCH --requeue
+#SBATCH --exclude=babel-l9-32
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=anshulk@andrew.cmu.edu
 set -uo pipefail

@@ -68,7 +68,9 @@ def run(a):
         raise ValueError("row index outside dataset")
     meta = dict(checkpoint=str(Path(a.checkpoint).resolve()), checkpoint_sha256=ck.sha256(a.checkpoint),
                 rows=str(Path(a.rows).resolve()), rows_sha256=ck.sha256(a.rows), data_rows=len(data),
-                shard=a.shard, num_shards=a.num_shards, dtype=a.dtype, batch_atoms=a.batch_atoms)
+                shard=a.shard, num_shards=a.num_shards, dtype=a.dtype)
+    # batch size is left out: a resumed shard may use another one (batched = single within 5e-9 eV/atom, 200-row check)
+    print(f"batch_atoms {a.batch_atoms}", flush=True)
     sidecar = a.out.with_suffix(".json")
     if sidecar.exists():
         old = json.loads(sidecar.read_text())

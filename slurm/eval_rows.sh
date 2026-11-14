@@ -13,6 +13,7 @@
 #SBATCH --time=3:30:00
 #SBATCH --constraint=VRAM_48GB|VRAM_80GB|VRAM_96GB|VRAM_141GB
 #SBATCH --requeue
+#SBATCH --exclude=babel-l9-32
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=anshulk@andrew.cmu.edu
 set -euo pipefail
@@ -24,9 +25,10 @@ SHARD=${SLURM_ARRAY_TASK_ID:-0}
 CKPT=$(ls $SHARED/runs/long_${VARIANT}_s0_400000/train/*/checkpoints/final/inference_ckpt.pt)
 OUT=$SHARED/eval/$TAG/${VARIANT}_s${SHARD}of${NSHARDS}.csv
 cd $REPO
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 echo "$(date) $(hostname) $(nvidia-smi --query-gpu=name --format=csv,noheader) $VARIANT $LIST shard $SHARD/$NSHARDS restart ${SLURM_RESTART_COUNT:-0} $(git rev-parse --short HEAD)"
 start=$(date +%s)
 /home/anshulk/mlipEnv/bin/python scripts/eval_rows.py run --checkpoint "$CKPT" --data $SHARED/data/omol25/train_4M \
-  --rows "$LIST" --shard $SHARD --num-shards $NSHARDS --batch-atoms ${BATCH_ATOMS:-2000} --dtype float32 --out "$OUT" &
+  --rows "$LIST" --shard $SHARD --num-shards $NSHARDS --batch-atoms ${BATCH_ATOMS:-600} --dtype float32 --out "$OUT" &
 wait $!
 echo "$(date) done in $(( $(date +%s) - start )) s"
