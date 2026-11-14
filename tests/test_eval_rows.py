@@ -57,10 +57,8 @@ class EvalRowsTest(unittest.TestCase):
             with self.assertRaises(ValueError):          # a missing shard
                 er.merge(Namespace(**{**vars(args), "shards": [tmp / "s0.csv"], "table": None}))
             other = tmp / "o0.csv"                       # model A: every error 0.1 higher on one shard layout
-            other.write_text(",".join(er.FIELDS) + "
-" + "".join(
-                f"{row},1,0,0,{e + 0.1},{f + c * 0.1},{c}
-" for row, (e, f, c) in zip((1, 2, 3), records)))
+            other.write_text(",".join(er.FIELDS) + "\n" + "".join(
+                f"{row},1,0,0,{e + 0.1},{f + c * 0.1},{c}\n" for row, (e, f, c) in zip((1, 2, 3), records)))
             other.with_suffix(".json").write_text(json.dumps(dict(meta, num_shards=1, shard=0)))
             d = er.paired(Namespace(rows=rows, a=[other], b=args.shards))
             self.assertAlmostEqual(d["energy_diff_eV_per_atom"], 0.1)
