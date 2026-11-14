@@ -4,6 +4,7 @@ Same predictor, conversion and metrics as training.checkpoints.evaluate, but one
 resumes where it stopped, shards merge with a check that every row appears exactly once, and the standard error is known.
   run:    python scripts/eval_rows.py run --checkpoint CKPT --data <OMol25 train_4M> --rows manifests/split_test_eval_10k.txt \
               --shard 0 --num-shards 1 --batch-atoms 2000 --dtype float32 --out DIR/dense_test10k_s0of1.csv
+  paired: python scripts/eval_rows.py paired --rows LIST --a DIR/local6_*.csv --b DIR/dense_*.csv
   merge:  python scripts/eval_rows.py merge --rows manifests/split_test_eval_10k.txt --label dense --eval-split test_eval_10k \
               --table results.csv DIR/dense_test10k_s*.csv
 --batch-atoms 0 evaluates one structure at a time (the evaluator of checkpoint_tools.py).
@@ -149,21 +150,22 @@ def summarize(records):
                 force_se=float(math.sqrt((resid ** 2).sum() / (n * (n - 1))) / fcount.mean()))
 
 
-def merge(a):
-    expected = ck.read_rows(a.rows)
-    rows_sha = ck.sha256(a.rows)
-    seen, records, metas = {}, [], []
-    for path in a.shards:
-        meta = json.loads(path.with_suffix(".json").read_text())
-        metas.append(meta)
+def load(rows_path, shards):
+    """{row: (energy_abs_err_per_atom, force_abs_sum, force_components)} of one checkpoint, after checking that the
+    shards share one setup and hold every row of the list exactly once. Returns it with the shards' setup."""
+    expected = ck.read_rows(rows_path)
+    rows_sha = ck.sha256(rows_path)
+    seen, records, metas = {}, {}, []
+    for path in shards:
+        metas.append(json.loads(path.with_suffix(".json").read_text()))
         with open(path, newline="") as stream:
             for line in csv.DictReader(stream):
                 row = int(line["row"])
                 if row in seen:
                     raise ValueError(f"row {row} in {seen[row]} and {path}")
                 seen[row] = path
-                records.append((float(line["energy_abs_err_per_atom"]), float(line["force_abs_sum"]),
-                                int(line["force_components"])))
+                records[row] = (float(line["energy_abs_err_per_atom"]), float(line["force_abs_sum"]),
+                                int(line["force_components"]))
     for key in ("checkpoint_sha256", "rows_sha256", "dtype", "num_shards", "data_rows"):
         if len({m[key] for m in metas}) != 1:
             raise ValueError(f"shards disagree on {key}")
@@ -174,8 +176,13 @@ def merge(a):
     missing, extra = set(expected) - seen.keys(), seen.keys() - set(expected)
     if missing or extra:
         raise ValueError(f"{len(missing)} rows missing, {len(extra)} rows not in the list")
-    result = dict(variant=a.label, eval_split=a.eval_split, dtype=metas[0]["dtype"], **summarize(records),
-                  checkpoint_sha256=metas[0]["checkpoint_sha256"], rows_sha256=rows_sha)
+    return records, metas[0]
+
+
+def merge(a):
+    records, meta = load(a.rows, a.shards)
+    result = dict(variant=a.label, eval_split=a.eval_split, dtype=meta["dtype"], **summarize(list(records.values())),
+                  checkpoint_sha256=meta["checkpoint_sha256"], rows_sha256=meta["rows_sha256"])
     print(json.dumps(result), flush=True)
     if a.table:
         new = not a.table.exists()
@@ -184,6 +191,24 @@ def merge(a):
             if new:
                 writer.writeheader()
             writer.writerow(result)
+
+
+def paired(a):
+    """Model A minus model B on the same rows. The per-structure difference removes the spread that both share."""
+    ra, _ = load(a.rows, a.a)
+    rb, _ = load(a.rows, a.b)
+    rows = sorted(ra)
+    if any(ra[r][2] != rb[r][2] for r in rows):
+        raise ValueError("force component counts differ")
+    de = np.array([ra[r][0] - rb[r][0] for r in rows])
+    df = np.array([ra[r][1] - rb[r][1] for r in rows])
+    c = np.array([ra[r][2] for r in rows], dtype=np.float64)
+    n, d = len(rows), df.sum() / c.sum()
+    result = dict(n_structures=n, energy_diff_eV_per_atom=float(de.mean()), energy_diff_se=float(de.std(ddof=1) / math.sqrt(n)),
+                  force_diff_eV_per_A=float(d),
+                  force_diff_se=float(math.sqrt(((df - d * c) ** 2).sum() / (n * (n - 1))) / c.mean()))
+    print(json.dumps(result), flush=True)
+    return result
 
 
 def main():
@@ -205,8 +230,12 @@ def main():
     m.add_argument("--eval-split", required=True)
     m.add_argument("--table", type=Path, help="append the result to this CSV")
     m.add_argument("shards", type=Path, nargs="+")
+    p = sub.add_parser("paired", help="per-structure difference of two checkpoints on the same list (A minus B)")
+    p.add_argument("--rows", type=Path, required=True)
+    p.add_argument("--a", type=Path, nargs="+", required=True)
+    p.add_argument("--b", type=Path, nargs="+", required=True)
     a = ap.parse_args()
-    run(a) if a.command == "run" else merge(a)
+    {"run": run, "merge": merge, "paired": paired}[a.command](a)
 
 
 if __name__ == "__main__":
