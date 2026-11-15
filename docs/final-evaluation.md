@@ -51,7 +51,42 @@ these times). This is 3 to 4 times faster than the V100 one-at-a-time estimate o
 
 ## 3. Results
 
-TABLE_TEST_FULL
+**Test, full list `split_test_10.txt` (399,276 structures, 64,695,648 force components; measured, float32, final checkpoints, every row once).**
+
+| Model | Energy MAE (meV/atom) | SE | Force MAE (meV/A) | SE |
+|---|---:|---:|---:|---:|
+| Dense | 5.611 | 0.081 | 28.65 | 0.074 |
+| Scaled Dense | 5.322 | 0.071 | 27.92 | 0.073 |
+| Frozen | 5.464 | 0.080 | 27.72 | 0.072 |
+| Global | 5.447 | 0.080 | 27.18 | 0.071 |
+| Element | 5.144 | 0.078 | 26.07 | 0.071 |
+| Local-6 | 5.337 | 0.078 | 27.19 | 0.071 |
+| Local+Global | 5.517 | 0.081 | 27.51 | 0.072 |
+| Local-12 | 5.348 | 0.074 | 27.26 | 0.072 |
+
+**Paired differences on the same 399,276 structures (model A minus model B, meV; a negative value means A has the lower error; SE of the per-structure difference; measured). The SE covers the sampling of rows only, with one training seed.**
+
+| A | B | Energy diff (meV/atom) | SE | Force diff (meV/A) | SE |
+|---|---|---:|---:|---:|---:|
+| Scaled Dense | Dense | -0.289 | 0.024 | -0.738 | 0.011 |
+| Frozen | Dense | -0.147 | 0.022 | -0.935 | 0.011 |
+| Global | Dense | -0.164 | 0.030 | -1.471 | 0.012 |
+| Element | Dense | -0.467 | 0.025 | -2.580 | 0.013 |
+| Local-6 | Dense | -0.274 | 0.025 | -1.464 | 0.012 |
+| Local+Global | Dense | -0.094 | 0.031 | -1.140 | 0.012 |
+| Local-12 | Dense | -0.263 | 0.024 | -1.394 | 0.012 |
+| Dense | Global | +0.164 | 0.030 | +1.471 | 0.012 |
+| Scaled Dense | Global | -0.125 | 0.033 | +0.732 | 0.012 |
+| Frozen | Global | +0.017 | 0.023 | +0.536 | 0.010 |
+| Element | Global | -0.303 | 0.029 | -1.109 | 0.012 |
+| Local-6 | Global | -0.110 | 0.022 | +0.007 | 0.009 |
+| Local+Global | Global | +0.070 | 0.020 | +0.330 | 0.011 |
+| Local-12 | Global | -0.099 | 0.020 | +0.077 | 0.008 |
+
+- **Measured.** Local-6 against Global: force difference +0.007 meV/A (SE 0.009), the same; energy difference -0.110 meV/atom (SE 0.022), Local-6 slightly lower.
+- **Measured.** Global against Dense: force -1.471 meV/A (SE 0.012), energy -0.164 meV/atom (SE 0.030). Local-6 against Dense: force -1.464 (SE 0.012), energy -0.274 (SE 0.025).
+- **Measured.** Scaled Dense against Dense: force -0.738 meV/A (SE 0.011), energy -0.289 meV/atom (SE 0.024); Frozen against Dense: force -0.935 (SE 0.011). Element against Global: force -1.109 (SE 0.012), energy -0.303 (SE 0.029).
+- **Interpreted.** About half of the force gain of Global over Dense (0.74 of 1.47 meV/A) is reached by Scaled Dense without any experts; Local-6 keeps all of the gain of Global. The energy gain over Dense is larger for Scaled Dense and Local-6 than for Global.
 
 **Test, `split_test_eval_10k.txt` (10,000 structures, 1,607,829 force components; measured).**
 

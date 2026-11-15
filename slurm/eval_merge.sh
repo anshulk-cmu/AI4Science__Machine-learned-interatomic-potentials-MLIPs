@@ -21,12 +21,12 @@ cd /data/user_data/anshulk/mlip/code-babel/AI4Science-MLIPs
 VARIANTS="dense dense_scaled global_frozen global element local6 local_global local12"
 rm -f $E/${TAG}_metrics.csv $E/paired_${TAG}.jsonl
 for v in $VARIANTS; do
-  $P scripts/eval_rows.py merge --rows $LIST --label $v --eval-split $SPLIT --table $E/${TAG}_metrics.csv $E/$TAG/${v}_s*of*.csv
+  $P scripts/eval_rows.py merge --rows $LIST --label $v --eval-split $SPLIT --table $E/${TAG}_metrics.csv $E/$TAG/${v}_s[0-9]*of[0-9]*.csv
 done
 for b in dense global; do
   for a in $VARIANTS; do
     [ $a = $b ] && continue
-    r=$($P scripts/eval_rows.py paired --rows $LIST --a $E/$TAG/${a}_s*of*.csv --b $E/$TAG/${b}_s*of*.csv | tail -1)
+    r=$($P scripts/eval_rows.py paired --rows $LIST --a $E/$TAG/${a}_s[0-9]*of[0-9]*.csv --b $E/$TAG/${b}_s[0-9]*of[0-9]*.csv | tail -1)
     echo "{\"list\": \"$TAG\", \"a\": \"$a\", \"b\": \"$b\", \"result\": $r}" >> $E/paired_${TAG}.jsonl
   done
 done

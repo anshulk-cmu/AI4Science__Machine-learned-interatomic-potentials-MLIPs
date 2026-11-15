@@ -1,7 +1,7 @@
 # Local Composition Routing for Mixture-of-Experts Interatomic Potentials
 
 Course project for CMU 11-785 Introduction to Deep Learning, Fall 2026 (AI4Science track, machine-learned interatomic potentials).
-Team 6: Anshul Kumar, Pragati Bhattad, Yiwei Xia. Status (14 November 2026): midterm report submitted (23 October); all 8 long training runs (seed 0, 400,000 steps) are finished on CMU Babel; the test on the held-out rows and the final report are next.
+Team 6: Anshul Kumar, Pragati Bhattad, Yiwei Xia. Status (15 November 2026): midterm report submitted (23 October); all 8 long training runs (seed 0, 400,000 steps) are finished on CMU Babel and tested on the full held-out test list (399,276 structures); the final report and video are next.
 
 ## Summary
 
@@ -17,7 +17,7 @@ Dense, Global (UMA-style routing), Local-6, and two controls on a fixed subset o
 
 ## Results of the long runs (final training)
 
-Eight variants, one seed (0), 400,000 steps each, trained on the 70 percent training list of `train_4M` (split by composition, `docs/data-split.md`). Errors are the last validation on the fixed 5,000-row monitor list. The test rows (10 percent split, 399,276 rows) have not been used yet. The gap is the additivity error of two far-apart Al and Ni slabs at a gap of 8 angstrom, from `audit/check_checkpoint.py`. Raw numbers: `results/long_runs_validation.csv`.
+Eight variants, one seed (0), 400,000 steps each, trained on the 70 percent training list of `train_4M` (split by composition, `docs/data-split.md`). Errors are the last validation on the fixed 5,000-row monitor list. The gap is the additivity error of two far-apart Al and Ni slabs at a gap of 8 angstrom, from `audit/check_checkpoint.py`. Raw numbers: `results/long_runs_validation.csv`.
 
 | Model | Energy MAE per atom (eV) | Force MAE (eV/A) | Gap of two far-apart slabs (meV) |
 |---|---:|---:|---|
@@ -30,7 +30,22 @@ Eight variants, one seed (0), 400,000 steps each, trained on the 70 percent trai
 | Local+Global | 0.0050 | 0.0276 | -9,226, the same at 8 to 100 A |
 | Local-12 | 0.0050 | 0.0275 | 3,916 at 8 A, 320 at 10 A, 3e-6 (zero) from 15 A |
 
-- **Measured.** Local-6 has the same errors as Global (0.0049 and 0.0273 against 0.0049 and 0.0274) and a zero gap at every tested distance. Global has a gap of -62 eV that does not shrink with distance.
+**Test set (the full held-out list, 399,276 structures, final checkpoints, float32, `docs/final-evaluation.md`).**
+
+| Model | Energy MAE (meV/atom) | Force MAE (meV/A) |
+|---|---:|---:|
+| Dense | 5.611 | 28.65 |
+| Scaled Dense | 5.322 | 27.92 |
+| Frozen | 5.464 | 27.72 |
+| Global | 5.447 | 27.18 |
+| Element | **5.144** | **26.07** |
+| Local-6 | 5.337 | 27.19 |
+| Local+Global | 5.517 | 27.51 |
+| Local-12 | 5.348 | 27.26 |
+
+On the same rows, Local-6 minus Global is +0.007 meV/A for force (SE 0.009) and -0.110 meV/atom for energy (SE 0.022); Global minus Dense is -1.471 meV/A (SE 0.012). The standard errors cover the sampling of rows only; every number is one training seed.
+
+- **Measured.** On validation, Local-6 has the same errors as Global (0.0049 and 0.0273 against 0.0049 and 0.0274) and a zero gap at every tested distance. Global has a gap of -62 eV that does not shrink with distance.
 - **Measured.** Element routing (radius 0) has the lowest errors and a zero gap. Local-12 is not additive inside its own 12 A radius, as expected, and is zero from 15 A. Local+Global keeps a gap, 7 times smaller than Global.
 - **Measured.** Scaled Dense, a Dense model with the start scale and step size of Frozen, reaches 0.0050 and 0.0282 without any experts.
 - **Interpreted.** Much of the accuracy gain of Global over Dense is reached without a router, so the gain should not be credited to routing alone. The size-consistency result is the clearer one: Local-6 and Element remove the gap of Global at no cost in accuracy.
@@ -64,7 +79,7 @@ per-seed values, intervals and tests are in `docs/` and in the report appendix.
 - Size consistency along training uses one ideal Al + Ni geometry; the audit of released models uses 21 geometries.
 - Global and Local-6 were trained on different GPU types (V100 and H100), so their training times are not comparable. The inference timings use the same GPU type for all models, on shared nodes.
 - (Midterm) Element, Local-12 and Local+Global routing were not trained at the midterm; they are trained in the long runs above. All three have configs and backbone tests; see [the Element router notes](docs/element-router.md), [the Local-12 notes](docs/local12.md) and [the Local+Global notes](docs/local-global-router.md) for their pending training acceptance. The additivity test covers neutral singlet pairs only; we train on all charges and spins.
-- Long runs: one seed per model; validation numbers only (the test rows are not used yet); the runs resumed many times after preemptions on mixed GPU types (L40S, L40, A6000, 6000 Ada, A100); the size-consistency check uses one slab pair.
+- Long runs: one seed per model; the standard errors cover the sampling of test rows, not the seed; the runs resumed many times after preemptions on mixed GPU types (L40S, L40, A6000, 6000 Ada, A100); the size-consistency check uses one slab pair.
 
 ## Repository layout
 
