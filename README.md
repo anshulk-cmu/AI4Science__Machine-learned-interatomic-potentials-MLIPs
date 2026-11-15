@@ -49,6 +49,7 @@ On the same rows, Local-6 minus Global is +0.007 meV/A for force (SE 0.009) and 
 - **Measured.** Element routing (radius 0) has the lowest errors and a zero gap. Local-12 is not additive inside its own 12 A radius, as expected, and is zero from 15 A. Local+Global keeps a gap, 7 times smaller than Global.
 - **Measured.** Scaled Dense, a Dense model with the start scale and step size of Frozen, reaches 0.0050 and 0.0282 without any experts.
 - **Interpreted.** Much of the accuracy gain of Global over Dense is reached without a router, so the gain should not be credited to routing alone. The size-consistency result is the clearer one: Local-6 and Element remove the gap of Global at no cost in accuracy.
+- **Measured.** Along training, Global's gap wanders between about 1 eV and 188 eV in size and changes sign 6 times; Local-6 stays at 4e-6 meV or less at all 52 saved checkpoints ([`docs/size-consistency-long-runs.md`](docs/size-consistency-long-runs.md)).
 - Details of the runs, the failures on Babel and the exact launch commands: [`docs/babel.md`](docs/babel.md).
 
 ## Results at the midterm
