@@ -1,6 +1,8 @@
 # Final evaluation of the 8 long runs (seed 0, 400,000 steps)
 
 Status: 2026-11-14. Branch `final-eval`. "Measured" means a job or script computed the value; "reasoning" means it was not run.
+Updated 2026-11-16: standard errors by composition (the test list was split by composition), the two-atom rows, and stale lines. What
+the SEs do not cover and which code trained each run: [limits-and-provenance.md](limits-and-provenance.md).
 
 ## 1. What was evaluated
 
@@ -13,11 +15,19 @@ Status: 2026-11-14. Branch `final-eval`. "Measured" means a job or script comput
 - Metrics (the same as `training.checkpoints.evaluate`): energy MAE is the mean over structures of |E_pred - E_DFT| / N_atoms
   (eV/atom); force MAE is the mean absolute error over all Cartesian force components (eV/A). float32 (`data-split.md`, Section 7:
   float32 and float64 agree within 4e-8 eV/atom).
-- Standard error (SE): energy, s / sqrt(n) over structures. Force, the ratio estimator with the structure as the sampling unit:
-  SE = sqrt( sum_i (a_i - F c_i)^2 / (n (n - 1)) ) / mean(c), where a_i is the summed absolute force error of structure i, c_i its
-  number of components and F the force MAE. The SE covers the sampling of rows only. It does not cover training noise (one seed).
-- Paired differences: model A minus model B on the same rows, per structure, with the same two estimators applied to the
-  differences. Rows that are hard for every model cancel, so these SEs are 3 to 8 times smaller than the SE of one MAE.
+- Standard error (SE), "SE rows": energy, s / sqrt(n) over structures. Force, the ratio estimator with the structure as the sampling
+  unit: SE = sqrt( sum_i (a_i - F c_i)^2 / (n (n - 1)) ) / mean(c), where a_i is the summed absolute force error of structure i, c_i
+  its number of components and F the force MAE. This treats every structure as an independent draw.
+- "SE compositions" (added 2026-11-16, `scripts/cluster_se.py`): the test list holds whole compositions ([data-split.md](data-split.md)),
+  and the structures of one composition are correlated. Both MAEs are ratios R = sum_i a_i / sum_i c_i (energy: a_i the error per atom,
+  c_i = 1). With u_g = sum over the structures i of composition g of (a_i - R c_i) and G compositions,
+  Var(R) = G / (G - 1) * sum_g u_g^2 / (sum_i c_i)^2. With one structure per group this equals the row SE exactly. Measured on the full
+  list: G = 110,864, largest composition 9,907 rows (`C4H7N1O1`); a cluster bootstrap with 1,000 resamples agrees within 4 percent.
+  The row SEs are too small by 5.1 to 7.4 times (energy MAE), 2.8 to 2.9 (force MAE), 1.9 to 7.0 (paired energy) and 1.19 to 1.69
+  (paired force). Neither SE covers training noise (one seed, non-deterministic GPU path).
+- Paired differences: model A minus model B on the same rows, per structure, with the same estimators applied to the differences.
+  Rows that are hard for every model cancel. With row SEs, the paired SEs on the full list are 2.1 to 8.4 times smaller than the SE of
+  one MAE (energy 2.1 to 4.1, force 5.3 to 8.4); with composition SEs, 1.5 to 11.2 (energy) and 9.0 to 19.3 (force). Measured.
 
 ## 2. Tools and commands
 
@@ -53,40 +63,73 @@ these times). This is 3 to 4 times faster than the V100 one-at-a-time estimate o
 
 **Test, full list `split_test_10.txt` (399,276 structures, 64,695,648 force components; measured, float32, final checkpoints, every row once).**
 
-| Model | Energy MAE (meV/atom) | SE | Force MAE (meV/A) | SE |
-|---|---:|---:|---:|---:|
-| Dense | 5.611 | 0.081 | 28.65 | 0.074 |
-| Scaled Dense | 5.322 | 0.071 | 27.92 | 0.073 |
-| Frozen | 5.464 | 0.080 | 27.72 | 0.072 |
-| Global | 5.447 | 0.080 | 27.18 | 0.071 |
-| Element | 5.144 | 0.078 | 26.07 | 0.071 |
-| Local-6 | 5.337 | 0.078 | 27.19 | 0.071 |
-| Local+Global | 5.517 | 0.081 | 27.51 | 0.072 |
-| Local-12 | 5.348 | 0.074 | 27.26 | 0.072 |
+| Model | Energy MAE (meV/atom) | SE rows | SE compositions | Force MAE (meV/A) | SE rows | SE compositions |
+|---|---:|---:|---:|---:|---:|---:|
+| Dense | 5.611 | 0.081 | 0.421 | 28.653 | 0.074 | 0.216 |
+| Scaled Dense | 5.322 | 0.071 | 0.362 | 27.915 | 0.073 | 0.210 |
+| Frozen | 5.464 | 0.080 | 0.451 | 27.719 | 0.072 | 0.211 |
+| Global | 5.447 | 0.080 | 0.575 | 27.183 | 0.071 | 0.207 |
+| Element | 5.144 | 0.078 | 0.443 | 26.074 | 0.071 | 0.201 |
+| Local-6 | 5.337 | 0.078 | 0.477 | 27.190 | 0.071 | 0.208 |
+| Local+Global | 5.517 | 0.081 | 0.600 | 27.513 | 0.072 | 0.209 |
+| Local-12 | 5.348 | 0.074 | 0.474 | 27.259 | 0.072 | 0.209 |
 
-**Paired differences on the same 399,276 structures (model A minus model B, meV; a negative value means A has the lower error; SE of the per-structure difference; measured). The SE covers the sampling of rows only, with one training seed.**
+**Paired differences on the same 399,276 structures (model A minus model B, meV; a negative value means A has the lower error;
+measured).** "z comp." is the difference divided by its composition SE. Both SEs cover the sampling of test structures only, with one
+training seed. Files: `results/final_test_paired_full.jsonl` (row SEs), `results/final_test_paired_cluster.csv` (both).
 
-| A | B | Energy diff (meV/atom) | SE | Force diff (meV/A) | SE |
-|---|---|---:|---:|---:|---:|
-| Scaled Dense | Dense | -0.289 | 0.024 | -0.738 | 0.011 |
-| Frozen | Dense | -0.147 | 0.022 | -0.935 | 0.011 |
-| Global | Dense | -0.164 | 0.030 | -1.471 | 0.012 |
-| Element | Dense | -0.467 | 0.025 | -2.580 | 0.013 |
-| Local-6 | Dense | -0.274 | 0.025 | -1.464 | 0.012 |
-| Local+Global | Dense | -0.094 | 0.031 | -1.140 | 0.012 |
-| Local-12 | Dense | -0.263 | 0.024 | -1.394 | 0.012 |
-| Dense | Global | +0.164 | 0.030 | +1.471 | 0.012 |
-| Scaled Dense | Global | -0.125 | 0.033 | +0.732 | 0.012 |
-| Frozen | Global | +0.017 | 0.023 | +0.536 | 0.010 |
-| Element | Global | -0.303 | 0.029 | -1.109 | 0.012 |
-| Local-6 | Global | -0.110 | 0.022 | +0.007 | 0.009 |
-| Local+Global | Global | +0.070 | 0.020 | +0.330 | 0.011 |
-| Local-12 | Global | -0.099 | 0.020 | +0.077 | 0.008 |
+| A | B | Energy diff | SE rows | SE comp. | z comp. | Force diff | SE rows | SE comp. | z comp. |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Scaled Dense | Dense | -0.289 | 0.024 | 0.073 | -4.0 | -0.738 | 0.011 | 0.016 | -46.3 |
+| Frozen | Dense | -0.147 | 0.022 | 0.057 | -2.6 | -0.935 | 0.011 | 0.014 | -66.9 |
+| Global | Dense | -0.164 | 0.030 | 0.180 | -0.9 | -1.471 | 0.012 | 0.018 | -81.3 |
+| Element | Dense | -0.467 | 0.025 | 0.048 | -9.8 | -2.580 | 0.013 | 0.022 | -115.2 |
+| Local-6 | Dense | -0.274 | 0.025 | 0.078 | -3.5 | -1.464 | 0.012 | 0.017 | -84.5 |
+| Local+Global | Dense | -0.094 | 0.031 | 0.203 | -0.5 | -1.140 | 0.012 | 0.017 | -66.5 |
+| Local-12 | Dense | -0.263 | 0.024 | 0.082 | -3.2 | -1.394 | 0.012 | 0.020 | -68.1 |
+| Dense | Global | +0.164 | 0.030 | 0.180 | +0.9 | +1.471 | 0.012 | 0.018 | +81.3 |
+| Scaled Dense | Global | -0.125 | 0.033 | 0.235 | -0.5 | +0.732 | 0.012 | 0.019 | +37.8 |
+| Frozen | Global | +0.017 | 0.023 | 0.140 | +0.1 | +0.536 | 0.010 | 0.014 | +39.0 |
+| Element | Global | -0.303 | 0.029 | 0.150 | -2.0 | -1.109 | 0.012 | 0.016 | -67.9 |
+| Local-6 | Global | -0.110 | 0.022 | 0.110 | -1.0 | +0.007 | 0.009 | 0.011 | +0.6 |
+| Local+Global | Global | +0.070 | 0.020 | 0.053 | +1.3 | +0.330 | 0.011 | 0.013 | +25.4 |
+| Local-12 | Global | -0.099 | 0.020 | 0.112 | -0.9 | +0.077 | 0.008 | 0.012 | +6.4 |
 
-- **Measured.** Local-6 against Global: force difference +0.007 meV/A (SE 0.009), the same; energy difference -0.110 meV/atom (SE 0.022), Local-6 slightly lower.
-- **Measured.** Global against Dense: force -1.471 meV/A (SE 0.012), energy -0.164 meV/atom (SE 0.030). Local-6 against Dense: force -1.464 (SE 0.012), energy -0.274 (SE 0.025).
-- **Measured.** Scaled Dense against Dense: force -0.738 meV/A (SE 0.011), energy -0.289 meV/atom (SE 0.024); Frozen against Dense: force -0.935 (SE 0.011). Element against Global: force -1.109 (SE 0.012), energy -0.303 (SE 0.029).
-- **Interpreted.** About half of the force gain of Global over Dense (0.74 of 1.47 meV/A) is reached by Scaled Dense without any experts; Local-6 keeps all of the gain of Global. The energy gain over Dense is larger for Scaled Dense and Local-6 than for Global.
+**The two-atom rows (measured).** The test list holds 804 two-atom structures (0.2 percent of the rows) in 18 compositions. Their
+energy errors are about 40 to 65 times the mean (two-atom MAE 223 to 347 meV/atom against 5.1 to 5.6 overall). `S2` alone (358 rows, DFT
+energy -21,671 to -21,650 eV) carries 95 percent of the summed Local-6 minus Global energy difference, and 102 percent with the
+opposite sign of Global minus Dense (Global is worse on `S2`, better on the rest). The same pairs without the two-atom rows (398,472
+structures, 110,846 compositions; `results/final_test_by_size.csv`, which also has the bins 2, 3 to 20 and above 20 atoms):
+
+| A | B | Energy diff | SE comp. | z comp. | Force diff | SE comp. | z comp. |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Scaled Dense | Dense | -0.255 | 0.033 | -7.7 | -0.734 | 0.015 | -47.6 |
+| Frozen | Dense | -0.207 | 0.030 | -7.0 | -0.933 | 0.014 | -67.4 |
+| Global | Dense | -0.378 | 0.036 | -10.5 | -1.471 | 0.018 | -81.9 |
+| Element | Dense | -0.512 | 0.030 | -17.2 | -2.581 | 0.022 | -115.5 |
+| Local-6 | Dense | -0.364 | 0.027 | -13.6 | -1.460 | 0.017 | -86.1 |
+| Local+Global | Dense | -0.310 | 0.040 | -7.7 | -1.140 | 0.017 | -66.9 |
+| Local-12 | Dense | -0.363 | 0.036 | -10.1 | -1.390 | 0.020 | -69.6 |
+| Dense | Global | +0.378 | 0.036 | +10.5 | +1.471 | 0.018 | +81.9 |
+| Scaled Dense | Global | +0.123 | 0.028 | +4.4 | +0.737 | 0.019 | +38.5 |
+| Frozen | Global | +0.171 | 0.030 | +5.8 | +0.537 | 0.014 | +39.4 |
+| Element | Global | -0.135 | 0.034 | -3.9 | -1.110 | 0.016 | -68.1 |
+| Local-6 | Global | +0.013 | 0.027 | +0.5 | +0.010 | 0.010 | +1.0 |
+| Local+Global | Global | +0.068 | 0.026 | +2.6 | +0.331 | 0.013 | +25.6 |
+| Local-12 | Global | +0.015 | 0.023 | +0.7 | +0.081 | 0.011 | +7.1 |
+
+- **Measured.** Force: every pair except Local-6 minus Global has |z comp.| of 6 or more. Local-6 minus Global is +0.007 meV/A
+  (SE comp. 0.011, z +0.6): zero within the error, with and without the two-atom rows.
+- **Measured.** Energy on the full list: Global minus Dense -0.164 (z -0.9), Local-6 minus Global -0.110 (z -1.0), Local+Global minus
+  Dense -0.094 (z -0.5). No energy difference between Dense, Global and Local-6 is established on the test list.
+- **Measured.** Element has the lowest force error (26.074 meV/A; -2.580 against Dense, -1.109 against Global) and the lowest energy
+  error in the table (5.144 meV/atom). Its energy gap to Dense holds with composition SEs and without the two-atom rows (-0.467, z -9.8;
+  -0.512, z -17.2). Its energy gap to Global is at z -2.0 on the full list and -0.135 (z -3.9) without the two-atom rows. Paired
+  differences were computed against Dense and Global only.
+- **Interpreted.** The force results are the evidence. About half of the force gain of Global over Dense (0.738 of 1.471 meV/A) is
+  reached by Scaled Dense without any experts, and Local-6 keeps all of the force gain of Global. Without the two-atom rows, every
+  routed model and Scaled Dense has a lower energy error than Dense, and no difference between Local-6 and Global is detected; this subset was chosen after
+  the two-atom effect was seen, so it is a description, not a test. 14 pairs are shown with no correction for multiple comparisons.
 
 **Test, `split_test_eval_10k.txt` (10,000 structures, 1,607,829 force components; measured).**
 
@@ -131,13 +174,18 @@ these times). This is 3 to 4 times faster than the V100 one-at-a-time estimate o
 
 All pairs on both lists: `results/final_eval/paired_test10k.jsonl` and `paired_val5k.jsonl`.
 
+The SEs of the 10,000-row and 5,000-row tables are row SEs. They are too small for the same reason as on the full list (the rows are
+grouped by composition); composition SEs were computed for the full test list only. The full list supersedes the 10,000-row list.
+
 Reading (reasoning, from the tables above):
 
 - Forces: the order of validation holds on test. Element is best. Local-6, Global and Local-12 are tied (Local-6 minus Global is
-  -0.03 +- 0.06 meV/A). Every MoE variant beats Dense by 11 to 20 paired SE. The frozen router keeps about two thirds of the Global gain.
-- Energies: on validation, Global and Local-6 beat Dense by about 0.5 meV/atom (3 to 4 SE). On test this gain is gone (within 1 SE).
-  Only Element and Scaled Dense keep a small energy gain on test. The energy error has a heavy tail (Global has the largest SE), so
-  the energy MAE of 10,000 rows is less stable than the force MAE.
+  -0.03 +- 0.06 meV/A on 10,000 rows, +0.007 +- 0.011 on the full list with composition SEs). Every MoE variant beats Dense.
+  The frozen router keeps about two thirds of the Global force gain.
+- Energies: on the monitor list, Global and Local-6 have about 0.5 meV/atom lower energy error than Dense (row SEs). On the 10,000 test
+  rows the paired differences to Dense are within 1 row SE for Global and Local-6. On the full test list with composition SEs, no
+  energy difference between Dense, Global and Local-6 is established (z -0.9 and -1.0, Section 3 above); the energy differences
+  there are dominated by 804 two-atom structures. Element's energy gap to Dense holds on every list.
 
 ## 4. Size consistency on 21 geometries
 
@@ -165,7 +213,8 @@ rattle 0.05 A), gaps 8, 10, 15, 25, 50 and 100 A. Script `slurm/size_consistency
 `scripts/long_curves.py` reads the segment logs of each run in `segments.txt` order and keeps the validations at multiples of 10,000
 steps (40 per run; the end-of-epoch validation at step 381,159 is dropped). `collect_final_metrics.py --source log` gives the final
 validation row (the W&B file of one Local-6 segment is truncated, so `--source auto` refuses). Files:
-`results/long_validation_curves.csv`, `results/long_final_metrics.csv`, `results/figures/long_accuracy.png` (training loss, validation
+`results/long_validation_curves.csv`, `results/long_final_metrics.csv` (training-log values, rounded to 4 decimals; not for rankings),
+`results/figures/long_accuracy.png` (training loss, validation
 force error, gain over Dense, final values) and `results/figures/long_val_curves.png` (validation energy and force against step).
 
 ```bash
@@ -176,12 +225,16 @@ python scripts/make_accuracy_figure.py results/figures/long_accuracy.png --metri
   --curves results/long_validation_curves.csv --long-run
 ```
 
-The size consistency along training (`scripts/size_consistency_along_training.py`) was not run. The checkpoints at multiples of 10,000
-steps exist on Babel.
+The size consistency along training was run on 2026-11-15 for Global and Local-6 (`scripts/size_consistency_along_training.py`, commit
+`31da755`): [size-consistency-long-runs.md](size-consistency-long-runs.md). The validation at the epoch boundary (step 381,159) is not in
+the curves file ([limits-and-provenance.md](limits-and-provenance.md), Section 2).
 
 ## 6. Caveats
 
-- One seed per variant. Differences of about 1 meV/A in force could change with another seed; the SEs above do not show this.
+- One seed per variant, and the GPU path is not deterministic. Differences of about 1 meV/A in force could change with another seed;
+  the SEs above do not show this. Details, the code versions of each run and the other limits: [limits-and-provenance.md](limits-and-provenance.md).
+- The row SEs ignore the grouping by composition; use the composition SEs (Section 1).
+- The energy differences are dominated by 804 two-atom structures (Section 3).
 - The final checkpoint is reported, not the K=5 rule of `checkpoint-tools.md` (no selection was run).
 - Test and validation are different compositions. The test set has slightly smaller structures (median 40 against 42 atoms).
 - float32. Batched evaluation (600 atoms per forward pass; 2,000 for the first rows of some jobs) changes MAEs by under 5e-9.
