@@ -57,6 +57,10 @@ are descriptive: points and mean only. Intervals are not clipped at zero.
 python scripts/make_accuracy_figure.py results/figures/long_accuracy.pdf --metrics results/long_final_metrics.csv --curves results/long_validation_curves.csv --long-run
 ```
 
+`results/long_final_metrics.csv` holds the training-log values, rounded to 4 decimals by fairchem's log. It is fine for a
+picture, not for a ranking or a difference: use `results/final_eval/val5k_metrics.csv` (the same checkpoints and rows at full
+precision) or the test tables of `docs/final-evaluation.md` for those.
+
 `--long-run` requires explicit inputs, labels the figure as descriptive and
 omits confidence intervals regardless of seed count, following the training
 plan. Step ticks and the endpoint title come from the supplied curves, so
