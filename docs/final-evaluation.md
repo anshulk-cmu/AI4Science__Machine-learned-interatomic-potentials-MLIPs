@@ -23,6 +23,8 @@ the SEs do not cover and which code trained each run: [limits-and-provenance.md]
   c_i = 1). With u_g = sum over the structures i of composition g of (a_i - R c_i) and G compositions,
   Var(R) = G / (G - 1) * sum_g u_g^2 / (sum_i c_i)^2. With one structure per group this equals the row SE exactly. Measured on the full
   list: G = 110,864, largest composition 9,907 rows (`C4H7N1O1`); a cluster bootstrap with 1,000 resamples agrees within 4 percent.
+  The composition of every test row is in `results/test_row_composition.csv.gz` (3.1 MB; unzip it with `gunzip -k` before use, its sha256 after
+  unzipping starts with `9f190bdae941c654`), so the SEs can be recomputed from git and the per-row evaluation files alone.
   The row SEs are too small by 5.1 to 7.4 times (energy MAE), 2.8 to 2.9 (force MAE), 1.9 to 7.0 (paired energy) and 1.19 to 1.69
   (paired force). Neither SE covers training noise (one seed, non-deterministic GPU path).
 - Paired differences: model A minus model B on the same rows, per structure, with the same estimators applied to the differences.
