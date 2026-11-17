@@ -10,6 +10,10 @@ Status: started on 2026-11-16 on CMU Babel. These runs are a backup. They go int
 - Two model types at a time, four seeds each (8 runs at once for the one-GPU types). The next pair starts when every run of the current pair has a `DONE` file.
 - Launch: `bash slurm/submit_chain.sh <variant> --steps 400000 --seed S --segments 6 --hours 12 --eval-every 10000 --ckpt-every 2000` with `LONG_RUNS_DIR`, `LONG_CPUS=1` (see `docs/babel.md`); two-GPU types add `LONG_RANKS=2 NCCL_P2P_DISABLE=1`.
 
+## Lab account
+
+About 2,400 GPU-hours on the lab account `bapoczos` (4 times the earlier 400 to 600). The user states that Prof. Poczos was asked verbally and confirmed (statement of 2026-11-16, recorded as given; there is no written record).
+
 ## Order (cheap first)
 
 | Pair | Types | GPUs at once | Estimated GPU-hours per run (reasoning, from seed 0 speeds) |
